@@ -51,16 +51,254 @@ type AbortUploadUnauthorized ErrorEnvelope
 
 func (*AbortUploadUnauthorized) abortUploadRes() {}
 
+// AddPhotoAlbumItemNoContent is response for AddPhotoAlbumItem operation.
+type AddPhotoAlbumItemNoContent struct{}
+
+func (*AddPhotoAlbumItemNoContent) addPhotoAlbumItemRes() {}
+
+type AddPhotoAlbumItemNotFound ErrorEnvelope
+
+func (*AddPhotoAlbumItemNotFound) addPhotoAlbumItemRes() {}
+
+type AddPhotoAlbumItemUnauthorized ErrorEnvelope
+
+func (*AddPhotoAlbumItemUnauthorized) addPhotoAlbumItemRes() {}
+
+type AddPhotoAlbumItemUnprocessableEntity ErrorEnvelope
+
+func (*AddPhotoAlbumItemUnprocessableEntity) addPhotoAlbumItemRes() {}
+
+// Ref: #/components/schemas/AdminAuditEvent
+type AdminAuditEvent struct {
+	ID           UUID      `json:"id"`
+	UserId       OptInt64  `json:"userId"`
+	Username     OptString `json:"username"`
+	DisplayName  OptString `json:"displayName"`
+	Action       string    `json:"action"`
+	ResourceType string    `json:"resourceType"`
+	ResourceId   OptString `json:"resourceId"`
+	RequestId    OptString `json:"requestId"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
+// GetID returns the value of ID.
+func (s *AdminAuditEvent) GetID() UUID {
+	return s.ID
+}
+
+// GetUserId returns the value of UserId.
+func (s *AdminAuditEvent) GetUserId() OptInt64 {
+	return s.UserId
+}
+
+// GetUsername returns the value of Username.
+func (s *AdminAuditEvent) GetUsername() OptString {
+	return s.Username
+}
+
+// GetDisplayName returns the value of DisplayName.
+func (s *AdminAuditEvent) GetDisplayName() OptString {
+	return s.DisplayName
+}
+
+// GetAction returns the value of Action.
+func (s *AdminAuditEvent) GetAction() string {
+	return s.Action
+}
+
+// GetResourceType returns the value of ResourceType.
+func (s *AdminAuditEvent) GetResourceType() string {
+	return s.ResourceType
+}
+
+// GetResourceId returns the value of ResourceId.
+func (s *AdminAuditEvent) GetResourceId() OptString {
+	return s.ResourceId
+}
+
+// GetRequestId returns the value of RequestId.
+func (s *AdminAuditEvent) GetRequestId() OptString {
+	return s.RequestId
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *AdminAuditEvent) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetID sets the value of ID.
+func (s *AdminAuditEvent) SetID(val UUID) {
+	s.ID = val
+}
+
+// SetUserId sets the value of UserId.
+func (s *AdminAuditEvent) SetUserId(val OptInt64) {
+	s.UserId = val
+}
+
+// SetUsername sets the value of Username.
+func (s *AdminAuditEvent) SetUsername(val OptString) {
+	s.Username = val
+}
+
+// SetDisplayName sets the value of DisplayName.
+func (s *AdminAuditEvent) SetDisplayName(val OptString) {
+	s.DisplayName = val
+}
+
+// SetAction sets the value of Action.
+func (s *AdminAuditEvent) SetAction(val string) {
+	s.Action = val
+}
+
+// SetResourceType sets the value of ResourceType.
+func (s *AdminAuditEvent) SetResourceType(val string) {
+	s.ResourceType = val
+}
+
+// SetResourceId sets the value of ResourceId.
+func (s *AdminAuditEvent) SetResourceId(val OptString) {
+	s.ResourceId = val
+}
+
+// SetRequestId sets the value of RequestId.
+func (s *AdminAuditEvent) SetRequestId(val OptString) {
+	s.RequestId = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *AdminAuditEvent) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// Ref: #/components/schemas/AdminOverview
+type AdminOverview struct {
+	TotalUsers        int64 `json:"totalUsers"`
+	DisabledUsers     int64 `json:"disabledUsers"`
+	TotalActiveFiles  int64 `json:"totalActiveFiles"`
+	TotalActiveBytes  int64 `json:"totalActiveBytes"`
+	TotalTrashedFiles int64 `json:"totalTrashedFiles"`
+	TotalTrashBytes   int64 `json:"totalTrashBytes"`
+	TotalChannels     int64 `json:"totalChannels"`
+	HealthyChannels   int64 `json:"healthyChannels"`
+	TotalBots         int64 `json:"totalBots"`
+	ActiveShares      int64 `json:"activeShares"`
+}
+
+// GetTotalUsers returns the value of TotalUsers.
+func (s *AdminOverview) GetTotalUsers() int64 {
+	return s.TotalUsers
+}
+
+// GetDisabledUsers returns the value of DisabledUsers.
+func (s *AdminOverview) GetDisabledUsers() int64 {
+	return s.DisabledUsers
+}
+
+// GetTotalActiveFiles returns the value of TotalActiveFiles.
+func (s *AdminOverview) GetTotalActiveFiles() int64 {
+	return s.TotalActiveFiles
+}
+
+// GetTotalActiveBytes returns the value of TotalActiveBytes.
+func (s *AdminOverview) GetTotalActiveBytes() int64 {
+	return s.TotalActiveBytes
+}
+
+// GetTotalTrashedFiles returns the value of TotalTrashedFiles.
+func (s *AdminOverview) GetTotalTrashedFiles() int64 {
+	return s.TotalTrashedFiles
+}
+
+// GetTotalTrashBytes returns the value of TotalTrashBytes.
+func (s *AdminOverview) GetTotalTrashBytes() int64 {
+	return s.TotalTrashBytes
+}
+
+// GetTotalChannels returns the value of TotalChannels.
+func (s *AdminOverview) GetTotalChannels() int64 {
+	return s.TotalChannels
+}
+
+// GetHealthyChannels returns the value of HealthyChannels.
+func (s *AdminOverview) GetHealthyChannels() int64 {
+	return s.HealthyChannels
+}
+
+// GetTotalBots returns the value of TotalBots.
+func (s *AdminOverview) GetTotalBots() int64 {
+	return s.TotalBots
+}
+
+// GetActiveShares returns the value of ActiveShares.
+func (s *AdminOverview) GetActiveShares() int64 {
+	return s.ActiveShares
+}
+
+// SetTotalUsers sets the value of TotalUsers.
+func (s *AdminOverview) SetTotalUsers(val int64) {
+	s.TotalUsers = val
+}
+
+// SetDisabledUsers sets the value of DisabledUsers.
+func (s *AdminOverview) SetDisabledUsers(val int64) {
+	s.DisabledUsers = val
+}
+
+// SetTotalActiveFiles sets the value of TotalActiveFiles.
+func (s *AdminOverview) SetTotalActiveFiles(val int64) {
+	s.TotalActiveFiles = val
+}
+
+// SetTotalActiveBytes sets the value of TotalActiveBytes.
+func (s *AdminOverview) SetTotalActiveBytes(val int64) {
+	s.TotalActiveBytes = val
+}
+
+// SetTotalTrashedFiles sets the value of TotalTrashedFiles.
+func (s *AdminOverview) SetTotalTrashedFiles(val int64) {
+	s.TotalTrashedFiles = val
+}
+
+// SetTotalTrashBytes sets the value of TotalTrashBytes.
+func (s *AdminOverview) SetTotalTrashBytes(val int64) {
+	s.TotalTrashBytes = val
+}
+
+// SetTotalChannels sets the value of TotalChannels.
+func (s *AdminOverview) SetTotalChannels(val int64) {
+	s.TotalChannels = val
+}
+
+// SetHealthyChannels sets the value of HealthyChannels.
+func (s *AdminOverview) SetHealthyChannels(val int64) {
+	s.HealthyChannels = val
+}
+
+// SetTotalBots sets the value of TotalBots.
+func (s *AdminOverview) SetTotalBots(val int64) {
+	s.TotalBots = val
+}
+
+// SetActiveShares sets the value of ActiveShares.
+func (s *AdminOverview) SetActiveShares(val int64) {
+	s.ActiveShares = val
+}
+
+func (*AdminOverview) getAdminOverviewRes() {}
+
 // Ref: #/components/schemas/AdminUserSummary
 type AdminUserSummary struct {
-	UserId      int64     `json:"userId"`
-	DisplayName OptString `json:"displayName"`
-	Username    OptString `json:"username"`
-	Premium     bool      `json:"premium"`
-	Role        UserRole  `json:"role"`
-	Disabled    bool      `json:"disabled"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	UserId            int64     `json:"userId"`
+	DisplayName       OptString `json:"displayName"`
+	Username          OptString `json:"username"`
+	Premium           bool      `json:"premium"`
+	Role              UserRole  `json:"role"`
+	Disabled          bool      `json:"disabled"`
+	StorageUsedBytes  int64     `json:"storageUsedBytes"`
+	StorageQuotaBytes OptInt64  `json:"storageQuotaBytes"`
+	CreatedAt         time.Time `json:"createdAt"`
+	UpdatedAt         time.Time `json:"updatedAt"`
 }
 
 // GetUserId returns the value of UserId.
@@ -91,6 +329,16 @@ func (s *AdminUserSummary) GetRole() UserRole {
 // GetDisabled returns the value of Disabled.
 func (s *AdminUserSummary) GetDisabled() bool {
 	return s.Disabled
+}
+
+// GetStorageUsedBytes returns the value of StorageUsedBytes.
+func (s *AdminUserSummary) GetStorageUsedBytes() int64 {
+	return s.StorageUsedBytes
+}
+
+// GetStorageQuotaBytes returns the value of StorageQuotaBytes.
+func (s *AdminUserSummary) GetStorageQuotaBytes() OptInt64 {
+	return s.StorageQuotaBytes
 }
 
 // GetCreatedAt returns the value of CreatedAt.
@@ -131,6 +379,16 @@ func (s *AdminUserSummary) SetRole(val UserRole) {
 // SetDisabled sets the value of Disabled.
 func (s *AdminUserSummary) SetDisabled(val bool) {
 	s.Disabled = val
+}
+
+// SetStorageUsedBytes sets the value of StorageUsedBytes.
+func (s *AdminUserSummary) SetStorageUsedBytes(val int64) {
+	s.StorageUsedBytes = val
+}
+
+// SetStorageQuotaBytes sets the value of StorageQuotaBytes.
+func (s *AdminUserSummary) SetStorageQuotaBytes(val OptInt64) {
+	s.StorageQuotaBytes = val
 }
 
 // SetCreatedAt sets the value of CreatedAt.
@@ -1802,6 +2060,18 @@ type CreateFileAccessGrantUnprocessableEntity ErrorEnvelope
 
 func (*CreateFileAccessGrantUnprocessableEntity) createFileAccessGrantRes() {}
 
+type CreateFileVersionNotFound ErrorEnvelope
+
+func (*CreateFileVersionNotFound) createFileVersionRes() {}
+
+type CreateFileVersionUnauthorized ErrorEnvelope
+
+func (*CreateFileVersionUnauthorized) createFileVersionRes() {}
+
+type CreateFileVersionUnprocessableEntity ErrorEnvelope
+
+func (*CreateFileVersionUnprocessableEntity) createFileVersionRes() {}
+
 type CreateFolderConflict ErrorEnvelope
 
 func (*CreateFolderConflict) createFolderRes() {}
@@ -1841,6 +2111,14 @@ func (*CreatePeriodicJobConflict) createPeriodicJobRes() {}
 type CreatePeriodicJobUnauthorized ErrorEnvelope
 
 func (*CreatePeriodicJobUnauthorized) createPeriodicJobRes() {}
+
+type CreatePhotoAlbumUnauthorized ErrorEnvelope
+
+func (*CreatePhotoAlbumUnauthorized) createPhotoAlbumRes() {}
+
+type CreatePhotoAlbumUnprocessableEntity ErrorEnvelope
+
+func (*CreatePhotoAlbumUnprocessableEntity) createPhotoAlbumRes() {}
 
 type CreatePublicShareFolderForbidden ErrorEnvelope
 
@@ -1942,6 +2220,22 @@ type CreateUploadUnprocessableEntity ErrorEnvelope
 
 func (*CreateUploadUnprocessableEntity) createUploadRes() {}
 
+type CreateWorkspaceDocumentConflict ErrorEnvelope
+
+func (*CreateWorkspaceDocumentConflict) createWorkspaceDocumentRes() {}
+
+type CreateWorkspaceDocumentNotFound ErrorEnvelope
+
+func (*CreateWorkspaceDocumentNotFound) createWorkspaceDocumentRes() {}
+
+type CreateWorkspaceDocumentUnauthorized ErrorEnvelope
+
+func (*CreateWorkspaceDocumentUnauthorized) createWorkspaceDocumentRes() {}
+
+type CreateWorkspaceDocumentUnprocessableEntity ErrorEnvelope
+
+func (*CreateWorkspaceDocumentUnprocessableEntity) createWorkspaceDocumentRes() {}
+
 type Cursor string
 
 type DeleteBotConflict ErrorEnvelope
@@ -2012,6 +2306,19 @@ func (*DeletePeriodicJobNotFound) deletePeriodicJobRes() {}
 type DeletePeriodicJobUnauthorized ErrorEnvelope
 
 func (*DeletePeriodicJobUnauthorized) deletePeriodicJobRes() {}
+
+// DeletePhotoAlbumNoContent is response for DeletePhotoAlbum operation.
+type DeletePhotoAlbumNoContent struct{}
+
+func (*DeletePhotoAlbumNoContent) deletePhotoAlbumRes() {}
+
+type DeletePhotoAlbumNotFound ErrorEnvelope
+
+func (*DeletePhotoAlbumNotFound) deletePhotoAlbumRes() {}
+
+type DeletePhotoAlbumUnauthorized ErrorEnvelope
+
+func (*DeletePhotoAlbumUnauthorized) deletePhotoAlbumRes() {}
 
 type DiscoverChannelsOKApplicationJSON []DiscoveredChannel
 
@@ -4062,9 +4369,12 @@ func (*ErrorEnvelope) listBotsRes()                  {}
 func (*ErrorEnvelope) listChannelsRes()              {}
 func (*ErrorEnvelope) listJobQueuesRes()             {}
 func (*ErrorEnvelope) listPeriodicJobsRes()          {}
+func (*ErrorEnvelope) listPhotoAlbumsRes()           {}
+func (*ErrorEnvelope) listPhotoTimelineRes()         {}
 func (*ErrorEnvelope) listSessionsRes()              {}
 func (*ErrorEnvelope) listSharedRes()                {}
 func (*ErrorEnvelope) listSharedWithMeRes()          {}
+func (*ErrorEnvelope) listWorkspaceDocumentsRes()    {}
 func (*ErrorEnvelope) logoutCookieSessionRes()       {}
 func (*ErrorEnvelope) logoutSessionRes()             {}
 func (*ErrorEnvelope) removeFileBookmarksRes()       {}
@@ -4190,14 +4500,18 @@ func (s *FileAccessGrantCreateRequest) SetExpiresAt(val OptDateTime) {
 type FileAccessGrantCreateRequestPermission string
 
 const (
-	FileAccessGrantCreateRequestPermissionRead FileAccessGrantCreateRequestPermission = "read"
-	FileAccessGrantCreateRequestPermissionEdit FileAccessGrantCreateRequestPermission = "edit"
+	FileAccessGrantCreateRequestPermissionRead    FileAccessGrantCreateRequestPermission = "read"
+	FileAccessGrantCreateRequestPermissionComment FileAccessGrantCreateRequestPermission = "comment"
+	FileAccessGrantCreateRequestPermissionUpload  FileAccessGrantCreateRequestPermission = "upload"
+	FileAccessGrantCreateRequestPermissionEdit    FileAccessGrantCreateRequestPermission = "edit"
 )
 
 // AllValues returns all FileAccessGrantCreateRequestPermission values.
 func (FileAccessGrantCreateRequestPermission) AllValues() []FileAccessGrantCreateRequestPermission {
 	return []FileAccessGrantCreateRequestPermission{
 		FileAccessGrantCreateRequestPermissionRead,
+		FileAccessGrantCreateRequestPermissionComment,
+		FileAccessGrantCreateRequestPermissionUpload,
 		FileAccessGrantCreateRequestPermissionEdit,
 	}
 }
@@ -4206,6 +4520,10 @@ func (FileAccessGrantCreateRequestPermission) AllValues() []FileAccessGrantCreat
 func (s FileAccessGrantCreateRequestPermission) MarshalText() ([]byte, error) {
 	switch s {
 	case FileAccessGrantCreateRequestPermissionRead:
+		return []byte(s), nil
+	case FileAccessGrantCreateRequestPermissionComment:
+		return []byte(s), nil
+	case FileAccessGrantCreateRequestPermissionUpload:
 		return []byte(s), nil
 	case FileAccessGrantCreateRequestPermissionEdit:
 		return []byte(s), nil
@@ -4219,6 +4537,12 @@ func (s *FileAccessGrantCreateRequestPermission) UnmarshalText(data []byte) erro
 	switch FileAccessGrantCreateRequestPermission(data) {
 	case FileAccessGrantCreateRequestPermissionRead:
 		*s = FileAccessGrantCreateRequestPermissionRead
+		return nil
+	case FileAccessGrantCreateRequestPermissionComment:
+		*s = FileAccessGrantCreateRequestPermissionComment
+		return nil
+	case FileAccessGrantCreateRequestPermissionUpload:
+		*s = FileAccessGrantCreateRequestPermissionUpload
 		return nil
 	case FileAccessGrantCreateRequestPermissionEdit:
 		*s = FileAccessGrantCreateRequestPermissionEdit
@@ -5007,10 +5331,11 @@ func (s *FileEntryHeaders) SetResponse(val FileEntry) {
 	s.Response = val
 }
 
-func (*FileEntryHeaders) getFileRes()     {}
-func (*FileEntryHeaders) moveFileRes()    {}
-func (*FileEntryHeaders) restoreFileRes() {}
-func (*FileEntryHeaders) updateFileRes()  {}
+func (*FileEntryHeaders) getFileRes()            {}
+func (*FileEntryHeaders) moveFileRes()           {}
+func (*FileEntryHeaders) restoreFileRes()        {}
+func (*FileEntryHeaders) restoreFileVersionRes() {}
+func (*FileEntryHeaders) updateFileRes()         {}
 
 // Ref: #/components/schemas/FileHash
 type FileHash struct {
@@ -5468,6 +5793,111 @@ func (s *FileUpdateRequest) SetModTime(val OptDateTime) {
 	s.ModTime = val
 }
 
+// Ref: #/components/schemas/FileVersionSummary
+type FileVersionSummary struct {
+	ID            UUID      `json:"id"`
+	FileId        UUID      `json:"fileId"`
+	VersionNumber int32     `json:"versionNumber"`
+	Name          string    `json:"name"`
+	MimeType      OptString `json:"mimeType"`
+	Size          int64     `json:"size"`
+	Encryption    bool      `json:"encryption"`
+	CreatedBy     OptInt64  `json:"createdBy"`
+	CreatedAt     time.Time `json:"createdAt"`
+}
+
+// GetID returns the value of ID.
+func (s *FileVersionSummary) GetID() UUID {
+	return s.ID
+}
+
+// GetFileId returns the value of FileId.
+func (s *FileVersionSummary) GetFileId() UUID {
+	return s.FileId
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *FileVersionSummary) GetVersionNumber() int32 {
+	return s.VersionNumber
+}
+
+// GetName returns the value of Name.
+func (s *FileVersionSummary) GetName() string {
+	return s.Name
+}
+
+// GetMimeType returns the value of MimeType.
+func (s *FileVersionSummary) GetMimeType() OptString {
+	return s.MimeType
+}
+
+// GetSize returns the value of Size.
+func (s *FileVersionSummary) GetSize() int64 {
+	return s.Size
+}
+
+// GetEncryption returns the value of Encryption.
+func (s *FileVersionSummary) GetEncryption() bool {
+	return s.Encryption
+}
+
+// GetCreatedBy returns the value of CreatedBy.
+func (s *FileVersionSummary) GetCreatedBy() OptInt64 {
+	return s.CreatedBy
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *FileVersionSummary) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetID sets the value of ID.
+func (s *FileVersionSummary) SetID(val UUID) {
+	s.ID = val
+}
+
+// SetFileId sets the value of FileId.
+func (s *FileVersionSummary) SetFileId(val UUID) {
+	s.FileId = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *FileVersionSummary) SetVersionNumber(val int32) {
+	s.VersionNumber = val
+}
+
+// SetName sets the value of Name.
+func (s *FileVersionSummary) SetName(val string) {
+	s.Name = val
+}
+
+// SetMimeType sets the value of MimeType.
+func (s *FileVersionSummary) SetMimeType(val OptString) {
+	s.MimeType = val
+}
+
+// SetSize sets the value of Size.
+func (s *FileVersionSummary) SetSize(val int64) {
+	s.Size = val
+}
+
+// SetEncryption sets the value of Encryption.
+func (s *FileVersionSummary) SetEncryption(val bool) {
+	s.Encryption = val
+}
+
+// SetCreatedBy sets the value of CreatedBy.
+func (s *FileVersionSummary) SetCreatedBy(val OptInt64) {
+	s.CreatedBy = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *FileVersionSummary) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+func (*FileVersionSummary) createFileVersionRes() {}
+
 // Ref: #/components/schemas/FileViewState
 type FileViewState struct {
 	FileId      UUID                         `json:"fileId"`
@@ -5752,6 +6182,14 @@ func (s *FolderCreateRequestConflictPolicy) UnmarshalText(data []byte) error {
 	}
 }
 
+type GetAdminOverviewForbidden ErrorEnvelope
+
+func (*GetAdminOverviewForbidden) getAdminOverviewRes() {}
+
+type GetAdminOverviewUnauthorized ErrorEnvelope
+
+func (*GetAdminOverviewUnauthorized) getAdminOverviewRes() {}
+
 type GetFileCategoryStatisticsOKApplicationJSON []FileCategoryStatistics
 
 func (*GetFileCategoryStatisticsOKApplicationJSON) getFileCategoryStatisticsRes() {}
@@ -5912,6 +6350,14 @@ func (*GetUploadStatisticsUnprocessableEntity) getUploadStatisticsRes() {}
 type GetUploadUnauthorized ErrorEnvelope
 
 func (*GetUploadUnauthorized) getUploadRes() {}
+
+type GetWorkspaceDocumentNotFound ErrorEnvelope
+
+func (*GetWorkspaceDocumentNotFound) getWorkspaceDocumentRes() {}
+
+type GetWorkspaceDocumentUnauthorized ErrorEnvelope
+
+func (*GetWorkspaceDocumentUnauthorized) getWorkspaceDocumentRes() {}
 
 // Ref: #/components/schemas/HashAlgorithm
 type HashAlgorithm string
@@ -7455,6 +7901,45 @@ func (s *JobStatistics) SetScheduled(val int64) {
 
 func (*JobStatistics) getJobStatisticsRes() {}
 
+type ListAdminAuditEventsForbidden ErrorEnvelope
+
+func (*ListAdminAuditEventsForbidden) listAdminAuditEventsRes() {}
+
+type ListAdminAuditEventsOK struct {
+	Items      []AdminAuditEvent `json:"items"`
+	NextCursor OptCursor         `json:"nextCursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *ListAdminAuditEventsOK) GetItems() []AdminAuditEvent {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *ListAdminAuditEventsOK) GetNextCursor() OptCursor {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *ListAdminAuditEventsOK) SetItems(val []AdminAuditEvent) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ListAdminAuditEventsOK) SetNextCursor(val OptCursor) {
+	s.NextCursor = val
+}
+
+func (*ListAdminAuditEventsOK) listAdminAuditEventsRes() {}
+
+type ListAdminAuditEventsUnauthorized ErrorEnvelope
+
+func (*ListAdminAuditEventsUnauthorized) listAdminAuditEventsRes() {}
+
+type ListAdminAuditEventsUnprocessableEntity ErrorEnvelope
+
+func (*ListAdminAuditEventsUnprocessableEntity) listAdminAuditEventsRes() {}
+
 type ListAdminUsersForbidden ErrorEnvelope
 
 func (*ListAdminUsersForbidden) listAdminUsersRes() {}
@@ -7595,6 +8080,18 @@ type ListFileSharesUnauthorized ErrorEnvelope
 
 func (*ListFileSharesUnauthorized) listFileSharesRes() {}
 
+type ListFileVersionsNotFound ErrorEnvelope
+
+func (*ListFileVersionsNotFound) listFileVersionsRes() {}
+
+type ListFileVersionsOKApplicationJSON []FileVersionSummary
+
+func (*ListFileVersionsOKApplicationJSON) listFileVersionsRes() {}
+
+type ListFileVersionsUnauthorized ErrorEnvelope
+
+func (*ListFileVersionsUnauthorized) listFileVersionsRes() {}
+
 type ListFilesNotFound ErrorEnvelope
 
 func (*ListFilesNotFound) listFilesRes() {}
@@ -7641,6 +8138,14 @@ func (*ListJobsBadRequest) listJobsRes() {}
 type ListJobsUnauthorized ErrorEnvelope
 
 func (*ListJobsUnauthorized) listJobsRes() {}
+
+type ListPhotoAlbumsOKApplicationJSON []PhotoAlbumSummary
+
+func (*ListPhotoAlbumsOKApplicationJSON) listPhotoAlbumsRes() {}
+
+type ListPhotoTimelineOKApplicationJSON []PhotoTimelineItem
+
+func (*ListPhotoTimelineOKApplicationJSON) listPhotoTimelineRes() {}
 
 type ListPublicShareFilesGone ErrorEnvelope
 
@@ -7798,6 +8303,10 @@ type ListUploadsUnprocessableEntity ErrorEnvelope
 
 func (*ListUploadsUnprocessableEntity) listUploadsRes() {}
 
+type ListWorkspaceDocumentsOKApplicationJSON []WorkspaceDocumentSummary
+
+func (*ListWorkspaceDocumentsOKApplicationJSON) listWorkspaceDocumentsRes() {}
+
 // LogoutCookieSessionNoContent is response for LogoutCookieSession operation.
 type LogoutCookieSessionNoContent struct {
 	SetCookie []string
@@ -7819,6 +8328,76 @@ func (*LogoutCookieSessionNoContent) logoutCookieSessionRes() {}
 type LogoutSessionNoContent struct{}
 
 func (*LogoutSessionNoContent) logoutSessionRes() {}
+
+// Ref: #/components/schemas/MediaMetadataUpdateRequest
+type MediaMetadataUpdateRequest struct {
+	Favorite    OptBool     `json:"favorite"`
+	TakenAt     OptDateTime `json:"takenAt"`
+	Width       OptInt32    `json:"width"`
+	Height      OptInt32    `json:"height"`
+	CameraMake  OptString   `json:"cameraMake"`
+	CameraModel OptString   `json:"cameraModel"`
+}
+
+// GetFavorite returns the value of Favorite.
+func (s *MediaMetadataUpdateRequest) GetFavorite() OptBool {
+	return s.Favorite
+}
+
+// GetTakenAt returns the value of TakenAt.
+func (s *MediaMetadataUpdateRequest) GetTakenAt() OptDateTime {
+	return s.TakenAt
+}
+
+// GetWidth returns the value of Width.
+func (s *MediaMetadataUpdateRequest) GetWidth() OptInt32 {
+	return s.Width
+}
+
+// GetHeight returns the value of Height.
+func (s *MediaMetadataUpdateRequest) GetHeight() OptInt32 {
+	return s.Height
+}
+
+// GetCameraMake returns the value of CameraMake.
+func (s *MediaMetadataUpdateRequest) GetCameraMake() OptString {
+	return s.CameraMake
+}
+
+// GetCameraModel returns the value of CameraModel.
+func (s *MediaMetadataUpdateRequest) GetCameraModel() OptString {
+	return s.CameraModel
+}
+
+// SetFavorite sets the value of Favorite.
+func (s *MediaMetadataUpdateRequest) SetFavorite(val OptBool) {
+	s.Favorite = val
+}
+
+// SetTakenAt sets the value of TakenAt.
+func (s *MediaMetadataUpdateRequest) SetTakenAt(val OptDateTime) {
+	s.TakenAt = val
+}
+
+// SetWidth sets the value of Width.
+func (s *MediaMetadataUpdateRequest) SetWidth(val OptInt32) {
+	s.Width = val
+}
+
+// SetHeight sets the value of Height.
+func (s *MediaMetadataUpdateRequest) SetHeight(val OptInt32) {
+	s.Height = val
+}
+
+// SetCameraMake sets the value of CameraMake.
+func (s *MediaMetadataUpdateRequest) SetCameraMake(val OptString) {
+	s.CameraMake = val
+}
+
+// SetCameraModel sets the value of CameraModel.
+func (s *MediaMetadataUpdateRequest) SetCameraModel(val OptString) {
+	s.CameraModel = val
+}
 
 type MoveFileConflict ErrorEnvelope
 
@@ -10097,6 +10676,52 @@ func (o OptUserRole) Or(d UserRole) UserRole {
 	return d
 }
 
+// NewOptWorkspaceDocType returns new OptWorkspaceDocType with value set to v.
+func NewOptWorkspaceDocType(v WorkspaceDocType) OptWorkspaceDocType {
+	return OptWorkspaceDocType{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptWorkspaceDocType is optional WorkspaceDocType.
+type OptWorkspaceDocType struct {
+	Value WorkspaceDocType
+	Set   bool
+}
+
+// IsSet returns true if OptWorkspaceDocType was set.
+func (o OptWorkspaceDocType) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptWorkspaceDocType) Reset() {
+	var v WorkspaceDocType
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptWorkspaceDocType) SetTo(v WorkspaceDocType) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptWorkspaceDocType) Get() (v WorkspaceDocType, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptWorkspaceDocType) Or(d WorkspaceDocType) WorkspaceDocType {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // PauseJobQueueNoContent is response for PauseJobQueue operation.
 type PauseJobQueueNoContent struct{}
 
@@ -10658,6 +11283,213 @@ func (s *PeriodicJobUpdateArgs) init() PeriodicJobUpdateArgs {
 	return m
 }
 
+// Ref: #/components/schemas/PhotoAlbumCreateRequest
+type PhotoAlbumCreateRequest struct {
+	Name        string    `json:"name"`
+	Description OptString `json:"description"`
+}
+
+// GetName returns the value of Name.
+func (s *PhotoAlbumCreateRequest) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *PhotoAlbumCreateRequest) GetDescription() OptString {
+	return s.Description
+}
+
+// SetName sets the value of Name.
+func (s *PhotoAlbumCreateRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *PhotoAlbumCreateRequest) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// Ref: #/components/schemas/PhotoAlbumItemRequest
+type PhotoAlbumItemRequest struct {
+	FileId UUID `json:"fileId"`
+}
+
+// GetFileId returns the value of FileId.
+func (s *PhotoAlbumItemRequest) GetFileId() UUID {
+	return s.FileId
+}
+
+// SetFileId sets the value of FileId.
+func (s *PhotoAlbumItemRequest) SetFileId(val UUID) {
+	s.FileId = val
+}
+
+// Ref: #/components/schemas/PhotoAlbumSummary
+type PhotoAlbumSummary struct {
+	ID          UUID      `json:"id"`
+	Name        string    `json:"name"`
+	Description OptString `json:"description"`
+	CoverFileId OptUUID   `json:"coverFileId"`
+	ItemCount   int64     `json:"itemCount"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+// GetID returns the value of ID.
+func (s *PhotoAlbumSummary) GetID() UUID {
+	return s.ID
+}
+
+// GetName returns the value of Name.
+func (s *PhotoAlbumSummary) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *PhotoAlbumSummary) GetDescription() OptString {
+	return s.Description
+}
+
+// GetCoverFileId returns the value of CoverFileId.
+func (s *PhotoAlbumSummary) GetCoverFileId() OptUUID {
+	return s.CoverFileId
+}
+
+// GetItemCount returns the value of ItemCount.
+func (s *PhotoAlbumSummary) GetItemCount() int64 {
+	return s.ItemCount
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *PhotoAlbumSummary) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *PhotoAlbumSummary) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// SetID sets the value of ID.
+func (s *PhotoAlbumSummary) SetID(val UUID) {
+	s.ID = val
+}
+
+// SetName sets the value of Name.
+func (s *PhotoAlbumSummary) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *PhotoAlbumSummary) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetCoverFileId sets the value of CoverFileId.
+func (s *PhotoAlbumSummary) SetCoverFileId(val OptUUID) {
+	s.CoverFileId = val
+}
+
+// SetItemCount sets the value of ItemCount.
+func (s *PhotoAlbumSummary) SetItemCount(val int64) {
+	s.ItemCount = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *PhotoAlbumSummary) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *PhotoAlbumSummary) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+func (*PhotoAlbumSummary) createPhotoAlbumRes() {}
+
+// Ref: #/components/schemas/PhotoTimelineItem
+type PhotoTimelineItem struct {
+	File        FileEntry   `json:"file"`
+	Favorite    bool        `json:"favorite"`
+	TakenAt     OptDateTime `json:"takenAt"`
+	Width       OptInt32    `json:"width"`
+	Height      OptInt32    `json:"height"`
+	CameraMake  OptString   `json:"cameraMake"`
+	CameraModel OptString   `json:"cameraModel"`
+}
+
+// GetFile returns the value of File.
+func (s *PhotoTimelineItem) GetFile() FileEntry {
+	return s.File
+}
+
+// GetFavorite returns the value of Favorite.
+func (s *PhotoTimelineItem) GetFavorite() bool {
+	return s.Favorite
+}
+
+// GetTakenAt returns the value of TakenAt.
+func (s *PhotoTimelineItem) GetTakenAt() OptDateTime {
+	return s.TakenAt
+}
+
+// GetWidth returns the value of Width.
+func (s *PhotoTimelineItem) GetWidth() OptInt32 {
+	return s.Width
+}
+
+// GetHeight returns the value of Height.
+func (s *PhotoTimelineItem) GetHeight() OptInt32 {
+	return s.Height
+}
+
+// GetCameraMake returns the value of CameraMake.
+func (s *PhotoTimelineItem) GetCameraMake() OptString {
+	return s.CameraMake
+}
+
+// GetCameraModel returns the value of CameraModel.
+func (s *PhotoTimelineItem) GetCameraModel() OptString {
+	return s.CameraModel
+}
+
+// SetFile sets the value of File.
+func (s *PhotoTimelineItem) SetFile(val FileEntry) {
+	s.File = val
+}
+
+// SetFavorite sets the value of Favorite.
+func (s *PhotoTimelineItem) SetFavorite(val bool) {
+	s.Favorite = val
+}
+
+// SetTakenAt sets the value of TakenAt.
+func (s *PhotoTimelineItem) SetTakenAt(val OptDateTime) {
+	s.TakenAt = val
+}
+
+// SetWidth sets the value of Width.
+func (s *PhotoTimelineItem) SetWidth(val OptInt32) {
+	s.Width = val
+}
+
+// SetHeight sets the value of Height.
+func (s *PhotoTimelineItem) SetHeight(val OptInt32) {
+	s.Height = val
+}
+
+// SetCameraMake sets the value of CameraMake.
+func (s *PhotoTimelineItem) SetCameraMake(val OptString) {
+	s.CameraMake = val
+}
+
+// SetCameraModel sets the value of CameraModel.
+func (s *PhotoTimelineItem) SetCameraModel(val OptString) {
+	s.CameraModel = val
+}
+
+func (*PhotoTimelineItem) updateMediaMetadataRes() {}
+
 type ProvisionBotNotFound ErrorEnvelope
 
 func (*ProvisionBotNotFound) provisionBotRes() {}
@@ -10945,6 +11777,19 @@ type RemoveFileBookmarksNoContent struct{}
 
 func (*RemoveFileBookmarksNoContent) removeFileBookmarksRes() {}
 
+// RemovePhotoAlbumItemNoContent is response for RemovePhotoAlbumItem operation.
+type RemovePhotoAlbumItemNoContent struct{}
+
+func (*RemovePhotoAlbumItemNoContent) removePhotoAlbumItemRes() {}
+
+type RemovePhotoAlbumItemNotFound ErrorEnvelope
+
+func (*RemovePhotoAlbumItemNotFound) removePhotoAlbumItemRes() {}
+
+type RemovePhotoAlbumItemUnauthorized ErrorEnvelope
+
+func (*RemovePhotoAlbumItemUnauthorized) removePhotoAlbumItemRes() {}
+
 type RestoreFileConflict ErrorEnvelope
 
 func (*RestoreFileConflict) restoreFileRes() {}
@@ -10956,6 +11801,22 @@ func (*RestoreFileNotFound) restoreFileRes() {}
 type RestoreFileUnauthorized ErrorEnvelope
 
 func (*RestoreFileUnauthorized) restoreFileRes() {}
+
+type RestoreFileVersionConflict ErrorEnvelope
+
+func (*RestoreFileVersionConflict) restoreFileVersionRes() {}
+
+type RestoreFileVersionNotFound ErrorEnvelope
+
+func (*RestoreFileVersionNotFound) restoreFileVersionRes() {}
+
+type RestoreFileVersionUnauthorized ErrorEnvelope
+
+func (*RestoreFileVersionUnauthorized) restoreFileVersionRes() {}
+
+type RestoreFileVersionUnprocessableEntity ErrorEnvelope
+
+func (*RestoreFileVersionUnprocessableEntity) restoreFileVersionRes() {}
 
 // ResumeJobQueueNoContent is response for ResumeJobQueue operation.
 type ResumeJobQueueNoContent struct{}
@@ -11206,14 +12067,18 @@ func (s *ShareCreateRequest) SetPermission(val OptShareCreateRequestPermission) 
 type ShareCreateRequestPermission string
 
 const (
-	ShareCreateRequestPermissionRead ShareCreateRequestPermission = "read"
-	ShareCreateRequestPermissionEdit ShareCreateRequestPermission = "edit"
+	ShareCreateRequestPermissionRead    ShareCreateRequestPermission = "read"
+	ShareCreateRequestPermissionComment ShareCreateRequestPermission = "comment"
+	ShareCreateRequestPermissionUpload  ShareCreateRequestPermission = "upload"
+	ShareCreateRequestPermissionEdit    ShareCreateRequestPermission = "edit"
 )
 
 // AllValues returns all ShareCreateRequestPermission values.
 func (ShareCreateRequestPermission) AllValues() []ShareCreateRequestPermission {
 	return []ShareCreateRequestPermission{
 		ShareCreateRequestPermissionRead,
+		ShareCreateRequestPermissionComment,
+		ShareCreateRequestPermissionUpload,
 		ShareCreateRequestPermissionEdit,
 	}
 }
@@ -11222,6 +12087,10 @@ func (ShareCreateRequestPermission) AllValues() []ShareCreateRequestPermission {
 func (s ShareCreateRequestPermission) MarshalText() ([]byte, error) {
 	switch s {
 	case ShareCreateRequestPermissionRead:
+		return []byte(s), nil
+	case ShareCreateRequestPermissionComment:
+		return []byte(s), nil
+	case ShareCreateRequestPermissionUpload:
 		return []byte(s), nil
 	case ShareCreateRequestPermissionEdit:
 		return []byte(s), nil
@@ -11235,6 +12104,12 @@ func (s *ShareCreateRequestPermission) UnmarshalText(data []byte) error {
 	switch ShareCreateRequestPermission(data) {
 	case ShareCreateRequestPermissionRead:
 		*s = ShareCreateRequestPermissionRead
+		return nil
+	case ShareCreateRequestPermissionComment:
+		*s = ShareCreateRequestPermissionComment
+		return nil
+	case ShareCreateRequestPermissionUpload:
+		*s = ShareCreateRequestPermissionUpload
 		return nil
 	case ShareCreateRequestPermissionEdit:
 		*s = ShareCreateRequestPermissionEdit
@@ -11354,14 +12229,18 @@ func (*ShareCreated) createShareRes() {}
 type SharePermission string
 
 const (
-	SharePermissionRead SharePermission = "read"
-	SharePermissionEdit SharePermission = "edit"
+	SharePermissionRead    SharePermission = "read"
+	SharePermissionComment SharePermission = "comment"
+	SharePermissionUpload  SharePermission = "upload"
+	SharePermissionEdit    SharePermission = "edit"
 )
 
 // AllValues returns all SharePermission values.
 func (SharePermission) AllValues() []SharePermission {
 	return []SharePermission{
 		SharePermissionRead,
+		SharePermissionComment,
+		SharePermissionUpload,
 		SharePermissionEdit,
 	}
 }
@@ -11370,6 +12249,10 @@ func (SharePermission) AllValues() []SharePermission {
 func (s SharePermission) MarshalText() ([]byte, error) {
 	switch s {
 	case SharePermissionRead:
+		return []byte(s), nil
+	case SharePermissionComment:
+		return []byte(s), nil
+	case SharePermissionUpload:
 		return []byte(s), nil
 	case SharePermissionEdit:
 		return []byte(s), nil
@@ -11383,6 +12266,12 @@ func (s *SharePermission) UnmarshalText(data []byte) error {
 	switch SharePermission(data) {
 	case SharePermissionRead:
 		*s = SharePermissionRead
+		return nil
+	case SharePermissionComment:
+		*s = SharePermissionComment
+		return nil
+	case SharePermissionUpload:
+		*s = SharePermissionUpload
 		return nil
 	case SharePermissionEdit:
 		*s = SharePermissionEdit
@@ -12687,6 +13576,18 @@ type UpdateFileUnprocessableEntity ErrorEnvelope
 
 func (*UpdateFileUnprocessableEntity) updateFileRes() {}
 
+type UpdateMediaMetadataNotFound ErrorEnvelope
+
+func (*UpdateMediaMetadataNotFound) updateMediaMetadataRes() {}
+
+type UpdateMediaMetadataUnauthorized ErrorEnvelope
+
+func (*UpdateMediaMetadataUnauthorized) updateMediaMetadataRes() {}
+
+type UpdateMediaMetadataUnprocessableEntity ErrorEnvelope
+
+func (*UpdateMediaMetadataUnprocessableEntity) updateMediaMetadataRes() {}
+
 type UpdatePeriodicJobBadRequest ErrorEnvelope
 
 func (*UpdatePeriodicJobBadRequest) updatePeriodicJobRes() {}
@@ -12742,6 +13643,22 @@ func (*UpdateUserPreferencesUnauthorized) updateUserPreferencesRes() {}
 type UpdateUserPreferencesUnprocessableEntity ErrorEnvelope
 
 func (*UpdateUserPreferencesUnprocessableEntity) updateUserPreferencesRes() {}
+
+type UpdateWorkspaceDocumentConflict ErrorEnvelope
+
+func (*UpdateWorkspaceDocumentConflict) updateWorkspaceDocumentRes() {}
+
+type UpdateWorkspaceDocumentNotFound ErrorEnvelope
+
+func (*UpdateWorkspaceDocumentNotFound) updateWorkspaceDocumentRes() {}
+
+type UpdateWorkspaceDocumentUnauthorized ErrorEnvelope
+
+func (*UpdateWorkspaceDocumentUnauthorized) updateWorkspaceDocumentRes() {}
+
+type UpdateWorkspaceDocumentUnprocessableEntity ErrorEnvelope
+
+func (*UpdateWorkspaceDocumentUnprocessableEntity) updateWorkspaceDocumentRes() {}
 
 // Ref: #/components/schemas/UploadCreateRequest
 type UploadCreateRequest struct {
@@ -13659,8 +14576,10 @@ func (s *UploadState) UnmarshalText(data []byte) error {
 
 // Ref: #/components/schemas/UserAdminUpdateRequest
 type UserAdminUpdateRequest struct {
-	Role     OptUserRole `json:"role"`
-	Disabled OptBool     `json:"disabled"`
+	Role              OptUserRole `json:"role"`
+	Disabled          OptBool     `json:"disabled"`
+	StorageQuotaBytes OptInt64    `json:"storageQuotaBytes"`
+	ClearStorageQuota OptBool     `json:"clearStorageQuota"`
 }
 
 // GetRole returns the value of Role.
@@ -13673,6 +14592,16 @@ func (s *UserAdminUpdateRequest) GetDisabled() OptBool {
 	return s.Disabled
 }
 
+// GetStorageQuotaBytes returns the value of StorageQuotaBytes.
+func (s *UserAdminUpdateRequest) GetStorageQuotaBytes() OptInt64 {
+	return s.StorageQuotaBytes
+}
+
+// GetClearStorageQuota returns the value of ClearStorageQuota.
+func (s *UserAdminUpdateRequest) GetClearStorageQuota() OptBool {
+	return s.ClearStorageQuota
+}
+
 // SetRole sets the value of Role.
 func (s *UserAdminUpdateRequest) SetRole(val OptUserRole) {
 	s.Role = val
@@ -13681,6 +14610,16 @@ func (s *UserAdminUpdateRequest) SetRole(val OptUserRole) {
 // SetDisabled sets the value of Disabled.
 func (s *UserAdminUpdateRequest) SetDisabled(val OptBool) {
 	s.Disabled = val
+}
+
+// SetStorageQuotaBytes sets the value of StorageQuotaBytes.
+func (s *UserAdminUpdateRequest) SetStorageQuotaBytes(val OptInt64) {
+	s.StorageQuotaBytes = val
+}
+
+// SetClearStorageQuota sets the value of ClearStorageQuota.
+func (s *UserAdminUpdateRequest) SetClearStorageQuota(val OptBool) {
+	s.ClearStorageQuota = val
 }
 
 // Per-user web UI preferences shared by every browser and device.
@@ -14033,4 +14972,308 @@ func (s *ViewerKind) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// Ref: #/components/schemas/WorkspaceDocType
+type WorkspaceDocType string
+
+const (
+	WorkspaceDocTypeDoc   WorkspaceDocType = "doc"
+	WorkspaceDocTypeSheet WorkspaceDocType = "sheet"
+)
+
+// AllValues returns all WorkspaceDocType values.
+func (WorkspaceDocType) AllValues() []WorkspaceDocType {
+	return []WorkspaceDocType{
+		WorkspaceDocTypeDoc,
+		WorkspaceDocTypeSheet,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkspaceDocType) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkspaceDocTypeDoc:
+		return []byte(s), nil
+	case WorkspaceDocTypeSheet:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkspaceDocType) UnmarshalText(data []byte) error {
+	switch WorkspaceDocType(data) {
+	case WorkspaceDocTypeDoc:
+		*s = WorkspaceDocTypeDoc
+		return nil
+	case WorkspaceDocTypeSheet:
+		*s = WorkspaceDocTypeSheet
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/WorkspaceDocumentCreateRequest
+type WorkspaceDocumentCreateRequest struct {
+	Name     string           `json:"name"`
+	DocType  WorkspaceDocType `json:"docType"`
+	ParentId OptUUID          `json:"parentId"`
+	Content  OptString        `json:"content"`
+}
+
+// GetName returns the value of Name.
+func (s *WorkspaceDocumentCreateRequest) GetName() string {
+	return s.Name
+}
+
+// GetDocType returns the value of DocType.
+func (s *WorkspaceDocumentCreateRequest) GetDocType() WorkspaceDocType {
+	return s.DocType
+}
+
+// GetParentId returns the value of ParentId.
+func (s *WorkspaceDocumentCreateRequest) GetParentId() OptUUID {
+	return s.ParentId
+}
+
+// GetContent returns the value of Content.
+func (s *WorkspaceDocumentCreateRequest) GetContent() OptString {
+	return s.Content
+}
+
+// SetName sets the value of Name.
+func (s *WorkspaceDocumentCreateRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetDocType sets the value of DocType.
+func (s *WorkspaceDocumentCreateRequest) SetDocType(val WorkspaceDocType) {
+	s.DocType = val
+}
+
+// SetParentId sets the value of ParentId.
+func (s *WorkspaceDocumentCreateRequest) SetParentId(val OptUUID) {
+	s.ParentId = val
+}
+
+// SetContent sets the value of Content.
+func (s *WorkspaceDocumentCreateRequest) SetContent(val OptString) {
+	s.Content = val
+}
+
+// Ref: #/components/schemas/WorkspaceDocumentDetail
+type WorkspaceDocumentDetail struct {
+	FileId     UUID             `json:"fileId"`
+	Name       string           `json:"name"`
+	DocType    WorkspaceDocType `json:"docType"`
+	ParentId   OptUUID          `json:"parentId"`
+	Content    string           `json:"content"`
+	Size       int64            `json:"size"`
+	Generation int64            `json:"generation"`
+	UpdatedAt  time.Time        `json:"updatedAt"`
+	CreatedAt  time.Time        `json:"createdAt"`
+}
+
+// GetFileId returns the value of FileId.
+func (s *WorkspaceDocumentDetail) GetFileId() UUID {
+	return s.FileId
+}
+
+// GetName returns the value of Name.
+func (s *WorkspaceDocumentDetail) GetName() string {
+	return s.Name
+}
+
+// GetDocType returns the value of DocType.
+func (s *WorkspaceDocumentDetail) GetDocType() WorkspaceDocType {
+	return s.DocType
+}
+
+// GetParentId returns the value of ParentId.
+func (s *WorkspaceDocumentDetail) GetParentId() OptUUID {
+	return s.ParentId
+}
+
+// GetContent returns the value of Content.
+func (s *WorkspaceDocumentDetail) GetContent() string {
+	return s.Content
+}
+
+// GetSize returns the value of Size.
+func (s *WorkspaceDocumentDetail) GetSize() int64 {
+	return s.Size
+}
+
+// GetGeneration returns the value of Generation.
+func (s *WorkspaceDocumentDetail) GetGeneration() int64 {
+	return s.Generation
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *WorkspaceDocumentDetail) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *WorkspaceDocumentDetail) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetFileId sets the value of FileId.
+func (s *WorkspaceDocumentDetail) SetFileId(val UUID) {
+	s.FileId = val
+}
+
+// SetName sets the value of Name.
+func (s *WorkspaceDocumentDetail) SetName(val string) {
+	s.Name = val
+}
+
+// SetDocType sets the value of DocType.
+func (s *WorkspaceDocumentDetail) SetDocType(val WorkspaceDocType) {
+	s.DocType = val
+}
+
+// SetParentId sets the value of ParentId.
+func (s *WorkspaceDocumentDetail) SetParentId(val OptUUID) {
+	s.ParentId = val
+}
+
+// SetContent sets the value of Content.
+func (s *WorkspaceDocumentDetail) SetContent(val string) {
+	s.Content = val
+}
+
+// SetSize sets the value of Size.
+func (s *WorkspaceDocumentDetail) SetSize(val int64) {
+	s.Size = val
+}
+
+// SetGeneration sets the value of Generation.
+func (s *WorkspaceDocumentDetail) SetGeneration(val int64) {
+	s.Generation = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *WorkspaceDocumentDetail) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *WorkspaceDocumentDetail) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+func (*WorkspaceDocumentDetail) createWorkspaceDocumentRes() {}
+func (*WorkspaceDocumentDetail) getWorkspaceDocumentRes()    {}
+func (*WorkspaceDocumentDetail) updateWorkspaceDocumentRes() {}
+
+// Ref: #/components/schemas/WorkspaceDocumentSummary
+type WorkspaceDocumentSummary struct {
+	FileId    UUID             `json:"fileId"`
+	Name      string           `json:"name"`
+	DocType   WorkspaceDocType `json:"docType"`
+	ParentId  OptUUID          `json:"parentId"`
+	Size      int64            `json:"size"`
+	UpdatedAt time.Time        `json:"updatedAt"`
+	CreatedAt time.Time        `json:"createdAt"`
+}
+
+// GetFileId returns the value of FileId.
+func (s *WorkspaceDocumentSummary) GetFileId() UUID {
+	return s.FileId
+}
+
+// GetName returns the value of Name.
+func (s *WorkspaceDocumentSummary) GetName() string {
+	return s.Name
+}
+
+// GetDocType returns the value of DocType.
+func (s *WorkspaceDocumentSummary) GetDocType() WorkspaceDocType {
+	return s.DocType
+}
+
+// GetParentId returns the value of ParentId.
+func (s *WorkspaceDocumentSummary) GetParentId() OptUUID {
+	return s.ParentId
+}
+
+// GetSize returns the value of Size.
+func (s *WorkspaceDocumentSummary) GetSize() int64 {
+	return s.Size
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *WorkspaceDocumentSummary) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *WorkspaceDocumentSummary) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetFileId sets the value of FileId.
+func (s *WorkspaceDocumentSummary) SetFileId(val UUID) {
+	s.FileId = val
+}
+
+// SetName sets the value of Name.
+func (s *WorkspaceDocumentSummary) SetName(val string) {
+	s.Name = val
+}
+
+// SetDocType sets the value of DocType.
+func (s *WorkspaceDocumentSummary) SetDocType(val WorkspaceDocType) {
+	s.DocType = val
+}
+
+// SetParentId sets the value of ParentId.
+func (s *WorkspaceDocumentSummary) SetParentId(val OptUUID) {
+	s.ParentId = val
+}
+
+// SetSize sets the value of Size.
+func (s *WorkspaceDocumentSummary) SetSize(val int64) {
+	s.Size = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *WorkspaceDocumentSummary) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *WorkspaceDocumentSummary) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// Ref: #/components/schemas/WorkspaceDocumentUpdateRequest
+type WorkspaceDocumentUpdateRequest struct {
+	Name    OptString `json:"name"`
+	Content string    `json:"content"`
+}
+
+// GetName returns the value of Name.
+func (s *WorkspaceDocumentUpdateRequest) GetName() OptString {
+	return s.Name
+}
+
+// GetContent returns the value of Content.
+func (s *WorkspaceDocumentUpdateRequest) GetContent() string {
+	return s.Content
+}
+
+// SetName sets the value of Name.
+func (s *WorkspaceDocumentUpdateRequest) SetName(val OptString) {
+	s.Name = val
+}
+
+// SetContent sets the value of Content.
+func (s *WorkspaceDocumentUpdateRequest) SetContent(val string) {
+	s.Content = val
 }

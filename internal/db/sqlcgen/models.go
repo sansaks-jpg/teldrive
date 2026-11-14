@@ -186,8 +186,10 @@ func (ns NullNameConflictPolicy) Value() (driver.Value, error) {
 type SharePermission string
 
 const (
-	SharePermissionRead SharePermission = "read"
-	SharePermissionEdit SharePermission = "edit"
+	SharePermissionRead    SharePermission = "read"
+	SharePermissionEdit    SharePermission = "edit"
+	SharePermissionComment SharePermission = "comment"
+	SharePermissionUpload  SharePermission = "upload"
 )
 
 func (e *SharePermission) Scan(src interface{}) error {
@@ -529,6 +531,34 @@ type FileShare struct {
 	Permission    SharePermission    `json:"permission"`
 }
 
+type FileVersion struct {
+	ID                   pgtype.UUID        `json:"id"`
+	FileID               pgtype.UUID        `json:"file_id"`
+	UserID               int64              `json:"user_id"`
+	VersionNumber        int32              `json:"version_number"`
+	Name                 string             `json:"name"`
+	MimeType             pgtype.Text        `json:"mime_type"`
+	Size                 int64              `json:"size"`
+	HashAlgorithm        pgtype.Text        `json:"hash_algorithm"`
+	HashValue            pgtype.Text        `json:"hash_value"`
+	Encryption           bool               `json:"encryption"`
+	EncryptionKeyVersion pgtype.Int4        `json:"encryption_key_version"`
+	CreatedBy            pgtype.Int8        `json:"created_by"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+}
+
+type FileVersionPart struct {
+	VersionID   pgtype.UUID `json:"version_id"`
+	PartNo      int32       `json:"part_no"`
+	ChannelID   int64       `json:"channel_id"`
+	MessageID   int64       `json:"message_id"`
+	PlainSize   pgtype.Int8 `json:"plain_size"`
+	StoredSize  pgtype.Int8 `json:"stored_size"`
+	Checksum    pgtype.Text `json:"checksum"`
+	Salt        pgtype.Text `json:"salt"`
+	BlockHashes []byte      `json:"block_hashes"`
+}
+
 type FileViewState struct {
 	UserID      int64              `json:"user_id"`
 	FileID      pgtype.UUID        `json:"file_id"`
@@ -551,6 +581,37 @@ type IdempotencyKey struct {
 	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
 	ExpiresAt          pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+}
+
+type MediaMetadatum struct {
+	FileID          pgtype.UUID        `json:"file_id"`
+	UserID          int64              `json:"user_id"`
+	TakenAt         pgtype.Timestamptz `json:"taken_at"`
+	Width           pgtype.Int4        `json:"width"`
+	Height          pgtype.Int4        `json:"height"`
+	DurationSeconds pgtype.Float8      `json:"duration_seconds"`
+	CameraMake      pgtype.Text        `json:"camera_make"`
+	CameraModel     pgtype.Text        `json:"camera_model"`
+	Latitude        pgtype.Float8      `json:"latitude"`
+	Longitude       pgtype.Float8      `json:"longitude"`
+	Favorite        bool               `json:"favorite"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PhotoAlbum struct {
+	ID          pgtype.UUID        `json:"id"`
+	UserID      int64              `json:"user_id"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	CoverFileID pgtype.UUID        `json:"cover_file_id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PhotoAlbumItem struct {
+	AlbumID pgtype.UUID        `json:"album_id"`
+	FileID  pgtype.UUID        `json:"file_id"`
+	AddedAt pgtype.Timestamptz `json:"added_at"`
 }
 
 type Session struct {
@@ -624,14 +685,15 @@ type UploadSession struct {
 }
 
 type User struct {
-	UserID      int64              `json:"user_id"`
-	DisplayName pgtype.Text        `json:"display_name"`
-	Username    pgtype.Text        `json:"username"`
-	Premium     bool               `json:"premium"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	Role        UserRole           `json:"role"`
-	DisabledAt  pgtype.Timestamptz `json:"disabled_at"`
+	UserID            int64              `json:"user_id"`
+	DisplayName       pgtype.Text        `json:"display_name"`
+	Username          pgtype.Text        `json:"username"`
+	Premium           bool               `json:"premium"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	Role              UserRole           `json:"role"`
+	DisabledAt        pgtype.Timestamptz `json:"disabled_at"`
+	StorageQuotaBytes pgtype.Int8        `json:"storage_quota_bytes"`
 }
 
 type UserEvent struct {
@@ -656,4 +718,14 @@ type UserPreference struct {
 	Preferences []byte             `json:"preferences"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type WorkspaceDocument struct {
+	FileID    pgtype.UUID        `json:"file_id"`
+	UserID    int64              `json:"user_id"`
+	DocType   string             `json:"doc_type"`
+	Content   string             `json:"content"`
+	UpdatedBy pgtype.Int8        `json:"updated_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }

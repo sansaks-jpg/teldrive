@@ -362,7 +362,7 @@ func (q *Queries) GetTelegramLoginFlowForUpdate(ctx context.Context, id pgtype.U
 }
 
 const getUser = `-- name: GetUser :one
-SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at
+SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
 FROM /* TEMPLATE: schema */users
 WHERE user_id = $1
 `
@@ -379,7 +379,34 @@ func (q *Queries) GetUser(ctx context.Context, userID int64) (*User, error) {
 		&i.UpdatedAt,
 		&i.Role,
 		&i.DisabledAt,
+		&i.StorageQuotaBytes,
 	)
+	return &i, err
+}
+
+const getUserStorageUsage = `-- name: GetUserStorageUsage :one
+SELECT
+    u.storage_quota_bytes,
+    COALESCE((
+        SELECT sum(f.size)
+        FROM /* TEMPLATE: schema */files f
+        WHERE f.user_id = u.user_id
+          AND f.kind = 'file'
+          AND f.status IN ('active', 'trashed')
+    ), 0)::bigint AS used_bytes
+FROM /* TEMPLATE: schema */users u
+WHERE u.user_id = $1
+`
+
+type GetUserStorageUsageRow struct {
+	StorageQuotaBytes pgtype.Int8 `json:"storage_quota_bytes"`
+	UsedBytes         int64       `json:"used_bytes"`
+}
+
+func (q *Queries) GetUserStorageUsage(ctx context.Context, userID int64) (*GetUserStorageUsageRow, error) {
+	row := q.db.QueryRow(ctx, getUserStorageUsage, userID)
+	var i GetUserStorageUsageRow
+	err := row.Scan(&i.StorageQuotaBytes, &i.UsedBytes)
 	return &i, err
 }
 
@@ -500,7 +527,7 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]*
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at
+SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
 FROM /* TEMPLATE: schema */users
 WHERE (
     $1::text IS NULL
@@ -535,6 +562,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]*User, 
 			&i.UpdatedAt,
 			&i.Role,
 			&i.DisabledAt,
+			&i.StorageQuotaBytes,
 		); err != nil {
 			return nil, err
 		}
@@ -651,7 +679,7 @@ func (q *Queries) RotateSessionRefreshToken(ctx context.Context, arg RotateSessi
 }
 
 const searchUsersForShare = `-- name: SearchUsersForShare :many
-SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at
+SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
 FROM /* TEMPLATE: schema */users
 WHERE user_id <> $1
   AND disabled_at IS NULL
@@ -688,6 +716,7 @@ func (q *Queries) SearchUsersForShare(ctx context.Context, arg SearchUsersForSha
 			&i.UpdatedAt,
 			&i.Role,
 			&i.DisabledAt,
+			&i.StorageQuotaBytes,
 		); err != nil {
 			return nil, err
 		}
@@ -705,7 +734,7 @@ SET disabled_at = CASE WHEN $1::boolean THEN COALESCE(disabled_at, now()) ELSE N
     updated_at = now()
 WHERE user_id = $2
   AND role <> 'owner'
-RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
 `
 
 type SetUserDisabledParams struct {
@@ -725,6 +754,7 @@ func (q *Queries) SetUserDisabled(ctx context.Context, arg SetUserDisabledParams
 		&i.UpdatedAt,
 		&i.Role,
 		&i.DisabledAt,
+		&i.StorageQuotaBytes,
 	)
 	return &i, err
 }
@@ -812,7 +842,7 @@ SET role = $1, updated_at = now()
 WHERE user_id = $2
   AND role <> 'owner'
   AND $1::/* TEMPLATE: schema */user_role IN ('admin', 'user')
-RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
 `
 
 type UpdateUserRoleParams struct {
@@ -832,6 +862,37 @@ func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) 
 		&i.UpdatedAt,
 		&i.Role,
 		&i.DisabledAt,
+		&i.StorageQuotaBytes,
+	)
+	return &i, err
+}
+
+const updateUserStorageQuota = `-- name: UpdateUserStorageQuota :one
+UPDATE /* TEMPLATE: schema */users
+SET storage_quota_bytes = $1::bigint,
+    updated_at = now()
+WHERE user_id = $2
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
+`
+
+type UpdateUserStorageQuotaParams struct {
+	StorageQuotaBytes pgtype.Int8 `json:"storage_quota_bytes"`
+	UserID            int64       `json:"user_id"`
+}
+
+func (q *Queries) UpdateUserStorageQuota(ctx context.Context, arg UpdateUserStorageQuotaParams) (*User, error) {
+	row := q.db.QueryRow(ctx, updateUserStorageQuota, arg.StorageQuotaBytes, arg.UserID)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.DisplayName,
+		&i.Username,
+		&i.Premium,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Role,
+		&i.DisabledAt,
+		&i.StorageQuotaBytes,
 	)
 	return &i, err
 }
@@ -858,7 +919,7 @@ SET display_name = EXCLUDED.display_name,
     username = EXCLUDED.username,
     premium = EXCLUDED.premium,
     updated_at = now()
-RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
 `
 
 type UpsertUserParams struct {
@@ -885,6 +946,7 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (*User, 
 		&i.UpdatedAt,
 		&i.Role,
 		&i.DisabledAt,
+		&i.StorageQuotaBytes,
 	)
 	return &i, err
 }

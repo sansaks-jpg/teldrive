@@ -656,7 +656,12 @@ SELECT DISTINCT ON (target_file_id)
 FROM candidates
 ORDER BY target_file_id,
          owned DESC,
-         (permission = 'edit') DESC,
+         (CASE permission
+             WHEN 'edit' THEN 4
+             WHEN 'upload' THEN 3
+             WHEN 'comment' THEN 2
+             ELSE 1
+         END) DESC,
          grant_created_at DESC NULLS LAST
 `
 

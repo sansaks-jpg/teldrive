@@ -9,6 +9,10 @@ type AbortUploadRes interface {
 	abortUploadRes()
 }
 
+type AddPhotoAlbumItemRes interface {
+	addPhotoAlbumItemRes()
+}
+
 type AuthorizePublicShareDownloadRes interface {
 	authorizePublicShareDownloadRes()
 }
@@ -77,6 +81,10 @@ type CreateFileAccessGrantRes interface {
 	createFileAccessGrantRes()
 }
 
+type CreateFileVersionRes interface {
+	createFileVersionRes()
+}
+
 type CreateFolderRes interface {
 	createFolderRes()
 }
@@ -87,6 +95,10 @@ type CreateJobRes interface {
 
 type CreatePeriodicJobRes interface {
 	createPeriodicJobRes()
+}
+
+type CreatePhotoAlbumRes interface {
+	createPhotoAlbumRes()
 }
 
 type CreatePublicShareFolderRes interface {
@@ -109,6 +121,10 @@ type CreateUploadRes interface {
 	createUploadRes()
 }
 
+type CreateWorkspaceDocumentRes interface {
+	createWorkspaceDocumentRes()
+}
+
 type DeleteBotRes interface {
 	deleteBotRes()
 }
@@ -127,6 +143,10 @@ type DeleteJobRes interface {
 
 type DeletePeriodicJobRes interface {
 	deletePeriodicJobRes()
+}
+
+type DeletePhotoAlbumRes interface {
+	deletePhotoAlbumRes()
 }
 
 type DiscoverChannelsRes interface {
@@ -155,6 +175,10 @@ type DownloadPublicShareLegacyRes interface {
 
 type DownloadPublicShareRes interface {
 	downloadPublicShareRes()
+}
+
+type GetAdminOverviewRes interface {
+	getAdminOverviewRes()
 }
 
 type GetCurrentUserRes interface {
@@ -213,6 +237,10 @@ type GetUserPreferencesRes interface {
 	getUserPreferencesRes()
 }
 
+type GetWorkspaceDocumentRes interface {
+	getWorkspaceDocumentRes()
+}
+
 type HeadFileLegacyRes interface {
 	headFileLegacyRes()
 }
@@ -241,6 +269,10 @@ type HealthReadyRes interface {
 	healthReadyRes()
 }
 
+type ListAdminAuditEventsRes interface {
+	listAdminAuditEventsRes()
+}
+
 type ListAdminUsersRes interface {
 	listAdminUsersRes()
 }
@@ -265,6 +297,10 @@ type ListFileSharesRes interface {
 	listFileSharesRes()
 }
 
+type ListFileVersionsRes interface {
+	listFileVersionsRes()
+}
+
 type ListFilesRes interface {
 	listFilesRes()
 }
@@ -279,6 +315,14 @@ type ListJobsRes interface {
 
 type ListPeriodicJobsRes interface {
 	listPeriodicJobsRes()
+}
+
+type ListPhotoAlbumsRes interface {
+	listPhotoAlbumsRes()
+}
+
+type ListPhotoTimelineRes interface {
+	listPhotoTimelineRes()
 }
 
 type ListPublicShareFilesRes interface {
@@ -303,6 +347,10 @@ type ListUploadPartsRes interface {
 
 type ListUploadsRes interface {
 	listUploadsRes()
+}
+
+type ListWorkspaceDocumentsRes interface {
+	listWorkspaceDocumentsRes()
 }
 
 type LogoutCookieSessionRes interface {
@@ -365,12 +413,20 @@ type RemoveFileBookmarksRes interface {
 	removeFileBookmarksRes()
 }
 
+type RemovePhotoAlbumItemRes interface {
+	removePhotoAlbumItemRes()
+}
+
 type ResetPeriodicJobsRes interface {
 	resetPeriodicJobsRes()
 }
 
 type RestoreFileRes interface {
 	restoreFileRes()
+}
+
+type RestoreFileVersionRes interface {
+	restoreFileVersionRes()
 }
 
 type ResumeJobQueueRes interface {
@@ -461,6 +517,10 @@ type UpdateFileRes interface {
 	updateFileRes()
 }
 
+type UpdateMediaMetadataRes interface {
+	updateMediaMetadataRes()
+}
+
 type UpdatePeriodicJobRes interface {
 	updatePeriodicJobRes()
 }
@@ -475,4 +535,8 @@ type UpdateShareRes interface {
 
 type UpdateUserPreferencesRes interface {
 	updateUserPreferencesRes()
+}
+
+type UpdateWorkspaceDocumentRes interface {
+	updateWorkspaceDocumentRes()
 }

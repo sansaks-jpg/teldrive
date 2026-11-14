@@ -19,6 +19,10 @@ type Handler interface {
 	//
 	// DELETE /v1/uploads/{uploadId}
 	AbortUpload(ctx context.Context, params AbortUploadParams) (AbortUploadRes, error)
+	// AddPhotoAlbumItem implements addPhotoAlbumItem operation.
+	//
+	// POST /v1/photos/albums/{albumId}/items
+	AddPhotoAlbumItem(ctx context.Context, req *PhotoAlbumItemRequest, params AddPhotoAlbumItemParams) (AddPhotoAlbumItemRes, error)
 	// AuthorizePublicShareDownload implements authorizePublicShareDownload operation.
 	//
 	// Exchange the share password for a 15-minute, share-scoped download cookie.
@@ -110,6 +114,12 @@ type Handler interface {
 	//
 	// POST /v1/files/{fileId}/grants
 	CreateFileAccessGrant(ctx context.Context, req *FileAccessGrantCreateRequest, params CreateFileAccessGrantParams) (CreateFileAccessGrantRes, error)
+	// CreateFileVersion implements createFileVersion operation.
+	//
+	// Save a snapshot of the file's current contents as a version.
+	//
+	// POST /v1/files/{fileId}/versions
+	CreateFileVersion(ctx context.Context, params CreateFileVersionParams) (CreateFileVersionRes, error)
 	// CreateFolder implements createFolder operation.
 	//
 	// POST /v1/folders
@@ -122,6 +132,10 @@ type Handler interface {
 	//
 	// POST /v1/periodic-jobs
 	CreatePeriodicJob(ctx context.Context, req *PeriodicJobCreate) (CreatePeriodicJobRes, error)
+	// CreatePhotoAlbum implements createPhotoAlbum operation.
+	//
+	// POST /v1/photos/albums
+	CreatePhotoAlbum(ctx context.Context, req *PhotoAlbumCreateRequest) (CreatePhotoAlbumRes, error)
 	// CreatePublicShareFolder implements createPublicShareFolder operation.
 	//
 	// POST /v1/public/shares/{token}/folders
@@ -146,6 +160,10 @@ type Handler interface {
 	//
 	// POST /v1/uploads/imports
 	CreateUploadImport(ctx context.Context, req *UploadImportRequest) (CreateUploadImportRes, error)
+	// CreateWorkspaceDocument implements createWorkspaceDocument operation.
+	//
+	// POST /v1/docs
+	CreateWorkspaceDocument(ctx context.Context, req *WorkspaceDocumentCreateRequest) (CreateWorkspaceDocumentRes, error)
 	// DeleteBot implements deleteBot operation.
 	//
 	// DELETE /v1/bots/{botId}
@@ -168,12 +186,20 @@ type Handler interface {
 	//
 	// DELETE /v1/periodic-jobs/{periodicJobId}
 	DeletePeriodicJob(ctx context.Context, params DeletePeriodicJobParams) (DeletePeriodicJobRes, error)
+	// DeletePhotoAlbum implements deletePhotoAlbum operation.
+	//
+	// DELETE /v1/photos/albums/{albumId}
+	DeletePhotoAlbum(ctx context.Context, params DeletePhotoAlbumParams) (DeletePhotoAlbumRes, error)
 	// DiscoverChannels implements discoverChannels operation.
 	//
 	// List broadcast channels where the authenticated user can add administrators. Groups are excluded.
 	//
 	// GET /v1/channels/discover
 	DiscoverChannels(ctx context.Context) (DiscoverChannelsRes, error)
+	// GetAdminOverview implements getAdminOverview operation.
+	//
+	// GET /v1/admin/overview
+	GetAdminOverview(ctx context.Context) (GetAdminOverviewRes, error)
 	// GetCurrentUser implements getCurrentUser operation.
 	//
 	// Return the authenticated user profile.
@@ -250,6 +276,10 @@ type Handler interface {
 	//
 	// GET /v1/me/preferences
 	GetUserPreferences(ctx context.Context) (GetUserPreferencesRes, error)
+	// GetWorkspaceDocument implements getWorkspaceDocument operation.
+	//
+	// GET /v1/docs/{fileId}
+	GetWorkspaceDocument(ctx context.Context, params GetWorkspaceDocumentParams) (GetWorkspaceDocumentRes, error)
 	// HeadFile implements headFile operation.
 	//
 	// Return content metadata without streaming the file.
@@ -290,6 +320,10 @@ type Handler interface {
 	//
 	// GET /health/ready
 	HealthReady(ctx context.Context) (HealthReadyRes, error)
+	// ListAdminAuditEvents implements listAdminAuditEvents operation.
+	//
+	// GET /v1/admin/audit-events
+	ListAdminAuditEvents(ctx context.Context, params ListAdminAuditEventsParams) (ListAdminAuditEventsRes, error)
 	// ListAdminUsers implements listAdminUsers operation.
 	//
 	// GET /v1/admin/users
@@ -314,6 +348,12 @@ type Handler interface {
 	//
 	// GET /v1/files/{fileId}/shares
 	ListFileShares(ctx context.Context, params ListFileSharesParams) (ListFileSharesRes, error)
+	// ListFileVersions implements listFileVersions operation.
+	//
+	// List saved versions for a file.
+	//
+	// GET /v1/files/{fileId}/versions
+	ListFileVersions(ctx context.Context, params ListFileVersionsParams) (ListFileVersionsRes, error)
 	// ListFiles implements listFiles operation.
 	//
 	// List one folder or search within the authenticated user's drive.
@@ -332,6 +372,14 @@ type Handler interface {
 	//
 	// GET /v1/periodic-jobs
 	ListPeriodicJobs(ctx context.Context) (ListPeriodicJobsRes, error)
+	// ListPhotoAlbums implements listPhotoAlbums operation.
+	//
+	// GET /v1/photos/albums
+	ListPhotoAlbums(ctx context.Context) (ListPhotoAlbumsRes, error)
+	// ListPhotoTimeline implements listPhotoTimeline operation.
+	//
+	// GET /v1/photos/timeline
+	ListPhotoTimeline(ctx context.Context, params ListPhotoTimelineParams) (ListPhotoTimelineRes, error)
 	// ListPublicShareFiles implements listPublicShareFiles operation.
 	//
 	// List children within a publicly shared folder.
@@ -364,6 +412,10 @@ type Handler interface {
 	//
 	// GET /v1/uploads
 	ListUploads(ctx context.Context, params ListUploadsParams) (ListUploadsRes, error)
+	// ListWorkspaceDocuments implements listWorkspaceDocuments operation.
+	//
+	// GET /v1/docs
+	ListWorkspaceDocuments(ctx context.Context, params ListWorkspaceDocumentsParams) (ListWorkspaceDocumentsRes, error)
 	// LogoutCookieSession implements logoutCookieSession operation.
 	//
 	// Revoke the cookie session and clear its HttpOnly cookies.
@@ -447,6 +499,10 @@ type Handler interface {
 	//
 	// DELETE /v1/files/bookmarks
 	RemoveFileBookmarks(ctx context.Context, req *BookmarkFilesRequest) (RemoveFileBookmarksRes, error)
+	// RemovePhotoAlbumItem implements removePhotoAlbumItem operation.
+	//
+	// DELETE /v1/photos/albums/{albumId}/items/{fileId}
+	RemovePhotoAlbumItem(ctx context.Context, params RemovePhotoAlbumItemParams) (RemovePhotoAlbumItemRes, error)
 	// ResetPeriodicJobs implements resetPeriodicJobs operation.
 	//
 	// POST /v1/periodic-jobs/reset
@@ -457,6 +513,12 @@ type Handler interface {
 	//
 	// POST /v1/files/{fileId}/restore
 	RestoreFile(ctx context.Context, params RestoreFileParams) (RestoreFileRes, error)
+	// RestoreFileVersion implements restoreFileVersion operation.
+	//
+	// Restore a file to a previously saved version.
+	//
+	// POST /v1/files/{fileId}/versions/{versionId}/restore
+	RestoreFileVersion(ctx context.Context, params RestoreFileVersionParams) (RestoreFileVersionRes, error)
 	// ResumeJobQueue implements resumeJobQueue operation.
 	//
 	// POST /v1/jobs/queues/{queue}/resume
@@ -559,6 +621,10 @@ type Handler interface {
 	//
 	// PATCH /v1/grants/{grantId}
 	UpdateFileAccessGrant(ctx context.Context, req *FileAccessGrantUpdateRequest, params UpdateFileAccessGrantParams) (UpdateFileAccessGrantRes, error)
+	// UpdateMediaMetadata implements updateMediaMetadata operation.
+	//
+	// PATCH /v1/photos/files/{fileId}/metadata
+	UpdateMediaMetadata(ctx context.Context, req *MediaMetadataUpdateRequest, params UpdateMediaMetadataParams) (UpdateMediaMetadataRes, error)
 	// UpdatePeriodicJob implements updatePeriodicJob operation.
 	//
 	// PUT /v1/periodic-jobs/{periodicJobId}
@@ -577,6 +643,10 @@ type Handler interface {
 	//
 	// PATCH /v1/me/preferences
 	UpdateUserPreferences(ctx context.Context, req *UserPreferencesUpdate) (UpdateUserPreferencesRes, error)
+	// UpdateWorkspaceDocument implements updateWorkspaceDocument operation.
+	//
+	// PUT /v1/docs/{fileId}
+	UpdateWorkspaceDocument(ctx context.Context, req *WorkspaceDocumentUpdateRequest, params UpdateWorkspaceDocumentParams) (UpdateWorkspaceDocumentRes, error)
 }
 
 // RawHandler handles raw response operations described by OpenAPI v3 specification.

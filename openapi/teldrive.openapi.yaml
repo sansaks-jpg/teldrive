@@ -819,6 +819,95 @@ paths:
         - BearerAuth: []
         - CookieAuth: []
         - ExternalApiKeyAuth: []
+  /v1/admin/overview:
+    get:
+      operationId: getAdminOverview
+      parameters: []
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOverview"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Administration
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/admin/audit-events:
+    get:
+      operationId: listAdminAuditEvents
+      parameters:
+        - $ref: "#/components/parameters/CursorQuery.cursor"
+        - $ref: "#/components/parameters/CursorQuery.limit"
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          explode: false
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 128
+          explode: false
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminAuditEvent"
+                  nextCursor:
+                    $ref: "#/components/schemas/Cursor"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Administration
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
   /v1/admin/users:
     get:
       operationId: listAdminUsers
@@ -1937,6 +2026,141 @@ paths:
         - BearerAuth: []
         - CookieAuth: []
         - ExternalApiKeyAuth: []
+  /v1/files/{fileId}/versions:
+    get:
+      operationId: listFileVersions
+      description: List saved versions for a file.
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FileVersionSummary"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+    post:
+      operationId: createFileVersion
+      description: Save a snapshot of the file's current contents as a version.
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+      responses:
+        "201":
+          description: The request has succeeded and a new resource has been created as a
+            result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileVersionSummary"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/files/{fileId}/versions/{versionId}/restore:
+    post:
+      operationId: restoreFileVersion
+      description: Restore a file to a previously saved version.
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+      responses:
+        "200":
+          description: The request has succeeded.
+          headers:
+            Etag:
+              required: true
+              schema:
+                $ref: "#/components/schemas/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileEntry"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
   /v1/files/{fileId}/move:
     post:
       operationId: moveFile
@@ -2852,6 +3076,447 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/FolderCreateRequest"
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/photos/timeline:
+    get:
+      operationId: listPhotoTimeline
+      parameters:
+        - name: favoritesOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+          explode: false
+        - name: albumId
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Uuid"
+          explode: false
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 500
+          explode: false
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PhotoTimelineItem"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/photos/files/{fileId}/metadata:
+    patch:
+      operationId: updateMediaMetadata
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoTimelineItem"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaMetadataUpdateRequest"
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/photos/albums:
+    get:
+      operationId: listPhotoAlbums
+      parameters: []
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PhotoAlbumSummary"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+    post:
+      operationId: createPhotoAlbum
+      parameters: []
+      responses:
+        "201":
+          description: The request has succeeded and a new resource has been created as a
+            result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoAlbumSummary"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhotoAlbumCreateRequest"
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/photos/albums/{albumId}:
+    delete:
+      operationId: deletePhotoAlbum
+      parameters:
+        - name: albumId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+      responses:
+        "204":
+          description: "There is no content to send for this request, but the headers may
+            be useful. "
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/photos/albums/{albumId}/items:
+    post:
+      operationId: addPhotoAlbumItem
+      parameters:
+        - name: albumId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+      responses:
+        "204":
+          description: "There is no content to send for this request, but the headers may
+            be useful. "
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhotoAlbumItemRequest"
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/photos/albums/{albumId}/items/{fileId}:
+    delete:
+      operationId: removePhotoAlbumItem
+      parameters:
+        - name: albumId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+      responses:
+        "204":
+          description: "There is no content to send for this request, but the headers may
+            be useful. "
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/docs:
+    get:
+      operationId: listWorkspaceDocuments
+      parameters:
+        - name: docType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/WorkspaceDocType"
+          explode: false
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 255
+          explode: false
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 500
+          explode: false
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkspaceDocumentSummary"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+    post:
+      operationId: createWorkspaceDocument
+      parameters: []
+      responses:
+        "201":
+          description: The request has succeeded and a new resource has been created as a
+            result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDocumentDetail"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceDocumentCreateRequest"
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/docs/{fileId}:
+    get:
+      operationId: getWorkspaceDocument
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDocumentDetail"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+    put:
+      operationId: updateWorkspaceDocument
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Uuid"
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDocumentDetail"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceDocumentUpdateRequest"
       security:
         - BearerAuth: []
         - CookieAuth: []
@@ -6654,6 +7319,80 @@ components:
           type: string
         username:
           type: string
+    AdminOverview:
+      type: object
+      required:
+        - totalUsers
+        - disabledUsers
+        - totalActiveFiles
+        - totalActiveBytes
+        - totalTrashedFiles
+        - totalTrashBytes
+        - totalChannels
+        - healthyChannels
+        - totalBots
+        - activeShares
+      properties:
+        totalUsers:
+          type: integer
+          format: int64
+        disabledUsers:
+          type: integer
+          format: int64
+        totalActiveFiles:
+          type: integer
+          format: int64
+        totalActiveBytes:
+          type: integer
+          format: int64
+        totalTrashedFiles:
+          type: integer
+          format: int64
+        totalTrashBytes:
+          type: integer
+          format: int64
+        totalChannels:
+          type: integer
+          format: int64
+        healthyChannels:
+          type: integer
+          format: int64
+        totalBots:
+          type: integer
+          format: int64
+        activeShares:
+          type: integer
+          format: int64
+    Cursor:
+      type: string
+    AdminAuditEvent:
+      type: object
+      required:
+        - id
+        - action
+        - resourceType
+        - createdAt
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        userId:
+          type: integer
+          format: int64
+        username:
+          type: string
+        displayName:
+          type: string
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        requestId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
     AdminUserSummary:
       type: object
       required:
@@ -6661,6 +7400,7 @@ components:
         - premium
         - role
         - disabled
+        - storageUsedBytes
         - createdAt
         - updatedAt
       properties:
@@ -6677,6 +7417,12 @@ components:
           $ref: "#/components/schemas/UserRole"
         disabled:
           type: boolean
+        storageUsedBytes:
+          type: integer
+          format: int64
+        storageQuotaBytes:
+          type: integer
+          format: int64
         createdAt:
           type: string
           format: date-time
@@ -6690,8 +7436,12 @@ components:
           $ref: "#/components/schemas/UserRole"
         disabled:
           type: boolean
-    Cursor:
-      type: string
+        storageQuotaBytes:
+          type: integer
+          format: int64
+          minimum: 0
+        clearStorageQuota:
+          type: boolean
     ApiKeySummary:
       type: object
       required:
@@ -7027,6 +7777,39 @@ components:
             $ref: "#/components/schemas/Uuid"
           minItems: 1
           maxItems: 500
+    FileVersionSummary:
+      type: object
+      required:
+        - id
+        - fileId
+        - versionNumber
+        - name
+        - size
+        - encryption
+        - createdAt
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        fileId:
+          $ref: "#/components/schemas/Uuid"
+        versionNumber:
+          type: integer
+          format: int32
+        name:
+          type: string
+        mimeType:
+          type: string
+        size:
+          type: integer
+          format: int64
+        encryption:
+          type: boolean
+        createdBy:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
     FileUpdateRequest:
       type: object
       properties:
@@ -7216,6 +7999,185 @@ components:
         modTime:
           type: string
           format: date-time
+    PhotoTimelineItem:
+      type: object
+      required:
+        - file
+        - favorite
+      properties:
+        file:
+          $ref: "#/components/schemas/FileEntry"
+        favorite:
+          type: boolean
+        takenAt:
+          type: string
+          format: date-time
+        width:
+          type: integer
+          format: int32
+        height:
+          type: integer
+          format: int32
+        cameraMake:
+          type: string
+        cameraModel:
+          type: string
+    MediaMetadataUpdateRequest:
+      type: object
+      properties:
+        favorite:
+          type: boolean
+        takenAt:
+          type: string
+          format: date-time
+        width:
+          type: integer
+          format: int32
+        height:
+          type: integer
+          format: int32
+        cameraMake:
+          type: string
+        cameraModel:
+          type: string
+    PhotoAlbumSummary:
+      type: object
+      required:
+        - id
+        - name
+        - itemCount
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        description:
+          type: string
+        coverFileId:
+          $ref: "#/components/schemas/Uuid"
+        itemCount:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PhotoAlbumCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+    PhotoAlbumItemRequest:
+      type: object
+      required:
+        - fileId
+      properties:
+        fileId:
+          $ref: "#/components/schemas/Uuid"
+    WorkspaceDocType:
+      type: string
+      enum:
+        - doc
+        - sheet
+    WorkspaceDocumentSummary:
+      type: object
+      required:
+        - fileId
+        - name
+        - docType
+        - size
+        - updatedAt
+        - createdAt
+      properties:
+        fileId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        docType:
+          $ref: "#/components/schemas/WorkspaceDocType"
+        parentId:
+          $ref: "#/components/schemas/Uuid"
+        size:
+          type: integer
+          format: int64
+        updatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    WorkspaceDocumentDetail:
+      type: object
+      required:
+        - fileId
+        - name
+        - docType
+        - content
+        - size
+        - generation
+        - updatedAt
+        - createdAt
+      properties:
+        fileId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        docType:
+          $ref: "#/components/schemas/WorkspaceDocType"
+        parentId:
+          $ref: "#/components/schemas/Uuid"
+        content:
+          type: string
+        size:
+          type: integer
+          format: int64
+        generation:
+          type: integer
+          format: int64
+        updatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    WorkspaceDocumentCreateRequest:
+      type: object
+      required:
+        - name
+        - docType
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        docType:
+          $ref: "#/components/schemas/WorkspaceDocType"
+        parentId:
+          $ref: "#/components/schemas/Uuid"
+        content:
+          type: string
+    WorkspaceDocumentUpdateRequest:
+      type: object
+      required:
+        - content
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        content:
+          type: string
     UploadState:
       type: string
       enum:
@@ -7537,6 +8499,8 @@ components:
       type: string
       enum:
         - read
+        - comment
+        - upload
         - edit
     ShareCreated:
       type: object

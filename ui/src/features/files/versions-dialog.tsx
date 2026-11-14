@@ -89,7 +89,7 @@ export function VersionsDialog({
           </Button>
           <Button
             variant="primary"
-            isDisabled={!file || file.kind !== "file" || createVersion.isPending}
+            isDisabled={file?.kind !== "file" || createVersion.isPending}
             onPress={() => void handleSnapshot()}
           >
             {createVersion.isPending ? t("versions.saving") : t("versions.saveSnapshot")}

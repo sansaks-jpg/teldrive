@@ -556,7 +556,6 @@ function TopBar({
           className="size-9 rounded-full"
           onPress={() => void navigate({ to: "/settings" })}
           aria-label={t("title.settings")}
-          title={t("title.settings")}
         >
           <SettingsIcon className="size-4" />
         </Button>
@@ -567,7 +566,6 @@ function TopBar({
           className="size-9 rounded-full"
           onPress={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           aria-label={t("theme.toggle")}
-          title={t("theme.toggle")}
         >
           {resolvedTheme === "dark" ? (
             <SunIcon className="size-4" />
@@ -594,7 +592,6 @@ function AppSwitcher() {
         variant="ghost"
         className="size-9 rounded-full"
         aria-label={t("apps.switcher")}
-        title={t("apps.switcher")}
       >
         <GridIcon className="size-4" />
       </Button>
@@ -769,7 +766,6 @@ function DesktopCompanionRail() {
               item.active ? item.accent : "text-muted hover:bg-default/40 hover:text-foreground",
             )}
             aria-label={item.label}
-            title={item.label}
             onPress={item.onPress}
           >
             <Icon className="size-4.5" />
@@ -783,7 +779,6 @@ function DesktopCompanionRail() {
         variant="ghost"
         className="size-10 rounded-full text-muted hover:bg-default/40 hover:text-foreground"
         aria-label={t("apps.newDocShortcut")}
-        title={t("apps.newDocShortcut")}
         onPress={() => void navigate({ to: "/docs" })}
       >
         <PlusIcon className="size-4.5" />

@@ -23,6 +23,7 @@ import {
 import { type Ref, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { clearDocumentCache } from "@/features/files/document-cache";
+import { useFormatBytes } from "@/lib/format";
 import { useAppLocale } from "@/lib/locale";
 import { useTheme } from "@/lib/theme";
 import LogoutIcon from "~icons/gravity-ui/arrow-right-from-square";
@@ -38,8 +39,12 @@ import GridIcon from "~icons/gravity-ui/layout-header-cells";
 import TasksIcon from "~icons/gravity-ui/list-ul";
 import SearchIcon from "~icons/gravity-ui/magnifier";
 import MoonIcon from "~icons/gravity-ui/moon";
+import PlusIcon from "~icons/gravity-ui/plus";
 import SunIcon from "~icons/gravity-ui/sun";
+import TrashIcon from "~icons/gravity-ui/trash-bin";
 import CloseIcon from "~icons/gravity-ui/xmark";
+import FileTextIcon from "~icons/icon-park-outline/file-text";
+import PictureIcon from "~icons/icon-park-outline/picture-one";
 import { $api } from "../api/client";
 import { isUnauthorized, userMessage } from "../api/errors";
 import { currentUserQueryOptions } from "../auth/queries";
@@ -53,10 +58,12 @@ const mainNav = [
   { key: "bookmarks", icon: BookmarkIcon, path: "/files", bookmarked: true },
   { key: "shared", icon: FolderIcon, path: "/shared" },
   { key: "sharedWithMe", icon: FolderIcon, path: "/shared-with-me" },
+  { key: "photos", icon: PictureIcon, path: "/photos" },
+  { key: "docs", icon: FileTextIcon, path: "/docs" },
   { key: "storage", icon: StorageIcon, path: "/storage" },
   { key: "tasks", icon: TasksIcon, path: "/tasks", capability: "system.manageJobs" },
   { key: "admin", icon: SettingsIcon, path: "/admin", capability: "system.manageUsers" },
-  { key: "trash", icon: GridIcon, path: "/trash" },
+  { key: "trash", icon: TrashIcon, path: "/trash" },
 ] as const;
 
 const DESKTOP_BREAKPOINT = 1024;
@@ -85,10 +92,17 @@ function Sidebar({
   const navigate = useNavigate();
   const matchRoute = useMatchRoute();
   const { t } = useAppLocale();
+  const formatBytes = useFormatBytes();
   const routeSearch = useLocation({
     select: (location) => location.search as Record<string, unknown>,
   });
   const { data: user } = useQuery(currentUserQueryOptions());
+  const storageQuery = $api.useQuery("get", "/v1/storage/stats", {}, { staleTime: 60_000, retry: false });
+  const storageSummary = storageQuery.data?.summary;
+  const storageFillPct =
+    storageSummary && storageSummary.logicalBytes > 0
+      ? Math.min(100, Math.max(8, Math.round((Math.log10(storageSummary.logicalBytes + 1) / 12) * 100)))
+      : 0;
   const versionLabel = import.meta.env.VITE_APP_VERSION;
   const logout = $api.useMutation("post", "/v1/auth/cookie/logout");
   const visibleMainNav = mainNav.filter(
@@ -195,9 +209,76 @@ function Sidebar({
       </div>
 
       <Separator className="mx-3 w-auto" />
-      <nav aria-label={t("sidebar.nav")} className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <div className="px-3 pt-3">
+        <Dropdown>
+          <Button
+            variant="secondary"
+            aria-label={t("nav.newAction")}
+            className={cn(
+              "h-11 rounded-2xl bg-surface-secondary font-medium shadow-sm hover:bg-default/60",
+              collapsed && !mobile
+                ? "w-10 min-w-0 justify-center px-0"
+                : "w-full justify-start gap-2.5 px-4",
+            )}
+          >
+            <PlusIcon className="size-4 shrink-0" />
+            {(!collapsed || mobile) && <span>{t("nav.newAction")}</span>}
+          </Button>
+          <Dropdown.Popover placement="bottom start" className="min-w-48">
+            <Dropdown.Menu
+              aria-label={t("nav.newAction")}
+              onAction={(key) => {
+                onNavigate?.();
+                if (key === "drive") {
+                  void navigate({ to: "/files", search: { path: "/", query: "", view: "list" } });
+                } else if (key === "docs") {
+                  void navigate({ to: "/docs" });
+                } else if (key === "photos") {
+                  void navigate({ to: "/photos" });
+                }
+              }}
+            >
+              <Dropdown.Item id="drive" textValue={t("apps.openDrive")}>
+                <GridIcon className="size-4" />
+                <Label>{t("apps.openDrive")}</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="docs" textValue={t("apps.docs")}>
+                <FileTextIcon className="size-4" />
+                <Label>{t("apps.docs")}</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="photos" textValue={t("apps.photos")}>
+                <PictureIcon className="size-4" />
+                <Label>{t("apps.photos")}</Label>
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown>
+      </div>
+      <nav aria-label={t("sidebar.nav")} className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
         {visibleMainNav.map(renderItem)}
       </nav>
+      {(!collapsed || mobile) && storageSummary ? (
+        <Link
+          to="/storage"
+          preload="intent"
+          onClick={() => onNavigate?.()}
+          className="mx-3 mb-3 block rounded-xl bg-surface-secondary/50 p-3 transition-colors hover:bg-surface-secondary"
+        >
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="font-medium text-foreground">{t("nav.storage")}</span>
+            <span className="text-muted">{formatBytes(storageSummary.logicalBytes)}</span>
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-default/40">
+            <div
+              className="h-full rounded-full bg-accent transition-[width]"
+              style={{ width: `${storageFillPct}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted">
+            {t("admin.metricFilesCount", { count: storageSummary.activeFiles })}
+          </p>
+        </Link>
+      ) : null}
       <div className="border-t border-border px-3 py-3">
         <Dropdown isOpen={accountMenuOpen} onOpenChange={setAccountMenuOpen}>
           {collapsed && !mobile ? (
@@ -476,7 +557,9 @@ function AppSwitcher() {
           aria-label={t("apps.switcher")}
           onAction={(key) => {
             const path = String(key);
-            if (path === "/files" || path === "/photos" || path === "/docs" || path === "/admin") {
+            if (path === "/files") {
+              void navigate({ to: "/files", search: { path: "/", query: "", view: "list" } });
+            } else if (path === "/photos" || path === "/docs" || path === "/admin") {
               void navigate({ to: path });
             }
           }}

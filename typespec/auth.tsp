@@ -99,7 +99,7 @@ model UserAdminUpdateRequest {
   @minValue(0)
   storageQuotaBytes?: int64;
 
-  clearStorageQuota?: boolean = false;
+  clearStorageQuota?: boolean;
 }
 
 model AdminUserSummary {

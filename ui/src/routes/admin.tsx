@@ -18,7 +18,7 @@ export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ context }) => {
     const user = await context.queryClient.ensureQueryData(currentUserQueryOptions());
     if (!user.capabilities.includes("system.manageUsers")) {
-      throw redirect({ to: "/files" });
+      throw redirect({ to: "/files", search: { path: "/", query: "", view: "list" } });
     }
   },
   component: AdminConsole,
@@ -112,7 +112,7 @@ function AdminConsole() {
           <p className="text-sm text-muted">{t("admin.subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <LinkButton to="/tasks" variant="secondary">
+          <LinkButton to="/tasks" search={{ status: "running", query: "" }} variant="secondary">
             {t("nav.tasks")}
           </LinkButton>
           <LinkButton to="/settings" variant="secondary">

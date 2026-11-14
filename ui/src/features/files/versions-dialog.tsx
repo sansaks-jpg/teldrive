@@ -5,7 +5,7 @@ import { $api } from "@/api/client";
 import { userMessage } from "@/api/errors";
 import type { FileEntry } from "@/api/types";
 import { AppDialog } from "@/components/dialogs/app-dialog";
-import { formatBytes } from "@/lib/format";
+import { useFormatBytes } from "@/lib/format";
 import { useAppLocale } from "@/lib/locale";
 import { getQueryClient } from "@/lib/queryClient";
 
@@ -17,6 +17,7 @@ export function VersionsDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t, locale } = useAppLocale();
+  const formatBytes = useFormatBytes();
   const [restoringId, setRestoringId] = useState<string>();
   const queryClient = getQueryClient();
 
@@ -84,7 +85,7 @@ export function VersionsDialog({
       footer={
         <>
           <Button variant="secondary" onPress={() => onOpenChange(false)}>
-            {t("dialog.close")}
+            {t("dialog.cancel")}
           </Button>
           <Button
             variant="primary"

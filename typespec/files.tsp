@@ -622,3 +622,191 @@ namespace Folders {
     | ErrorResponse<409>
     | ErrorResponse<422>;
 }
+
+model PhotoTimelineItem {
+  file: FileEntry;
+  favorite: boolean;
+  takenAt?: utcDateTime;
+  width?: int32;
+  height?: int32;
+  cameraMake?: string;
+  cameraModel?: string;
+}
+
+model MediaMetadataUpdateRequest {
+  favorite?: boolean;
+  takenAt?: utcDateTime;
+  width?: int32;
+  height?: int32;
+  cameraMake?: string;
+  cameraModel?: string;
+}
+
+model PhotoAlbumSummary {
+  id: Uuid;
+  name: string;
+  description?: string;
+  coverFileId?: Uuid;
+  itemCount: int64;
+  createdAt: utcDateTime;
+  updatedAt: utcDateTime;
+}
+
+model PhotoAlbumCreateRequest {
+  @minLength(1)
+  @maxLength(255)
+  name: string;
+
+  @maxLength(1000)
+  description?: string;
+}
+
+model PhotoAlbumItemRequest {
+  fileId: Uuid;
+}
+
+enum WorkspaceDocType {
+  doc: "doc",
+  sheet: "sheet",
+}
+
+model WorkspaceDocumentSummary {
+  fileId: Uuid;
+  name: string;
+  docType: WorkspaceDocType;
+  parentId?: Uuid;
+  size: int64;
+  updatedAt: utcDateTime;
+  createdAt: utcDateTime;
+}
+
+model WorkspaceDocumentDetail {
+  fileId: Uuid;
+  name: string;
+  docType: WorkspaceDocType;
+  parentId?: Uuid;
+  content: string;
+  size: int64;
+  generation: int64;
+  updatedAt: utcDateTime;
+  createdAt: utcDateTime;
+}
+
+model WorkspaceDocumentCreateRequest {
+  @minLength(1)
+  @maxLength(255)
+  name: string;
+
+  docType: WorkspaceDocType;
+  parentId?: Uuid;
+  content?: string;
+}
+
+model WorkspaceDocumentUpdateRequest {
+  @minLength(1)
+  @maxLength(255)
+  name?: string;
+
+  content: string;
+}
+
+@tag("Files")
+@route("/v1/photos")
+@useAuth(TelDriveAuth)
+namespace Photos {
+  @get
+  @route("/timeline")
+  @operationId("listPhotoTimeline")
+  op timeline(
+    @query favoritesOnly?: boolean,
+    @query albumId?: Uuid,
+    @query @minValue(1) @maxValue(500) limit?: int32,
+  ): JsonResponse<200, PhotoTimelineItem[]> | ErrorResponse<401>;
+
+  @patch
+  @route("/files/{fileId}/metadata")
+  @operationId("updateMediaMetadata")
+  op updateMetadata(@path fileId: Uuid, @body body: MediaMetadataUpdateRequest):
+    | JsonResponse<200, PhotoTimelineItem>
+    | ErrorResponse<401>
+    | ErrorResponse<404>
+    | ErrorResponse<422>;
+
+  @get
+  @route("/albums")
+  @operationId("listPhotoAlbums")
+  op listAlbums(): JsonResponse<200, PhotoAlbumSummary[]> | ErrorResponse<401>;
+
+  @post
+  @route("/albums")
+  @operationId("createPhotoAlbum")
+  op createAlbum(@body body: PhotoAlbumCreateRequest):
+    | JsonResponse<201, PhotoAlbumSummary>
+    | ErrorResponse<401>
+    | ErrorResponse<422>;
+
+  @delete
+  @route("/albums/{albumId}")
+  @operationId("deletePhotoAlbum")
+  op deleteAlbum(@path albumId: Uuid):
+    | EmptyResponse<204>
+    | ErrorResponse<401>
+    | ErrorResponse<404>;
+
+  @post
+  @route("/albums/{albumId}/items")
+  @operationId("addPhotoAlbumItem")
+  op addAlbumItem(@path albumId: Uuid, @body body: PhotoAlbumItemRequest):
+    | EmptyResponse<204>
+    | ErrorResponse<401>
+    | ErrorResponse<404>
+    | ErrorResponse<422>;
+
+  @delete
+  @route("/albums/{albumId}/items/{fileId}")
+  @operationId("removePhotoAlbumItem")
+  op removeAlbumItem(@path albumId: Uuid, @path fileId: Uuid):
+    | EmptyResponse<204>
+    | ErrorResponse<401>
+    | ErrorResponse<404>;
+}
+
+@tag("Files")
+@route("/v1/docs")
+@useAuth(TelDriveAuth)
+namespace Docs {
+  @get
+  @operationId("listWorkspaceDocuments")
+  op list(
+    @query docType?: WorkspaceDocType,
+    @query @maxLength(255) search?: string,
+    @query @minValue(1) @maxValue(500) limit?: int32,
+  ): JsonResponse<200, WorkspaceDocumentSummary[]> | ErrorResponse<401>;
+
+  @post
+  @operationId("createWorkspaceDocument")
+  op create(@body body: WorkspaceDocumentCreateRequest):
+    | JsonResponse<201, WorkspaceDocumentDetail>
+    | ErrorResponse<401>
+    | ErrorResponse<404>
+    | ErrorResponse<409>
+    | ErrorResponse<422>;
+
+  @get
+  @route("/{fileId}")
+  @operationId("getWorkspaceDocument")
+  op get(@path fileId: Uuid):
+    | JsonResponse<200, WorkspaceDocumentDetail>
+    | ErrorResponse<401>
+    | ErrorResponse<404>;
+
+  @put
+  @route("/{fileId}")
+  @operationId("updateWorkspaceDocument")
+  op update(@path fileId: Uuid, @body body: WorkspaceDocumentUpdateRequest):
+    | JsonResponse<200, WorkspaceDocumentDetail>
+    | ErrorResponse<401>
+    | ErrorResponse<404>
+    | ErrorResponse<409>
+    | ErrorResponse<422>;
+}

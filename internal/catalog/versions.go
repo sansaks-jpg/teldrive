@@ -88,14 +88,8 @@ func (s *Service) RestoreVersion(ctx context.Context, userID, actorID int64, fil
 		return nil, fmt.Errorf("clear current file parts: %w", err)
 	}
 
-	normalized, err := normalizeName(version.Name)
-	if err != nil {
-		return nil, err
-	}
-
 	restored, err := q.RestoreFileFromVersion(ctx, sqlcgen.RestoreFileFromVersionParams{
 		Name:                 version.Name,
-		NormalizedName:       normalized,
 		MimeType:             version.MimeType,
 		Size:                 dbtypes.Int8(version.Size),
 		HashAlgorithm:        version.HashAlgorithm,

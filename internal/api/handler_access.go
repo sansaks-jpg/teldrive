@@ -58,7 +58,10 @@ func (h *Handler) ListAdminAuditEvents(ctx context.Context, params gen.ListAdmin
 	if h.Auth == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
 	}
-	limit := pageLimit(params.Limit, 50)
+	limit := int(params.Limit.Or(50))
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
 	var cursor datedUUIDCursor
 	if err := decodeCursor(params.Cursor, &cursor); err != nil {
 		return nil, mapServiceError(authn.ErrInvalidInput)
@@ -107,7 +110,7 @@ func (h *Handler) ListAdminAuditEvents(ctx context.Context, params gen.ListAdmin
 		}
 		items = append(items, item)
 	}
-	out := gen.AdminAuditEventPage{Items: items}
+	out := gen.ListAdminAuditEventsOK{Items: items}
 	if hasMore && len(rows) > 0 {
 		last := rows[len(rows)-1]
 		lastID, _ := dbtypes.GoogleUUID(last.ID)

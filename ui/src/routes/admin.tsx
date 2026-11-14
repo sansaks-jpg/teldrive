@@ -1,13 +1,14 @@
 import { Button, Card, Chip, Input, Label, Spinner, TextField } from "@heroui/react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { $api } from "@/api/client";
 import { userMessage } from "@/api/errors";
 import { currentUserQueryOptions } from "@/auth/queries";
+import { LinkButton } from "@/components/link-button";
 import { SettingsRow, SettingsSection } from "@/components/settings-layout";
-import { formatBytes } from "@/lib/format";
+import { useFormatBytes } from "@/lib/format";
 import { useAppLocale } from "@/lib/locale";
 import { getQueryClient } from "@/lib/queryClient";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminConsole() {
   const { t, locale } = useAppLocale();
+  const formatBytes = useFormatBytes();
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("");
   const [quotaInputs, setQuotaInputs] = useState<Record<number, string>>({});
@@ -110,12 +112,12 @@ function AdminConsole() {
           <p className="text-sm text-muted">{t("admin.subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link to="/tasks">
-            <Button variant="secondary">{t("nav.tasks")}</Button>
-          </Link>
-          <Link to="/settings">
-            <Button variant="secondary">{t("nav.settings")}</Button>
-          </Link>
+          <LinkButton to="/tasks" variant="secondary">
+            {t("nav.tasks")}
+          </LinkButton>
+          <LinkButton to="/settings" variant="secondary">
+            {t("title.settings")}
+          </LinkButton>
           <Button variant="primary" onPress={() => void refreshAll()}>
             <RefreshIcon className="size-4" />
             {t("users.refresh")}
@@ -242,7 +244,7 @@ function AdminConsole() {
                           })
                         }
                       >
-                        {user.role === "admin" ? t("users.demote") : t("users.promote")}
+                        {t(user.role === "admin" ? "users.makeUser" : "users.makeAdmin")}
                       </Button>
                       <Button
                         size="sm"

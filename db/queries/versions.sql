@@ -79,7 +79,6 @@ WHERE file_id = sqlc.arg(file_id);
 -- name: RestoreFileFromVersion :one
 UPDATE /* TEMPLATE: schema */files
 SET name = sqlc.arg(name),
-    normalized_name = sqlc.arg(normalized_name),
     mime_type = sqlc.narg(mime_type),
     size = sqlc.arg(size),
     hash_algorithm = sqlc.narg(hash_algorithm),

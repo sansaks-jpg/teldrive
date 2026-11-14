@@ -94,7 +94,7 @@ func (s *Service) UpdateMediaMetadata(ctx context.Context, userID int64, fileID 
 	if userID <= 0 || fileID == uuid.Nil {
 		return nil, ErrInvalidOwner
 	}
-	file, err := s.queries.GetActiveFileForUser(ctx, sqlcgen.GetActiveFileForUserParams{
+	file, err := s.queries.GetFileForUser(ctx, sqlcgen.GetFileForUserParams{
 		FileID: dbtypes.UUID(fileID),
 		UserID: userID,
 	})
@@ -103,6 +103,9 @@ func (s *Service) UpdateMediaMetadata(ctx context.Context, userID int64, fileID 
 	}
 	if err != nil {
 		return nil, fmt.Errorf("check media file: %w", err)
+	}
+	if file.Status != sqlcgen.FileStatusActive {
+		return nil, ErrNotFound
 	}
 	if file.Kind != sqlcgen.FileKindFile {
 		return nil, ErrNotAFile
@@ -223,7 +226,7 @@ func (s *Service) AddPhotoAlbumItem(ctx context.Context, userID int64, albumID, 
 		}
 		return fmt.Errorf("get photo album: %w", err)
 	}
-	file, err := s.queries.GetActiveFileForUser(ctx, sqlcgen.GetActiveFileForUserParams{
+	file, err := s.queries.GetFileForUser(ctx, sqlcgen.GetFileForUserParams{
 		FileID: dbtypes.UUID(fileID),
 		UserID: userID,
 	})
@@ -232,6 +235,9 @@ func (s *Service) AddPhotoAlbumItem(ctx context.Context, userID int64, albumID, 
 	}
 	if err != nil {
 		return fmt.Errorf("get file for album item: %w", err)
+	}
+	if file.Status != sqlcgen.FileStatusActive {
+		return ErrNotFound
 	}
 	if file.Kind != sqlcgen.FileKindFile {
 		return ErrNotAFile

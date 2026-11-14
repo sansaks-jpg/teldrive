@@ -17,14 +17,18 @@ func (s *Service) ListVersions(ctx context.Context, userID int64, fileID uuid.UU
 	if userID <= 0 || fileID == uuid.Nil {
 		return nil, ErrInvalidOwner
 	}
-	if _, err := s.queries.GetActiveFileForUser(ctx, sqlcgen.GetActiveFileForUserParams{
+	file, err := s.queries.GetFileForUser(ctx, sqlcgen.GetFileForUserParams{
 		FileID: dbtypes.UUID(fileID),
 		UserID: userID,
-	}); err != nil {
+	})
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("check file for versions: %w", err)
+	}
+	if file.Status != sqlcgen.FileStatusActive {
+		return nil, ErrNotFound
 	}
 	rows, err := s.queries.ListFileVersions(ctx, sqlcgen.ListFileVersionsParams{
 		FileID: dbtypes.UUID(fileID),
@@ -125,7 +129,7 @@ func (s *Service) RestoreVersion(ctx context.Context, userID, actorID int64, fil
 }
 
 func snapshotFileInTx(ctx context.Context, q *sqlcgen.Queries, userID, actorID int64, fileID uuid.UUID) (*sqlcgen.FileVersion, error) {
-	file, err := q.GetActiveFileForUser(ctx, sqlcgen.GetActiveFileForUserParams{
+	file, err := q.GetFileForUser(ctx, sqlcgen.GetFileForUserParams{
 		FileID: dbtypes.UUID(fileID),
 		UserID: userID,
 	})
@@ -134,6 +138,9 @@ func snapshotFileInTx(ctx context.Context, q *sqlcgen.Queries, userID, actorID i
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get active file for snapshot: %w", err)
+	}
+	if file.Status != sqlcgen.FileStatusActive {
+		return nil, ErrNotFound
 	}
 	if file.Kind != sqlcgen.FileKindFile {
 		return nil, ErrNotAFile

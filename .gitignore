@@ -1,0 +1,12 @@
+node_modules/
+.direnv/
+dist/
+test-results/
+.env
+.env.*
+bin/
+*.log
+.DS_Store
+
+.slim/deepwork/
+ui/.tanstack/

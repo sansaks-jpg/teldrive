@@ -35,7 +35,7 @@ generate-openapi:
 
 # Generate the complete Go server/client contract.
 generate-api: generate-openapi
-    go run github.com/ogen-go/ogen/cmd/ogen@latest \
+    go run github.com/ogen-go/ogen/cmd/ogen@v1.24.0 \
         --config ogen.yml \
         --target internal/api/gen \
         --package gen \

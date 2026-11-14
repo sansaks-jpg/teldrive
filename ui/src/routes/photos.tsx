@@ -35,7 +35,7 @@ export const Route = createFileRoute("/photos")({
   component: PhotosWorkspacePage,
 });
 
-type PhotosMode = "timeline" | "favorites" | "videos" | "albums";
+type PhotosMode = "timeline" | "favorites" | "videos" | "screenshots" | "recent" | "albums";
 
 function PhotosWorkspacePage() {
   const { t, locale } = useAppLocale();
@@ -94,9 +94,21 @@ function PhotosWorkspacePage() {
   const trimmedSearch = searchQuery.trim().toLowerCase();
 
   const filteredItems = useMemo(() => {
-    return items.filter((item) => {
+    const result = items.filter((item) => {
       if (mode === "videos" && !item.file.mimeType?.startsWith("video/")) {
         return false;
+      }
+      if (mode === "screenshots") {
+        const lower = item.file.name.toLowerCase();
+        if (
+          !(
+            lower.includes("screen") ||
+            lower.includes("shot") ||
+            item.file.mimeType === "image/png"
+          )
+        ) {
+          return false;
+        }
       }
       if (!trimmedSearch) return true;
       const haystack = [item.file.name, item.cameraMake ?? "", item.cameraModel ?? ""]
@@ -104,6 +116,12 @@ function PhotosWorkspacePage() {
         .toLowerCase();
       return haystack.includes(trimmedSearch);
     });
+    if (mode === "recent") {
+      return [...result].sort(
+        (a, b) => new Date(b.file.createdAt).getTime() - new Date(a.file.createdAt).getTime(),
+      );
+    }
+    return result;
   }, [items, mode, trimmedSearch]);
 
   const filteredAlbums = useMemo(() => {
@@ -265,15 +283,31 @@ function PhotosWorkspacePage() {
 
   const selectedAlbum = albums.find((a) => a.id === selectedAlbumId);
 
+  const collectionModes: {
+    id: PhotosMode;
+    label: string;
+    icon: typeof PictureIcon;
+  }[] = [
+    { id: "timeline", label: t("photos.tabTimeline"), icon: PictureIcon },
+    { id: "favorites", label: t("photos.tabFavorites"), icon: HeartIcon },
+    { id: "albums", label: `${t("photos.tabAlbums")} (${albums.length})`, icon: FolderPlusIcon },
+    { id: "videos", label: t("photos.tabVideos"), icon: VideoFileIcon },
+    { id: "screenshots", label: t("photos.modeScreenshots"), icon: PictureIcon },
+    { id: "recent", label: t("photos.modeRecent"), icon: SearchIcon },
+  ];
+
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-2 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("apps.photos")}</h1>
           <p className="text-sm text-muted">{t("photos.subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <InputGroup className="w-full sm:w-64" variant="secondary">
+          <InputGroup
+            className="w-full rounded-full bg-surface-secondary px-1 sm:w-64"
+            variant="secondary"
+          >
             <InputGroup.Prefix>
               <SearchIcon className="size-4 text-muted" />
             </InputGroup.Prefix>
@@ -284,207 +318,285 @@ function PhotosWorkspacePage() {
               onChange={(event) => setSearchQuery(event.target.value)}
             />
           </InputGroup>
-          <Button variant="primary" size="sm" onPress={() => setAlbumDialogOpen(true)}>
+          <Button
+            variant="primary"
+            size="sm"
+            className="rounded-full px-4"
+            onPress={() => setAlbumDialogOpen(true)}
+          >
             <PlusIcon className="size-4" />
             {t("photos.newAlbum")}
           </Button>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant={mode === "timeline" ? "primary" : "secondary"}
-          size="sm"
-          className="rounded-full"
-          onPress={() => {
-            setMode("timeline");
-            setSelectedAlbumId(undefined);
-          }}
-        >
-          {t("photos.tabTimeline")}
-        </Button>
-        <Button
-          variant={mode === "favorites" ? "primary" : "secondary"}
-          size="sm"
-          className="rounded-full"
-          onPress={() => {
-            setMode("favorites");
-            setSelectedAlbumId(undefined);
-          }}
-        >
-          {t("photos.tabFavorites")}
-        </Button>
-        <Button
-          variant={mode === "videos" ? "primary" : "secondary"}
-          size="sm"
-          className="rounded-full"
-          onPress={() => {
-            setMode("videos");
-            setSelectedAlbumId(undefined);
-          }}
-        >
-          {t("photos.tabVideos")}
-        </Button>
-        <Button
-          variant={mode === "albums" ? "primary" : "secondary"}
-          size="sm"
-          className="rounded-full"
-          onPress={() => setMode("albums")}
-        >
-          {t("photos.tabAlbums")} ({albums.length})
-        </Button>
+      <div className="flex flex-wrap items-center gap-2 lg:hidden">
+        {collectionModes.map((entry) => (
+          <Button
+            key={entry.id}
+            variant={mode === entry.id ? "primary" : "secondary"}
+            size="sm"
+            className="rounded-full"
+            onPress={() => {
+              setMode(entry.id);
+              setSelectedAlbumId(undefined);
+            }}
+          >
+            {entry.label}
+          </Button>
+        ))}
       </div>
 
-      {mode === "timeline" && !trimmedSearch && highlightCards.length > 0 ? (
-        <section className="space-y-2.5">
-          <h2 className="text-sm font-semibold text-foreground">{t("photos.memoriesTitle")}</h2>
-          <div className="flex gap-3 overflow-x-auto pb-1">
-            {highlightCards.map((card) => (
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
+        <div className="hidden flex-col gap-1 lg:flex">
+          {collectionModes.slice(0, 2).map((entry) => {
+            const Icon = entry.icon;
+            const active = mode === entry.id;
+            return (
               <Button
-                key={card.id}
-                variant="ghost"
-                onPress={card.onPress}
-                className="group relative h-44 w-36 shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-surface-secondary p-0 sm:w-40"
+                key={entry.id}
+                variant={active ? "secondary" : "ghost"}
+                className={
+                  active
+                    ? "h-10 w-full justify-start gap-3 rounded-full bg-accent/15 px-3.5 text-sm font-medium text-accent"
+                    : "h-10 w-full justify-start gap-3 rounded-full px-3.5 text-sm font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                }
+                onPress={() => {
+                  setMode(entry.id);
+                  setSelectedAlbumId(undefined);
+                }}
               >
-                {card.coverFile ? (
-                  <img
-                    src={fileContentUrl(card.coverFile)}
-                    alt={card.title}
-                    loading="lazy"
-                    className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="flex size-full items-center justify-center bg-surface-secondary">
-                    {card.icon === "video" ? (
-                      <VideoFileIcon className="size-10 text-muted" />
-                    ) : (
-                      <PictureIcon className="size-10 text-muted" />
-                    )}
-                  </div>
-                )}
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 p-3 text-left text-xs font-semibold leading-snug text-white">
-                  {card.title}
-                </span>
+                <Icon className="size-4 shrink-0" />
+                <span className="truncate">{entry.label}</span>
               </Button>
-            ))}
-          </div>
-        </section>
-      ) : null}
+            );
+          })}
+          <p className="px-3.5 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-muted">
+            {t("photos.collectionsTitle")}
+          </p>
+          {collectionModes.slice(2).map((entry) => {
+            const Icon = entry.icon;
+            const active = mode === entry.id && !selectedAlbumId;
+            return (
+              <Button
+                key={entry.id}
+                variant={active ? "secondary" : "ghost"}
+                className={
+                  active
+                    ? "h-10 w-full justify-start gap-3 rounded-full bg-accent/15 px-3.5 text-sm font-medium text-accent"
+                    : "h-10 w-full justify-start gap-3 rounded-full px-3.5 text-sm font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                }
+                onPress={() => {
+                  setMode(entry.id);
+                  setSelectedAlbumId(undefined);
+                }}
+              >
+                <Icon className="size-4 shrink-0" />
+                <span className="truncate">{entry.label}</span>
+              </Button>
+            );
+          })}
+          {albums.length > 0 ? (
+            <div className="mt-2 space-y-1 border-t border-border/40 pt-2">
+              {albums.slice(0, 6).map((album) => {
+                const active = mode === "albums" && selectedAlbumId === album.id;
+                return (
+                  <Button
+                    key={album.id}
+                    variant={active ? "secondary" : "ghost"}
+                    size="sm"
+                    className={
+                      active
+                        ? "h-9 w-full justify-between rounded-full bg-accent/15 px-3.5 text-xs font-medium text-accent"
+                        : "h-9 w-full justify-between rounded-full px-3.5 text-xs text-muted hover:bg-surface-secondary hover:text-foreground"
+                    }
+                    onPress={() => {
+                      setMode("albums");
+                      setSelectedAlbumId(album.id);
+                    }}
+                  >
+                    <span className="truncate">{album.name}</span>
+                    <span className="shrink-0 text-[11px] opacity-75">{album.itemCount}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
 
-      {mode === "albums" && !selectedAlbumId ? (
-        albumsQuery.isPending ? (
-          <div className="flex justify-center py-12">
-            <Spinner />
-          </div>
-        ) : filteredAlbums.length === 0 ? (
-          <Card className="p-8 text-center">
-            <p className="text-sm text-muted">{t("photos.albumsEmpty")}</p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredAlbums.map((album) => (
-              <Card key={album.id} className="flex flex-col justify-between gap-3 p-4">
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <h2 className="truncate text-base font-semibold">{album.name}</h2>
-                    <Chip size="sm" variant="soft">
-                      {t("photos.itemCount", { count: album.itemCount })}
-                    </Chip>
+        <div className="min-w-0 space-y-6 rounded-3xl border border-border/50 bg-surface p-4 shadow-sm sm:p-6">
+          {mode === "timeline" && !trimmedSearch && highlightCards.length > 0 ? (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-foreground">{t("photos.memoriesTitle")}</h2>
+              <div className="flex gap-3 overflow-x-auto pb-1">
+                {highlightCards.map((card) => (
+                  <Button
+                    key={card.id}
+                    variant="ghost"
+                    onPress={card.onPress}
+                    className="group relative h-48 w-64 shrink-0 overflow-hidden rounded-3xl border border-border/60 bg-surface-secondary p-0 sm:h-52 sm:w-72"
+                  >
+                    {card.coverFile ? (
+                      <img
+                        src={fileContentUrl(card.coverFile)}
+                        alt={card.title}
+                        loading="lazy"
+                        className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center bg-surface-secondary">
+                        {card.icon === "video" ? (
+                          <VideoFileIcon className="size-10 text-muted" />
+                        ) : (
+                          <PictureIcon className="size-10 text-muted" />
+                        )}
+                      </div>
+                    )}
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+                    <span className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-left text-sm font-semibold leading-snug text-white">
+                      {card.title}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {mode === "albums" && !selectedAlbumId ? (
+            albumsQuery.isPending ? (
+              <div className="flex justify-center py-12">
+                <Spinner />
+              </div>
+            ) : filteredAlbums.length === 0 ? (
+              <Card className="p-8 text-center">
+                <p className="text-sm text-muted">{t("photos.albumsEmpty")}</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredAlbums.map((album) => (
+                  <Card
+                    key={album.id}
+                    className="flex flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-surface-secondary/30 p-4"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <h2 className="truncate text-base font-semibold">{album.name}</h2>
+                        <Chip size="sm" variant="soft">
+                          {t("photos.itemCount", { count: album.itemCount })}
+                        </Chip>
+                      </div>
+                      {album.description ? (
+                        <p className="mt-1 line-clamp-2 text-xs text-muted">{album.description}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center justify-between gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="rounded-full"
+                        onPress={() => setSelectedAlbumId(album.id)}
+                      >
+                        {t("photos.openAlbum")}
+                      </Button>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="ghost"
+                        aria-label={t("photos.deleteAlbum")}
+                        onPress={() => void handleDeleteAlbum(album.id)}
+                      >
+                        <TrashIcon className="size-4 text-danger" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )
+          ) : (
+            <>
+              {mode === "albums" && selectedAlbum ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface-secondary/40 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold">{selectedAlbum.name}</p>
+                    {selectedAlbum.description ? (
+                      <p className="text-xs text-muted">{selectedAlbum.description}</p>
+                    ) : null}
                   </div>
-                  {album.description ? (
-                    <p className="mt-1 line-clamp-2 text-xs text-muted">{album.description}</p>
-                  ) : null}
-                </div>
-                <div className="flex items-center justify-between gap-2 pt-2">
                   <Button
                     size="sm"
                     variant="secondary"
-                    onPress={() => setSelectedAlbumId(album.id)}
+                    className="rounded-full"
+                    onPress={() => setSelectedAlbumId(undefined)}
                   >
-                    {t("photos.openAlbum")}
-                  </Button>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="ghost"
-                    aria-label={t("photos.deleteAlbum")}
-                    onPress={() => void handleDeleteAlbum(album.id)}
-                  >
-                    <TrashIcon className="size-4 text-danger" />
+                    {t("photos.allAlbums")}
                   </Button>
                 </div>
-              </Card>
-            ))}
-          </div>
-        )
-      ) : (
-        <>
-          {mode === "albums" && selectedAlbum ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-secondary/40 px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold">{selectedAlbum.name}</p>
-                {selectedAlbum.description ? (
-                  <p className="text-xs text-muted">{selectedAlbum.description}</p>
-                ) : null}
-              </div>
-              <Button size="sm" variant="secondary" onPress={() => setSelectedAlbumId(undefined)}>
-                {t("photos.allAlbums")}
-              </Button>
-            </div>
-          ) : null}
+              ) : null}
 
-          {timelineQuery.isPending ? (
-            <div className="flex justify-center py-12">
-              <Spinner />
-            </div>
-          ) : groupedByDate.length === 0 ? (
-            <Card className="flex flex-col items-center gap-3 p-8 text-center">
-              <p className="text-sm text-muted">{t("photos.empty")}</p>
-              <LinkButton
-                to="/files"
-                search={{ path: "/", query: "", view: "list" }}
-                variant="primary"
-                size="sm"
-              >
-                {t("apps.openDrive")}
-              </LinkButton>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              {groupedByDate.map(([dayLabel, dayItems]) => (
-                <section key={dayLabel} className="space-y-2.5">
-                  <h2 className="text-sm font-semibold text-foreground">{dayLabel}</h2>
-                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                    {dayItems.map((item) => {
-                      const isImage = item.file.mimeType?.startsWith("image/");
-                      return (
-                        <div
-                          key={item.file.id}
-                          className="group relative aspect-square overflow-hidden rounded-lg bg-surface-secondary"
-                        >
-                          <Button
-                            variant="ghost"
-                            aria-label={item.file.name}
-                            className="block size-full rounded-none p-0"
-                            onPress={() => setPreviewFile(item.file)}
-                          >
-                            {isImage ? (
-                              <img
-                                src={fileContentUrl(item.file)}
-                                alt={item.file.name}
-                                loading="lazy"
-                                className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="flex size-full flex-col items-center justify-center gap-2 bg-surface-secondary/80 p-3">
-                                <VideoFileIcon className="size-8 text-muted" />
-                                <span className="line-clamp-2 text-center text-xs font-medium text-foreground">
-                                  {item.file.name}
-                                </span>
-                              </div>
-                            )}
-                          </Button>
+              {timelineQuery.isPending ? (
+                <div className="flex justify-center py-12">
+                  <Spinner />
+                </div>
+              ) : groupedByDate.length === 0 ? (
+                <Card className="flex flex-col items-center gap-3 p-8 text-center">
+                  <p className="text-sm text-muted">{t("photos.empty")}</p>
+                  <LinkButton
+                    to="/files"
+                    search={{ path: "/", query: "", view: "list" }}
+                    variant="primary"
+                    size="sm"
+                  >
+                    {t("apps.openDrive")}
+                  </LinkButton>
+                </Card>
+              ) : (
+                <div className="space-y-6">
+                  {groupedByDate.map(([dayLabel, dayItems]) => {
+                    const cameras = Array.from(
+                      new Set(
+                        dayItems
+                          .map((entry) => entry.cameraModel ?? entry.cameraMake)
+                          .filter((val): val is string => Boolean(val)),
+                      ),
+                    );
+                    return (
+                      <section key={dayLabel} className="space-y-2.5">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <h2 className="text-sm font-semibold text-foreground">{dayLabel}</h2>
+                          {cameras.length > 0 ? (
+                            <span className="text-xs text-muted">{cameras.slice(0, 2).join(" • ")}</span>
+                          ) : null}
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+                          {dayItems.map((item) => {
+                            const isImage = item.file.mimeType?.startsWith("image/");
+                            return (
+                              <div
+                                key={item.file.id}
+                                className="group relative aspect-[4/3] overflow-hidden rounded-xl bg-surface-secondary"
+                              >
+                                <Button
+                                  variant="ghost"
+                                  aria-label={item.file.name}
+                                  className="block size-full rounded-none p-0"
+                                  onPress={() => setPreviewFile(item.file)}
+                                >
+                                  {isImage ? (
+                                    <img
+                                      src={fileContentUrl(item.file)}
+                                      alt={item.file.name}
+                                      loading="lazy"
+                                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                  ) : (
+                                    <div className="flex size-full flex-col items-center justify-center gap-2 bg-surface-secondary/80 p-3">
+                                      <VideoFileIcon className="size-8 text-muted" />
+                                      <span className="line-clamp-2 text-center text-xs font-medium text-foreground">
+                                        {item.file.name}
+                                      </span>
+                                    </div>
+                                  )}
+                                </Button>
                           {!isImage ? (
                             <span className="pointer-events-none absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
                               <PlayIcon className="size-3" />
@@ -568,11 +680,14 @@ function PhotosWorkspacePage() {
                     })}
                   </div>
                 </section>
-              ))}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
-        </>
-      )}
+        </div>
+      </div>
 
       <AppDialog
         open={albumDialogOpen}

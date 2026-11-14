@@ -973,6 +973,120 @@ export function FileManagerPage({
               </Button>
             </div>
           )}
+          {!searchMode && (
+            <div className="mb-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
+              <Button
+                size="sm"
+                variant={!search.recent && !search.bookmarked ? "secondary" : "ghost"}
+                className={
+                  !search.recent && !search.bookmarked
+                    ? "h-8 shrink-0 rounded-lg bg-accent/15 px-3 text-xs font-medium text-accent"
+                    : "h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                }
+                onPress={() =>
+                  onLocationChange({
+                    ...search,
+                    path: "/",
+                    parentId: undefined,
+                    query: "",
+                    recent: undefined,
+                    bookmarked: undefined,
+                  })
+                }
+              >
+                {t("drive.filterAll")}
+              </Button>
+              <Button
+                size="sm"
+                variant={search.recent ? "secondary" : "ghost"}
+                className={
+                  search.recent
+                    ? "h-8 shrink-0 rounded-lg bg-accent/15 px-3 text-xs font-medium text-accent"
+                    : "h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                }
+                onPress={() =>
+                  onLocationChange({
+                    ...search,
+                    path: "/",
+                    parentId: undefined,
+                    query: "",
+                    recent: true,
+                    bookmarked: undefined,
+                  })
+                }
+              >
+                {t("nav.recent")}
+              </Button>
+              <Button
+                size="sm"
+                variant={search.bookmarked && !search.recent ? "secondary" : "ghost"}
+                className={
+                  search.bookmarked && !search.recent
+                    ? "h-8 shrink-0 rounded-lg bg-accent/15 px-3 text-xs font-medium text-accent"
+                    : "h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                }
+                onPress={() =>
+                  onLocationChange({
+                    ...search,
+                    path: "/",
+                    parentId: undefined,
+                    query: "",
+                    recent: undefined,
+                    bookmarked: true,
+                  })
+                }
+              >
+                {t("nav.bookmarks")}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                onPress={() =>
+                  void navigateTo({
+                    to: "/shared-with-me",
+                    search: { path: "/", query: "", view: search.view },
+                  })
+                }
+              >
+                {t("nav.sharedWithMe")}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                onPress={() =>
+                  void navigateTo({
+                    to: "/search",
+                    search: { category: ["document"] },
+                  })
+                }
+              >
+                {t("drive.filterDocuments")}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                onPress={() =>
+                  void navigateTo({
+                    to: "/search",
+                    search: { category: ["image", "video"] },
+                  })
+                }
+              >
+                {t("drive.filterMedia")}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                onPress={() => void navigateTo({ to: "/docs" })}
+              >
+                {t("apps.docs")}
+              </Button>
+            </div>
+          )}
           <div
             className={
               search.split

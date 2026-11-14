@@ -1,4 +1,3 @@
--- +goose NO TRANSACTION
 -- +goose Up
 
 ALTER TYPE /* TEMPLATE: schema */share_permission ADD VALUE IF NOT EXISTS 'comment';
@@ -116,15 +115,11 @@ CREATE INDEX IF NOT EXISTS workspace_documents_user_updated_idx
 -- +goose Down
 
 DROP TABLE IF EXISTS /* TEMPLATE: schema */workspace_documents;
-DROP INDEX IF EXISTS /* TEMPLATE: schema */workspace_documents_user_updated_idx;
 DROP TABLE IF EXISTS /* TEMPLATE: schema */photo_album_items;
-DROP INDEX IF EXISTS /* TEMPLATE: schema */photo_albums_user_created_idx;
 DROP TABLE IF EXISTS /* TEMPLATE: schema */photo_albums;
-DROP INDEX IF EXISTS /* TEMPLATE: schema */media_metadata_user_taken_idx;
 DROP TABLE IF EXISTS /* TEMPLATE: schema */media_metadata;
 
 DROP TABLE IF EXISTS /* TEMPLATE: schema */file_version_parts;
-DROP INDEX IF EXISTS /* TEMPLATE: schema */file_versions_file_created_idx;
 DROP TABLE IF EXISTS /* TEMPLATE: schema */file_versions;
 
 ALTER TABLE /* TEMPLATE: schema */users

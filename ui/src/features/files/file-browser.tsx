@@ -100,9 +100,9 @@ export function FileBrowser({
   const resolvedEmptyHint = emptyHint ?? t("browser.emptyHint");
   const resolvedEmptyTitle = emptyTitle ?? t("browser.emptyTitle");
   return (
-    <Card className="@container/file-browser relative flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden border border-border bg-surface/80 shadow-sm">
+    <Card className="@container/file-browser relative flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-sm">
       <Card.Header
-        className={`shrink-0 border-b border-border px-3 sm:px-4 ${compactToolbar ? "py-2" : "py-3"}`}
+        className={`shrink-0 border-b border-border/50 px-3 sm:px-4 ${compactToolbar ? "py-2" : "py-3"}`}
         data-testid="file-browser-toolbar"
       >
         <div className="flex min-w-0 flex-wrap items-center gap-1.5 [&>button]:shrink-0">
@@ -165,7 +165,7 @@ export function FileBrowser({
           </div>
         </div>
       </Card.Header>
-      <Card.Content className="min-h-0 flex-1 overflow-hidden p-0">
+      <Card.Content className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
         {loading ? (
           <div className="flex h-full min-h-64 items-center justify-center">
             <Spinner size="lg" />
@@ -173,23 +173,32 @@ export function FileBrowser({
         ) : emptyContent ? (
           emptyContent
         ) : (
-          <div className="h-full min-h-0">
-            <FileCollection
-              files={files}
-              view={view}
-              selection={selection}
-              selectionDisabled={selectionDisabled}
-              onOpen={onOpen}
-              dimmedIds={dimmedIds}
-              hasNextPage={hasNextPage}
-              isLoadingMore={isLoadingMore}
-              onLoadMore={onLoadMore}
-              emptyHint={resolvedEmptyHint}
-              emptyTitle={resolvedEmptyTitle}
-              showLocations={showLocations}
-              onOpenContainingFolder={onOpenContainingFolder}
-            />
-          </div>
+          <>
+            {view === "list" && files.length > 0 ? (
+              <div className="grid shrink-0 grid-cols-[minmax(0,1fr)] items-center gap-2 border-b border-border/50 bg-surface-secondary/35 px-3 py-2 text-xs font-medium text-muted sm:grid-cols-[minmax(0,1fr)_6rem] sm:px-4 lg:grid-cols-[minmax(0,1fr)_8rem_10rem] lg:gap-4">
+                <span className="truncate pl-1">{t("drive.columnName")}</span>
+                <span className="hidden sm:block">{t("drive.columnSize")}</span>
+                <span className="hidden lg:block">{t("drive.columnModified")}</span>
+              </div>
+            ) : null}
+            <div className="min-h-0 flex-1">
+              <FileCollection
+                files={files}
+                view={view}
+                selection={selection}
+                selectionDisabled={selectionDisabled}
+                onOpen={onOpen}
+                dimmedIds={dimmedIds}
+                hasNextPage={hasNextPage}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={onLoadMore}
+                emptyHint={resolvedEmptyHint}
+                emptyTitle={resolvedEmptyTitle}
+                showLocations={showLocations}
+                onOpenContainingFolder={onOpenContainingFolder}
+              />
+            </div>
+          </>
         )}
       </Card.Content>
       {selectionOverlay}

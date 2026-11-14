@@ -13,6 +13,8 @@ import { useDebouncedValue } from "@/lib/use-debounced-value";
 import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
 import ArrowLeftIcon from "~icons/gravity-ui/chevron-left";
 import PlusIcon from "~icons/gravity-ui/plus";
+import FileExcelIcon from "~icons/icon-park-outline/file-excel";
+import FileTextIcon from "~icons/icon-park-outline/file-text";
 
 export const Route = createFileRoute("/docs")({
   component: DocsWorkspacePage,
@@ -252,6 +254,29 @@ function DocsWorkspacePage() {
     }
   };
 
+  const handleCreateTemplate = async (
+    docType: "doc" | "sheet",
+    titleBase: string,
+    initialContent: string,
+  ) => {
+    const stamp = Date.now().toString(36).slice(-4);
+    const ext = docType === "sheet" ? ".sheet.json" : ".md";
+    const name = `${titleBase} ${stamp}${ext}`;
+    try {
+      const created = await createDoc.mutateAsync({
+        body: { name, docType, content: initialContent },
+      });
+      setActiveDocId(created.fileId);
+      setEditorTitle(created.name);
+      setEditorContent(created.content);
+      setSheetCells(docType === "sheet" ? parseSheetContent(created.content) : {});
+      await refreshDocs();
+      toast.success(t("docs.created"));
+    } catch (error) {
+      toast.error(t("docs.saveFailed"), { description: userMessage(error) });
+    }
+  };
+
   const handleSave = async () => {
     if (!activeDocId || !detailQuery.data) return;
     const payloadContent =
@@ -370,8 +395,8 @@ function DocsWorkspacePage() {
             <Spinner />
           </div>
         ) : doc.docType === "doc" ? (
-          <Card className="space-y-3 p-4">
-            <div className="flex flex-wrap gap-1.5 border-b border-border pb-3">
+          <div className="space-y-4">
+            <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-1 rounded-full border border-border/60 bg-surface-secondary/70 px-3 py-1.5 backdrop-blur-sm">
               <Button size="sm" variant="ghost" onPress={() => appendMarkdown("# ")}>
                 H1
               </Button>
@@ -391,46 +416,49 @@ function DocsWorkspacePage() {
                 Code
               </Button>
             </div>
-            {previewMode ? (
-              <div className="min-h-96 space-y-2 whitespace-pre-wrap p-2 text-sm leading-relaxed">
-                {editorContent.split("\n").map((line, index) => {
-                  const key = `${index}-${line.slice(0, 12)}`;
-                  if (line.startsWith("# ")) {
-                    return (
-                      <h2 key={key} className="text-xl font-bold">
-                        {line.slice(2)}
-                      </h2>
-                    );
-                  }
-                  if (line.startsWith("## ")) {
-                    return (
-                      <h3 key={key} className="text-lg font-semibold">
-                        {line.slice(3)}
-                      </h3>
-                    );
-                  }
-                  return <p key={key}>{line || "\u00a0"}</p>;
-                })}
-              </div>
-            ) : (
-              <TextArea
-                aria-label={t("docs.editorAria")}
-                rows={18}
-                value={editorContent}
-                onChange={(event) => setEditorContent(event.currentTarget.value)}
-                className="min-h-96 w-full font-mono text-sm"
-              />
-            )}
-          </Card>
+            <Card className="mx-auto w-full max-w-4xl rounded-2xl border border-border/70 bg-surface p-6 shadow-sm sm:p-10">
+              {previewMode ? (
+                <div className="min-h-[30rem] space-y-2 whitespace-pre-wrap text-sm leading-relaxed">
+                  {editorContent.split("\n").map((line, index) => {
+                    const key = `${index}-${line.slice(0, 12)}`;
+                    if (line.startsWith("# ")) {
+                      return (
+                        <h2 key={key} className="text-xl font-bold">
+                          {line.slice(2)}
+                        </h2>
+                      );
+                    }
+                    if (line.startsWith("## ")) {
+                      return (
+                        <h3 key={key} className="text-lg font-semibold">
+                          {line.slice(3)}
+                        </h3>
+                      );
+                    }
+                    return <p key={key}>{line || "\u00a0"}</p>;
+                  })}
+                </div>
+              ) : (
+                <TextArea
+                  aria-label={t("docs.editorAria")}
+                  rows={20}
+                  value={editorContent}
+                  onChange={(event) => setEditorContent(event.currentTarget.value)}
+                  className="min-h-[30rem] w-full border-0 bg-transparent p-0 font-mono text-sm shadow-none focus-visible:ring-0"
+                />
+              )}
+            </Card>
+          </div>
         ) : (
-          <Card className="space-y-3 p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Chip size="sm" variant="soft">
+          <Card className="space-y-3 rounded-2xl border border-border/60 bg-surface p-4 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-surface-secondary/50 px-2.5 py-1.5">
+              <Chip size="sm" variant="soft" color="accent">
                 {activeCell}
               </Chip>
+              <span className="font-mono text-xs font-semibold text-muted">fx</span>
               <Input
                 aria-label={t("docs.formulaBarAria")}
-                className="flex-1 font-mono text-sm"
+                className="flex-1 bg-transparent font-mono text-sm"
                 placeholder="=SUM(A1:A5) | =AVG(B1:B4) | 100"
                 value={sheetCells[activeCell] ?? ""}
                 onChange={(event) =>
@@ -441,17 +469,17 @@ function DocsWorkspacePage() {
                 }
               />
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-border">
               <table className="w-full border-collapse text-xs">
                 <thead>
                   <tr>
-                    <th className="w-10 border border-border bg-surface-secondary p-1.5 text-center font-semibold">
+                    <th className="w-10 border border-border bg-surface-secondary/80 p-1.5 text-center font-semibold text-muted">
                       #
                     </th>
                     {COLS.map((col) => (
                       <th
                         key={col}
-                        className="min-w-28 border border-border bg-surface-secondary p-1.5 text-center font-semibold"
+                        className="min-w-28 border border-border bg-surface-secondary/80 p-1.5 text-center font-semibold text-muted"
                       >
                         {col}
                       </th>
@@ -461,7 +489,7 @@ function DocsWorkspacePage() {
                 <tbody>
                   {ROWS.map((row) => (
                     <tr key={row}>
-                      <td className="border border-border bg-surface-secondary p-1.5 text-center font-semibold">
+                      <td className="border border-border bg-surface-secondary/60 p-1.5 text-center font-semibold text-muted">
                         {row}
                       </td>
                       {COLS.map((col) => {
@@ -471,7 +499,12 @@ function DocsWorkspacePage() {
                           ? (sheetCells[ref] ?? "")
                           : evaluateCell(ref, sheetCells);
                         return (
-                          <td key={ref} className="border border-border p-0.5">
+                          <td
+                            key={ref}
+                            className={`border border-border p-0 transition-colors ${
+                              isSelected ? "bg-accent/10 ring-2 ring-inset ring-accent" : ""
+                            }`}
+                          >
                             <Input
                               aria-label={ref}
                               value={displayVal}
@@ -482,7 +515,7 @@ function DocsWorkspacePage() {
                                   [ref]: event.currentTarget.value,
                                 }))
                               }
-                              className="h-8 rounded-none border-0 bg-transparent px-1.5 text-xs"
+                              className="h-8 rounded-none border-0 bg-transparent px-2 text-xs shadow-none"
                             />
                           </td>
                         );
@@ -499,9 +532,61 @@ function DocsWorkspacePage() {
   }
 
   const docs = listQuery.data ?? [];
+  const docTemplates: {
+    id: string;
+    title: string;
+    docType: "doc" | "sheet";
+    content: string;
+  }[] = [
+    {
+      id: "blank-doc",
+      title: t("docs.templateBlankDoc"),
+      docType: "doc",
+      content: `# ${t("docs.templateBlankDoc")}\n\n`,
+    },
+    {
+      id: "meeting-notes",
+      title: t("docs.templateMeetingNotes"),
+      docType: "doc",
+      content: `# ${t("docs.templateMeetingNotes")}\n\n## Attendees\n- \n\n## Agenda\n1. \n\n## Action Items\n- [ ] \n`,
+    },
+    {
+      id: "roadmap",
+      title: t("docs.templateRoadmap"),
+      docType: "doc",
+      content: `# ${t("docs.templateRoadmap")}\n\n## Objectives\n- \n\n## Milestones\n- [ ] Phase 1\n- [ ] Phase 2\n`,
+    },
+    {
+      id: "blank-sheet",
+      title: t("docs.templateBlankSheet"),
+      docType: "sheet",
+      content: `{"cells":{}}`,
+    },
+    {
+      id: "budget",
+      title: t("docs.templateBudget"),
+      docType: "sheet",
+      content: JSON.stringify({
+        cells: {
+          A1: "Category",
+          B1: "Planned",
+          C1: "Actual",
+          A2: "Infrastructure",
+          B2: "120",
+          C2: "110",
+          A3: "Storage",
+          B3: "80",
+          C3: "75",
+          A4: "Total",
+          B4: "=SUM(B2:B3)",
+          C4: "=SUM(C2:C3)",
+        },
+      }),
+    },
+  ];
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-2 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("apps.docs")}</h1>
@@ -511,6 +596,7 @@ function DocsWorkspacePage() {
           <Button
             variant="secondary"
             size="sm"
+            className="rounded-full px-4"
             onPress={() => {
               setNewTitle("");
               setCreateDialogType("sheet");
@@ -522,6 +608,7 @@ function DocsWorkspacePage() {
           <Button
             variant="primary"
             size="sm"
+            className="rounded-full px-4"
             onPress={() => {
               setNewTitle("");
               setCreateDialogType("doc");
@@ -533,6 +620,44 @@ function DocsWorkspacePage() {
         </div>
       </div>
 
+      <section className="space-y-3 rounded-3xl border border-border/50 bg-surface-secondary/50 p-4 sm:p-5">
+        <h2 className="text-sm font-medium text-foreground">{t("docs.templateGalleryTitle")}</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {docTemplates.map((tpl) => {
+            const isSheet = tpl.docType === "sheet";
+            return (
+              <Button
+                key={tpl.id}
+                variant="ghost"
+                isDisabled={createDoc.isPending}
+                className="flex h-auto flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-surface p-3.5 text-left shadow-sm transition-all hover:border-accent/60 hover:bg-surface hover:shadow-md"
+                onPress={() => void handleCreateTemplate(tpl.docType, tpl.title, tpl.content)}
+              >
+                <div
+                  className={`flex h-16 w-full items-center justify-center rounded-xl ${
+                    isSheet
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                  }`}
+                >
+                  {isSheet ? (
+                    <FileExcelIcon className="size-7" />
+                  ) : (
+                    <FileTextIcon className="size-7" />
+                  )}
+                </div>
+                <div className="w-full space-y-1">
+                  <p className="truncate text-xs font-semibold text-foreground">{tpl.title}</p>
+                  <p className="text-[11px] text-muted">
+                    {isSheet ? t("docs.typeSheet") : t("docs.typeDoc")}
+                  </p>
+                </div>
+              </Button>
+            );
+          })}
+        </div>
+      </section>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <TextField value={search} onChange={setSearch} className="w-full max-w-sm">
           <Input placeholder={t("docs.searchPh")} aria-label={t("docs.searchPh")} />
@@ -541,6 +666,7 @@ function DocsWorkspacePage() {
           <Button
             size="sm"
             variant={filter === "all" ? "primary" : "secondary"}
+            className="rounded-full"
             onPress={() => setFilter("all")}
           >
             {t("docs.filterAll")}
@@ -548,6 +674,7 @@ function DocsWorkspacePage() {
           <Button
             size="sm"
             variant={filter === "doc" ? "primary" : "secondary"}
+            className="rounded-full"
             onPress={() => setFilter("doc")}
           >
             {t("docs.typeDoc")}
@@ -555,6 +682,7 @@ function DocsWorkspacePage() {
           <Button
             size="sm"
             variant={filter === "sheet" ? "primary" : "secondary"}
+            className="rounded-full"
             onPress={() => setFilter("sheet")}
           >
             {t("docs.typeSheet")}
@@ -567,13 +695,16 @@ function DocsWorkspacePage() {
           <Spinner />
         </div>
       ) : docs.length === 0 ? (
-        <Card className="p-8 text-center">
+        <Card className="rounded-2xl p-8 text-center">
           <p className="text-sm text-muted">{t("docs.empty")}</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {docs.map((item) => (
-            <Card key={item.fileId} className="flex flex-col justify-between gap-3 p-4">
+            <Card
+              key={item.fileId}
+              className="flex flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-surface p-4 shadow-sm"
+            >
               <div>
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="truncate text-base font-semibold">{item.name}</h2>
@@ -592,6 +723,7 @@ function DocsWorkspacePage() {
               <Button
                 size="sm"
                 variant="secondary"
+                className="rounded-full"
                 onPress={() => setActiveDocId(item.fileId)}
               >
                 {t("docs.openEditor")}

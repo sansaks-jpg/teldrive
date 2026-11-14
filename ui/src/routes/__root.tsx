@@ -93,9 +93,20 @@ function Sidebar({
   const matchRoute = useMatchRoute();
   const { t } = useAppLocale();
   const formatBytes = useFormatBytes();
+  const pathname = useLocation({ select: (location) => location.pathname });
   const routeSearch = useLocation({
     select: (location) => location.search as Record<string, unknown>,
   });
+  const activeBrand = pathname.startsWith("/photos")
+    ? { label: t("apps.photos"), icon: PictureIcon, badgeClass: "bg-sky-500/15 text-sky-600 dark:text-sky-400" }
+    : pathname.startsWith("/docs")
+      ? { label: t("apps.docs"), icon: FileTextIcon, badgeClass: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" }
+      : pathname.startsWith("/admin")
+        ? { label: t("admin.title"), icon: SettingsIcon, badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400" }
+        : pathname.startsWith("/tasks")
+          ? { label: t("nav.tasks"), icon: TasksIcon, badgeClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400" }
+          : { label: t("apps.drive"), icon: LogoIcon, badgeClass: "bg-accent/15 text-accent" };
+  const ActiveBrandIcon = activeBrand.icon;
   const { data: user } = useQuery(currentUserQueryOptions());
   const storageQuery = $api.useQuery(
     "get",
@@ -191,16 +202,21 @@ function Sidebar({
   return (
     <aside
       className={cn(
-        "flex h-full flex-col overflow-hidden border-r border-border",
+        "flex h-full flex-col overflow-hidden border-r border-border/50 bg-sidebar",
         !mobile && "transition-[width] duration-200",
         mobile
-          ? "w-[min(19rem,86vw)] bg-sidebar shadow-2xl"
-          : cn("bg-sidebar/95 backdrop-blur-xl", collapsed ? "w-16" : "w-60"),
+          ? "w-[min(19rem,86vw)] shadow-2xl"
+          : cn(collapsed ? "w-16" : "w-60"),
       )}
     >
       <div className="flex h-16 items-center gap-3 px-4">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-          <LogoIcon className="size-4" />
+        <div
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors",
+            activeBrand.badgeClass,
+          )}
+        >
+          <ActiveBrandIcon className="size-4.5" />
         </div>
         <div
           className={cn(
@@ -209,27 +225,29 @@ function Sidebar({
           )}
         >
           <p className="text-base font-semibold tracking-tight">Teldrive</p>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-muted">{t("app.tagline")}</p>
+          <p className="truncate text-[11px] font-medium tracking-wide text-muted">
+            {activeBrand.label}
+          </p>
         </div>
       </div>
 
-      <Separator className="mx-3 w-auto" />
+      <Separator className="mx-3 w-auto opacity-50" />
       <div className="px-3 pt-3">
         <Dropdown>
           <Button
             variant="secondary"
             aria-label={t("nav.newAction")}
             className={cn(
-              "h-11 rounded-2xl bg-surface-secondary font-medium shadow-sm hover:bg-default/60",
+              "h-12 rounded-2xl border border-border/60 bg-surface font-medium text-foreground shadow-sm hover:bg-surface-secondary hover:shadow-md",
               collapsed && !mobile
                 ? "w-10 min-w-0 justify-center px-0"
                 : "w-full justify-start gap-2.5 px-4",
             )}
           >
-            <PlusIcon className="size-4 shrink-0" />
+            <PlusIcon className="size-4 shrink-0 text-accent" />
             {(!collapsed || mobile) && <span>{t("nav.newAction")}</span>}
           </Button>
-          <Dropdown.Popover placement="bottom start" className="min-w-48">
+          <Dropdown.Popover placement="bottom start" className="min-w-56 p-1">
             <Dropdown.Menu
               aria-label={t("nav.newAction")}
               onAction={(key) => {
@@ -244,15 +262,21 @@ function Sidebar({
               }}
             >
               <Dropdown.Item id="drive" textValue={t("apps.openDrive")}>
-                <GridIcon className="size-4" />
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                  <GridIcon className="size-4" />
+                </div>
                 <Label>{t("apps.openDrive")}</Label>
               </Dropdown.Item>
               <Dropdown.Item id="docs" textValue={t("apps.docs")}>
-                <FileTextIcon className="size-4" />
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                  <FileTextIcon className="size-4" />
+                </div>
                 <Label>{t("apps.docs")}</Label>
               </Dropdown.Item>
               <Dropdown.Item id="photos" textValue={t("apps.photos")}>
-                <PictureIcon className="size-4" />
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400">
+                  <PictureIcon className="size-4" />
+                </div>
                 <Label>{t("apps.photos")}</Label>
               </Dropdown.Item>
             </Dropdown.Menu>
@@ -426,12 +450,12 @@ function TopBar({
   }, []);
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/80 px-3 backdrop-blur-xl sm:px-5">
+    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border/40 bg-sidebar px-3 sm:px-5">
       <Button
         isIconOnly
         variant="ghost"
         size="sm"
-        className="size-9 rounded-xl"
+        className="size-9 rounded-full"
         onPress={desktop ? onToggleSidebar : onOpenMobile}
         aria-label={
           desktop ? (collapsed ? t("sidebar.expand") : t("sidebar.collapse")) : t("sidebar.open")
@@ -448,13 +472,13 @@ function TopBar({
         )}
       </Button>
 
-      <div className="hidden min-w-0 flex-1 md:block">
+      <div className="hidden min-w-0 shrink-0 md:block md:max-w-44 lg:max-w-52">
         <p className="truncate text-sm font-semibold sm:text-base">{title}</p>
       </div>
 
       <search
         aria-label={t("search.navLabel")}
-        className="flex min-w-0 flex-1 items-center md:max-w-md"
+        className="flex min-w-0 flex-1 items-center md:max-w-xl lg:max-w-2xl"
       >
         <form
           className="w-full"
@@ -482,7 +506,10 @@ function TopBar({
             });
           }}
         >
-          <InputGroup className="w-full" variant="secondary">
+          <InputGroup
+            className="h-11 w-full rounded-full border-0 bg-surface-secondary px-1.5 shadow-none transition-shadow focus-within:bg-surface focus-within:shadow-sm focus-within:ring-1 focus-within:ring-accent/40"
+            variant="secondary"
+          >
             <InputGroup.Prefix>
               <SearchIcon className="size-4 text-muted" />
             </InputGroup.Prefix>
@@ -522,20 +549,33 @@ function TopBar({
           </InputGroup>
         </form>
       </search>
-      <AppSwitcher />
-      <Button
-        isIconOnly
-        variant="ghost"
-        className="size-9 rounded-xl"
-        onPress={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-        aria-label={t("theme.toggle")}
-      >
-        {resolvedTheme === "dark" ? (
-          <SunIcon className="size-4" />
-        ) : (
-          <MoonIcon className="size-4" />
-        )}
-      </Button>
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        <Button
+          isIconOnly
+          variant="ghost"
+          className="size-9 rounded-full"
+          onPress={() => void navigate({ to: "/settings" })}
+          aria-label={t("title.settings")}
+          title={t("title.settings")}
+        >
+          <SettingsIcon className="size-4" />
+        </Button>
+        <AppSwitcher />
+        <Button
+          isIconOnly
+          variant="ghost"
+          className="size-9 rounded-full"
+          onPress={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          aria-label={t("theme.toggle")}
+          title={t("theme.toggle")}
+        >
+          {resolvedTheme === "dark" ? (
+            <SunIcon className="size-4" />
+          ) : (
+            <MoonIcon className="size-4" />
+          )}
+        </Button>
+      </div>
     </header>
   );
 }
@@ -545,46 +585,210 @@ function AppSwitcher() {
   const { t } = useAppLocale();
   const { data: user } = useQuery(currentUserQueryOptions());
   const isAdmin = Boolean(user?.capabilities.includes("system.manageUsers"));
+  const canManageJobs = Boolean(user?.capabilities.includes("system.manageJobs"));
 
   return (
     <Dropdown>
       <Button
         isIconOnly
         variant="ghost"
-        className="size-9 rounded-xl"
+        className="size-9 rounded-full"
         aria-label={t("apps.switcher")}
+        title={t("apps.switcher")}
       >
         <GridIcon className="size-4" />
       </Button>
-      <Dropdown.Popover className="min-w-48">
+      <Dropdown.Popover className="min-w-72 rounded-2xl p-1.5">
         <Dropdown.Menu
           aria-label={t("apps.switcher")}
           onAction={(key) => {
             const path = String(key);
             if (path === "/files") {
               void navigate({ to: "/files", search: { path: "/", query: "", view: "list" } });
-            } else if (path === "/photos" || path === "/docs" || path === "/admin") {
+            } else if (path === "/tasks") {
+              void navigate({ to: "/tasks", search: { status: "running", query: "" } });
+            } else if (
+              path === "/photos" ||
+              path === "/docs" ||
+              path === "/storage" ||
+              path === "/admin"
+            ) {
               void navigate({ to: path });
             }
           }}
         >
           <Dropdown.Item id="/files" textValue={t("apps.drive")}>
-            <Label>{t("apps.drive")}</Label>
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+              <GridIcon className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Label className="block truncate font-medium">{t("apps.drive")}</Label>
+              <span className="block truncate text-[11px] text-muted">{t("apps.driveDesc")}</span>
+            </div>
           </Dropdown.Item>
           <Dropdown.Item id="/photos" textValue={t("apps.photos")}>
-            <Label>{t("apps.photos")}</Label>
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400">
+              <PictureIcon className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Label className="block truncate font-medium">{t("apps.photos")}</Label>
+              <span className="block truncate text-[11px] text-muted">{t("apps.photosDesc")}</span>
+            </div>
           </Dropdown.Item>
           <Dropdown.Item id="/docs" textValue={t("apps.docs")}>
-            <Label>{t("apps.docs")}</Label>
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+              <FileTextIcon className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Label className="block truncate font-medium">{t("apps.docs")}</Label>
+              <span className="block truncate text-[11px] text-muted">{t("apps.docsDesc")}</span>
+            </div>
           </Dropdown.Item>
+          <Dropdown.Item id="/storage" textValue={t("nav.storage")}>
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400">
+              <StorageIcon className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Label className="block truncate font-medium">{t("nav.storage")}</Label>
+              <span className="block truncate text-[11px] text-muted">{t("apps.storageDesc")}</span>
+            </div>
+          </Dropdown.Item>
+          {canManageJobs ? (
+            <Dropdown.Item id="/tasks" textValue={t("nav.tasks")}>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                <TasksIcon className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <Label className="block truncate font-medium">{t("nav.tasks")}</Label>
+                <span className="block truncate text-[11px] text-muted">{t("apps.tasksDesc")}</span>
+              </div>
+            </Dropdown.Item>
+          ) : null}
           {isAdmin ? (
             <Dropdown.Item id="/admin" textValue={t("admin.title")}>
-              <Label>{t("admin.title")}</Label>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                <SettingsIcon className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <Label className="block truncate font-medium">{t("admin.title")}</Label>
+                <span className="block truncate text-[11px] text-muted">{t("apps.adminDesc")}</span>
+              </div>
             </Dropdown.Item>
           ) : null}
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown>
+  );
+}
+
+function DesktopCompanionRail() {
+  const navigate = useNavigate();
+  const { t } = useAppLocale();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const { data: user } = useQuery(currentUserQueryOptions());
+  const isAdmin = Boolean(user?.capabilities.includes("system.manageUsers"));
+  const canManageJobs = Boolean(user?.capabilities.includes("system.manageJobs"));
+
+  const items = [
+    {
+      key: "drive",
+      label: t("apps.drive"),
+      icon: GridIcon,
+      active: pathname === "/files" || pathname.startsWith("/shared") || pathname === "/search",
+      accent: "bg-accent/15 text-accent",
+      onPress: () => void navigate({ to: "/files", search: { path: "/", query: "", view: "list" } }),
+    },
+    {
+      key: "photos",
+      label: t("apps.photos"),
+      icon: PictureIcon,
+      active: pathname.startsWith("/photos"),
+      accent: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+      onPress: () => void navigate({ to: "/photos" }),
+    },
+    {
+      key: "docs",
+      label: t("apps.docs"),
+      icon: FileTextIcon,
+      active: pathname.startsWith("/docs"),
+      accent: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
+      onPress: () => void navigate({ to: "/docs" }),
+    },
+    {
+      key: "storage",
+      label: t("nav.storage"),
+      icon: StorageIcon,
+      active: pathname.startsWith("/storage"),
+      accent: "bg-teal-500/15 text-teal-600 dark:text-teal-400",
+      onPress: () => void navigate({ to: "/storage" }),
+    },
+    ...(canManageJobs
+      ? [
+          {
+            key: "tasks",
+            label: t("nav.tasks"),
+            icon: TasksIcon,
+            active: pathname.startsWith("/tasks"),
+            accent: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
+            onPress: () =>
+              void navigate({ to: "/tasks", search: { status: "running", query: "" } }),
+          },
+        ]
+      : []),
+    ...(isAdmin
+      ? [
+          {
+            key: "admin",
+            label: t("admin.title"),
+            icon: SettingsIcon,
+            active: pathname.startsWith("/admin"),
+            accent: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+            onPress: () => void navigate({ to: "/admin" }),
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <div
+      role="toolbar"
+      aria-orientation="vertical"
+      aria-label={t("apps.companionRail")}
+      className="hidden w-14 shrink-0 flex-col items-center gap-2 border-l border-border/40 bg-sidebar py-3 lg:flex"
+    >
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <Button
+            key={item.key}
+            isIconOnly
+            size="sm"
+            variant={item.active ? "secondary" : "ghost"}
+            className={cn(
+              "size-10 rounded-full transition-colors",
+              item.active ? item.accent : "text-muted hover:bg-default/40 hover:text-foreground",
+            )}
+            aria-label={item.label}
+            title={item.label}
+            onPress={item.onPress}
+          >
+            <Icon className="size-4.5" />
+          </Button>
+        );
+      })}
+      <Separator className="my-1 w-6 opacity-60" />
+      <Button
+        isIconOnly
+        size="sm"
+        variant="ghost"
+        className="size-10 rounded-full text-muted hover:bg-default/40 hover:text-foreground"
+        aria-label={t("apps.newDocShortcut")}
+        title={t("apps.newDocShortcut")}
+        onPress={() => void navigate({ to: "/docs" })}
+      >
+        <PlusIcon className="size-4.5" />
+      </Button>
+    </div>
   );
 }
 
@@ -661,9 +865,12 @@ function Layout() {
             onToggleSidebar={() => setCollapsed((value) => !value)}
             onOpenMobile={() => setMobileOpen(true)}
           />
-          <main className="min-w-0 flex-1 select-none overflow-y-auto px-3 py-4 sm:px-5 sm:py-5 lg:px-7 lg:py-6">
-            <Outlet />
-          </main>
+          <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+            <main className="min-w-0 flex-1 select-none overflow-y-auto px-3 py-3 sm:px-5 sm:py-4 lg:px-6 lg:py-4">
+              <Outlet />
+            </main>
+            <DesktopCompanionRail />
+          </div>
         </div>
         <UploadShelf />
       </div>

@@ -97,11 +97,16 @@ function Sidebar({
     select: (location) => location.search as Record<string, unknown>,
   });
   const { data: user } = useQuery(currentUserQueryOptions());
-  const storageQuery = $api.useQuery("get", "/v1/storage/stats", {}, { staleTime: 60_000, retry: false });
-  const storageSummary = storageQuery.data?.summary;
+  const storageQuery = $api.useQuery(
+    "get",
+    "/v1/files/statistics/drive",
+    {},
+    { staleTime: 60_000, retry: false },
+  );
+  const storageStats = storageQuery.data;
   const storageFillPct =
-    storageSummary && storageSummary.logicalBytes > 0
-      ? Math.min(100, Math.max(8, Math.round((Math.log10(storageSummary.logicalBytes + 1) / 12) * 100)))
+    storageStats && storageStats.totalBytes > 0
+      ? Math.min(100, Math.max(8, Math.round((Math.log10(storageStats.totalBytes + 1) / 12) * 100)))
       : 0;
   const versionLabel = import.meta.env.VITE_APP_VERSION;
   const logout = $api.useMutation("post", "/v1/auth/cookie/logout");
@@ -257,16 +262,15 @@ function Sidebar({
       <nav aria-label={t("sidebar.nav")} className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
         {visibleMainNav.map(renderItem)}
       </nav>
-      {(!collapsed || mobile) && storageSummary ? (
+      {(!collapsed || mobile) && storageStats ? (
         <Link
           to="/storage"
-          preload="intent"
           onClick={() => onNavigate?.()}
           className="mx-3 mb-3 block rounded-xl bg-surface-secondary/50 p-3 transition-colors hover:bg-surface-secondary"
         >
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="font-medium text-foreground">{t("nav.storage")}</span>
-            <span className="text-muted">{formatBytes(storageSummary.logicalBytes)}</span>
+            <span className="text-muted">{formatBytes(storageStats.totalBytes)}</span>
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-default/40">
             <div
@@ -275,7 +279,7 @@ function Sidebar({
             />
           </div>
           <p className="mt-1.5 text-[11px] text-muted">
-            {t("admin.metricFilesCount", { count: storageSummary.activeFiles })}
+            {t("admin.metricFilesCount", { count: storageStats.totalFiles })}
           </p>
         </Link>
       ) : null}

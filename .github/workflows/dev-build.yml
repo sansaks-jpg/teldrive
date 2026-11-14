@@ -1,0 +1,83 @@
+name: Dev Codegen & Build
+
+on:
+  push:
+    branches:
+      - "feat/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dev-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+
+jobs:
+  build:
+    name: Generate, check UI, build binary, and test
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: nix develop --command bash -euo pipefail {0}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Install UI and contract dependencies
+        run: |
+          bun ci --cwd typespec
+          bun ci --cwd ui
+
+      - name: Run code generation
+        run: just generate
+
+      - name: Check UI
+        run: just ui-check
+
+      - name: Build server with embedded UI
+        run: just build
+
+      - name: Run unit and PostgreSQL integration tests
+        run: just test-integration
+
+      - name: Upload Linux amd64 binary
+        uses: actions/upload-artifact@v6
+        with:
+          name: teldrive-linux-amd64
+          path: bin/teldrive
+          retention-days: 7
+
+      - name: Upload browser test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report
+          path: |
+            ui/playwright-report/
+            ui/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Commit generated artifacts if changed
+        if: github.event_name == 'push'
+        shell: bash -euo pipefail {0}
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "chore: sync generated artifacts [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

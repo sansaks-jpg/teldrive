@@ -70,6 +70,18 @@ model FileEntry {
   parentPath?: string;
 }
 
+model FileVersionSummary {
+  id: Uuid;
+  fileId: Uuid;
+  versionNumber: int32;
+  name: string;
+  mimeType?: string;
+  size: int64;
+  encryption: boolean;
+  createdBy?: int64;
+  createdAt: utcDateTime;
+}
+
 enum ViewerKind {
   image: "image",
   video: "video",
@@ -367,6 +379,36 @@ namespace Files {
     | FileMutationResponse
     | ErrorResponse<401>
     | ErrorResponse<404>;
+
+  /** List saved versions for a file. */
+  @get
+  @route("/{fileId}/versions")
+  @operationId("listFileVersions")
+  op listVersions(@path fileId: Uuid):
+    | JsonResponse<200, FileVersionSummary[]>
+    | ErrorResponse<401>
+    | ErrorResponse<404>;
+
+  /** Save a snapshot of the file's current contents as a version. */
+  @post
+  @route("/{fileId}/versions")
+  @operationId("createFileVersion")
+  op createVersion(@path fileId: Uuid):
+    | JsonResponse<201, FileVersionSummary>
+    | ErrorResponse<401>
+    | ErrorResponse<404>
+    | ErrorResponse<422>;
+
+  /** Restore a file to a previously saved version. */
+  @post
+  @route("/{fileId}/versions/{versionId}/restore")
+  @operationId("restoreFileVersion")
+  op restoreVersion(@path fileId: Uuid, @path versionId: Uuid):
+    | FileMutationResponse
+    | ErrorResponse<401>
+    | ErrorResponse<404>
+    | ErrorResponse<409>
+    | ErrorResponse<422>;
 
   /** Rename a file/folder or update its modification time. */
   @patch

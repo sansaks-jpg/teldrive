@@ -95,6 +95,11 @@ enum UserRole {
 model UserAdminUpdateRequest {
   role?: UserRole;
   disabled?: boolean;
+
+  @minValue(0)
+  storageQuotaBytes?: int64;
+
+  clearStorageQuota?: boolean = false;
 }
 
 model AdminUserSummary {
@@ -104,8 +109,35 @@ model AdminUserSummary {
   premium: boolean;
   role: UserRole;
   disabled: boolean;
+  storageUsedBytes: int64;
+  storageQuotaBytes?: int64;
   createdAt: utcDateTime;
   updatedAt: utcDateTime;
+}
+
+model AdminOverview {
+  totalUsers: int64;
+  disabledUsers: int64;
+  totalActiveFiles: int64;
+  totalActiveBytes: int64;
+  totalTrashedFiles: int64;
+  totalTrashBytes: int64;
+  totalChannels: int64;
+  healthyChannels: int64;
+  totalBots: int64;
+  activeShares: int64;
+}
+
+model AdminAuditEvent {
+  id: Uuid;
+  userId?: int64;
+  username?: string;
+  displayName?: string;
+  action: string;
+  resourceType: string;
+  resourceId?: string;
+  requestId?: string;
+  createdAt: utcDateTime;
 }
 
 model UserSearchResult {
@@ -523,10 +555,32 @@ namespace Users {
 }
 
 @tag("Administration")
-@route("/v1/admin/users")
+@route("/v1/admin")
 @useAuth(TelDriveAuth)
 namespace Administration {
   @get
+  @route("/overview")
+  @operationId("getAdminOverview")
+  op overview():
+    | JsonResponse<200, AdminOverview>
+    | ErrorResponse<401>
+    | ErrorResponse<403>;
+
+  @get
+  @route("/audit-events")
+  @operationId("listAdminAuditEvents")
+  op auditEvents(
+    ...CursorQuery,
+    @query userId?: int64,
+    @query @maxLength(128) action?: string,
+  ):
+    | JsonResponse<200, CursorPage<AdminAuditEvent>>
+    | ErrorResponse<401>
+    | ErrorResponse<403>
+    | ErrorResponse<422>;
+
+  @get
+  @route("/users")
   @operationId("listAdminUsers")
   op list(@query @maxLength(128) search?: string):
     | JsonResponse<200, AdminUserSummary[]>
@@ -534,7 +588,7 @@ namespace Administration {
     | ErrorResponse<403>;
 
   @patch
-  @route("/{userId}")
+  @route("/users/{userId}")
   @operationId("updateAdminUser")
   op update(@path userId: int64, @body body: UserAdminUpdateRequest):
     | JsonResponse<200, AdminUserSummary>
@@ -544,7 +598,7 @@ namespace Administration {
     | ErrorResponse<422>;
 
   @post
-  @route("/{userId}/revoke-access")
+  @route("/users/{userId}/revoke-access")
   @operationId("revokeAdminUserAccess")
   op revokeAccess(@path userId: int64):
     | EmptyResponse<204>

@@ -55,6 +55,7 @@ const mainNav = [
   { key: "sharedWithMe", icon: FolderIcon, path: "/shared-with-me" },
   { key: "storage", icon: StorageIcon, path: "/storage" },
   { key: "tasks", icon: TasksIcon, path: "/tasks", capability: "system.manageJobs" },
+  { key: "admin", icon: SettingsIcon, path: "/admin", capability: "system.manageUsers" },
   { key: "trash", icon: GridIcon, path: "/trash" },
 ] as const;
 
@@ -63,6 +64,9 @@ const DESKTOP_BREAKPOINT = 1024;
 function getPageTitle(pathname: string, t: (key: string) => string) {
   if (pathname === "/search") return t("title.search");
   if (pathname.startsWith("/settings")) return t("title.settings");
+  if (pathname.startsWith("/admin")) return t("admin.title");
+  if (pathname.startsWith("/photos")) return t("apps.photos");
+  if (pathname.startsWith("/docs")) return t("apps.docs");
   const item = mainNav.find(
     (entry) => pathname === entry.path || pathname.startsWith(`${entry.path}/`),
   );
@@ -433,6 +437,7 @@ function TopBar({
           </InputGroup>
         </form>
       </search>
+      <AppSwitcher />
       <Button
         isIconOnly
         variant="ghost"
@@ -447,6 +452,52 @@ function TopBar({
         )}
       </Button>
     </header>
+  );
+}
+
+function AppSwitcher() {
+  const navigate = useNavigate();
+  const { t } = useAppLocale();
+  const { data: user } = useQuery(currentUserQueryOptions());
+  const isAdmin = Boolean(user?.capabilities.includes("system.manageUsers"));
+
+  return (
+    <Dropdown>
+      <Button
+        isIconOnly
+        variant="ghost"
+        className="size-9 rounded-xl"
+        aria-label={t("apps.switcher")}
+      >
+        <GridIcon className="size-4" />
+      </Button>
+      <Dropdown.Popover className="min-w-48">
+        <Dropdown.Menu
+          aria-label={t("apps.switcher")}
+          onAction={(key) => {
+            const path = String(key);
+            if (path === "/files" || path === "/photos" || path === "/docs" || path === "/admin") {
+              void navigate({ to: path });
+            }
+          }}
+        >
+          <Dropdown.Item id="/files" textValue={t("apps.drive")}>
+            <Label>{t("apps.drive")}</Label>
+          </Dropdown.Item>
+          <Dropdown.Item id="/photos" textValue={t("apps.photos")}>
+            <Label>{t("apps.photos")}</Label>
+          </Dropdown.Item>
+          <Dropdown.Item id="/docs" textValue={t("apps.docs")}>
+            <Label>{t("apps.docs")}</Label>
+          </Dropdown.Item>
+          {isAdmin ? (
+            <Dropdown.Item id="/admin" textValue={t("admin.title")}>
+              <Label>{t("admin.title")}</Label>
+            </Dropdown.Item>
+          ) : null}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown>
   );
 }
 

@@ -29,6 +29,7 @@ const (
 
 var (
 	ErrInvalidInput              = errors.New("invalid upload input")
+	ErrQuotaExceeded             = errors.New("storage quota exceeded")
 	ErrNotFound                  = errors.New("upload not found")
 	ErrExpired                   = errors.New("upload expired")
 	ErrInvalidState              = errors.New("invalid upload state")
@@ -130,6 +131,15 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*sqlcgen.UploadSe
 	}
 	if in.PartSize <= 0 {
 		in.PartSize = defaultPartSize
+	}
+	if in.ExpectedSize > 0 {
+		usage, err := s.queries.GetUserStorageUsage(ctx, in.UserID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("check user storage quota: %w", err)
+		}
+		if err == nil && usage.StorageQuotaBytes.Valid && usage.UsedBytes+in.ExpectedSize > usage.StorageQuotaBytes.Int64 {
+			return nil, ErrQuotaExceeded
+		}
 	}
 	modTime := in.ModTime
 	if modTime.IsZero() {

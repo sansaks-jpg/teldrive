@@ -26,6 +26,96 @@ func requireAdmin(ctx context.Context) error {
 	return nil
 }
 
+func (h *Handler) GetAdminOverview(ctx context.Context) (gen.GetAdminOverviewRes, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if h.Auth == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	row, err := h.Auth.GetAdminOverview(ctx)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	return &gen.AdminOverview{
+		TotalUsers:        row.TotalUsers,
+		DisabledUsers:     row.DisabledUsers,
+		TotalActiveFiles:  row.TotalActiveFiles,
+		TotalActiveBytes:  row.TotalActiveBytes,
+		TotalTrashedFiles: row.TotalTrashedFiles,
+		TotalTrashBytes:   row.TotalTrashBytes,
+		TotalChannels:     row.TotalChannels,
+		HealthyChannels:   row.HealthyChannels,
+		TotalBots:         row.TotalBots,
+		ActiveShares:      row.ActiveShares,
+	}, nil
+}
+
+func (h *Handler) ListAdminAuditEvents(ctx context.Context, params gen.ListAdminAuditEventsParams) (gen.ListAdminAuditEventsRes, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if h.Auth == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	limit := pageLimit(params.Limit, 50)
+	var cursor datedUUIDCursor
+	if err := decodeCursor(params.Cursor, &cursor); err != nil {
+		return nil, mapServiceError(authn.ErrInvalidInput)
+	}
+	var afterCreatedAt *time.Time
+	var afterID *uuid.UUID
+	if !cursor.CreatedAt.IsZero() && cursor.ID != uuid.Nil {
+		afterCreatedAt = &cursor.CreatedAt
+		afterID = &cursor.ID
+	}
+	var filterUserID *int64
+	if v, ok := params.UserId.Get(); ok {
+		filterUserID = &v
+	}
+	rows, err := h.Auth.ListAdminAuditEvents(ctx, filterUserID, params.Action.Or(""), afterCreatedAt, afterID, int32(limit+1))
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	hasMore := len(rows) > limit
+	if hasMore {
+		rows = rows[:limit]
+	}
+	items := make([]gen.AdminAuditEvent, 0, len(rows))
+	for _, row := range rows {
+		id, _ := dbtypes.GoogleUUID(row.ID)
+		item := gen.AdminAuditEvent{
+			ID:           apiUUID(id),
+			Action:       row.Action,
+			ResourceType: row.ResourceType,
+			CreatedAt:    row.CreatedAt.Time,
+		}
+		if row.UserID.Valid {
+			item.UserId = gen.NewOptInt64(row.UserID.Int64)
+		}
+		if row.Username.Valid {
+			item.Username = gen.NewOptString(row.Username.String)
+		}
+		if row.DisplayName.Valid {
+			item.DisplayName = gen.NewOptString(row.DisplayName.String)
+		}
+		if row.ResourceID.Valid {
+			item.ResourceId = gen.NewOptString(row.ResourceID.String)
+		}
+		if row.RequestID.Valid {
+			item.RequestId = gen.NewOptString(row.RequestID.String)
+		}
+		items = append(items, item)
+	}
+	out := gen.AdminAuditEventPage{Items: items}
+	if hasMore && len(rows) > 0 {
+		last := rows[len(rows)-1]
+		lastID, _ := dbtypes.GoogleUUID(last.ID)
+		out.NextCursor = encodeCursor(datedUUIDCursor{CreatedAt: last.CreatedAt.Time, ID: lastID})
+	}
+	return &out, nil
+}
+
 func (h *Handler) ListAdminUsers(ctx context.Context, params gen.ListAdminUsersParams) (gen.ListAdminUsersRes, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
@@ -37,9 +127,17 @@ func (h *Handler) ListAdminUsers(ctx context.Context, params gen.ListAdminUsersP
 	if err != nil {
 		return nil, mapServiceError(err)
 	}
+	usageMap, err := h.Auth.ListAdminUserStorageUsage(ctx)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
 	out := make(gen.ListAdminUsersOKApplicationJSON, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, adminUserSummary(row))
+		var usedBytes int64
+		if u, ok := usageMap[row.UserID]; ok {
+			usedBytes = u.LogicalBytes + u.TrashBytes
+		}
+		out = append(out, adminUserSummary(row, usedBytes))
 	}
 	return &out, nil
 }
@@ -70,10 +168,34 @@ func (h *Handler) UpdateAdminUser(ctx context.Context, req *gen.UserAdminUpdateR
 		}
 		changed = true
 	}
+	if req.ClearStorageQuota.Or(false) {
+		row, err = h.Auth.UpdateUserStorageQuota(ctx, params.UserId, nil)
+		if err != nil {
+			return nil, mapServiceError(err)
+		}
+		changed = true
+	} else if quota, ok := req.StorageQuotaBytes.Get(); ok {
+		row, err = h.Auth.UpdateUserStorageQuota(ctx, params.UserId, &quota)
+		if err != nil {
+			return nil, mapServiceError(err)
+		}
+		changed = true
+	}
 	if !changed {
 		return nil, mapServiceError(authn.ErrInvalidInput)
 	}
-	out := adminUserSummary(row)
+	actorID, _ := UserIDFromContext(ctx)
+	targetStr := row.Username.String
+	if targetStr == "" {
+		targetStr = "user"
+	}
+	h.Auth.RecordAuditEvent(ctx, &actorID, "admin.user.updated", "user", &targetStr, nil)
+	usageMap, _ := h.Auth.ListAdminUserStorageUsage(ctx)
+	var usedBytes int64
+	if u, ok := usageMap[row.UserID]; ok {
+		usedBytes = u.LogicalBytes + u.TrashBytes
+	}
+	out := adminUserSummary(row, usedBytes)
 	return &out, nil
 }
 
@@ -541,10 +663,13 @@ func (h *Handler) createUploadForOwner(ctx context.Context, ownerID int64, paren
 	return session, nil
 }
 
-func adminUserSummary(row *sqlcgen.User) gen.AdminUserSummary {
+func adminUserSummary(row *sqlcgen.User, storageUsedBytes int64) gen.AdminUserSummary {
 	out := gen.AdminUserSummary{
 		UserId: row.UserID, Premium: row.Premium, Role: gen.UserRole(row.Role), Disabled: row.DisabledAt.Valid,
-		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+		StorageUsedBytes: storageUsedBytes, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+	}
+	if row.StorageQuotaBytes.Valid {
+		out.StorageQuotaBytes = gen.NewOptInt64(row.StorageQuotaBytes.Int64)
 	}
 	if row.DisplayName.Valid {
 		out.DisplayName = gen.NewOptString(row.DisplayName.String)

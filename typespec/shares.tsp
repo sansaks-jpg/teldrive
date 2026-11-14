@@ -5,6 +5,8 @@ namespace TelDrive;
 
 enum SharePermission {
   read: "read",
+  comment: "comment",
+  upload: "upload",
   edit: "edit",
 }
 

@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import { useAppLocale } from "@/lib/locale";
 import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
 import BookmarkIcon from "~icons/gravity-ui/bookmark";
+import ClockIcon from "~icons/gravity-ui/clock";
 import CopyIcon from "~icons/gravity-ui/copy";
 import CopyLinkIcon from "~icons/gravity-ui/copy-arrow-right";
 import MoveIcon from "~icons/gravity-ui/folder-arrow-right";
@@ -33,6 +34,7 @@ export function FileSelectionToolbar({
   bookmarked = false,
   onRename,
   onShare,
+  onVersions,
   onDownload,
   onCopyDownloadLinks,
   onMove,
@@ -47,6 +49,7 @@ export function FileSelectionToolbar({
   bookmarked?: boolean;
   onRename?: () => void;
   onShare?: () => void;
+  onVersions?: () => void;
   onDownload?: () => void;
   onCopyDownloadLinks?: () => void;
   onMove?: () => void;
@@ -126,6 +129,18 @@ export function FileSelectionToolbar({
             onPress={onShare}
           >
             <LinkIcon className="size-4" />
+          </SelectionActionButton>
+        ) : null}
+        {singleSelectedFile?.kind === "file" && onVersions ? (
+          <SelectionActionButton
+            isIconOnly
+            size="sm"
+            variant="ghost"
+            aria-label={t("versions.action")}
+            isDisabled={pending}
+            onPress={onVersions}
+          >
+            <ClockIcon className="size-4" />
           </SelectionActionButton>
         ) : null}
         {singleSelectedFile?.kind === "file" && onDownload ? (

@@ -132,7 +132,12 @@ func normalizePermission(permission sqlcgen.SharePermission) sqlcgen.SharePermis
 }
 
 func validPermission(permission sqlcgen.SharePermission) bool {
-	return permission == sqlcgen.SharePermissionRead || permission == sqlcgen.SharePermissionEdit
+	switch permission {
+	case sqlcgen.SharePermissionRead, sqlcgen.SharePermissionComment, sqlcgen.SharePermissionUpload, sqlcgen.SharePermissionEdit:
+		return true
+	default:
+		return false
+	}
 }
 
 func optionalPermission(permission *sqlcgen.SharePermission) sqlcgen.NullSharePermission {
@@ -612,7 +617,7 @@ func (s *Service) ResolvePublicEditableParent(ctx context.Context, token, passwo
 	if err != nil {
 		return nil, uuid.Nil, err
 	}
-	if resolved.Share.Permission != sqlcgen.SharePermissionEdit || resolved.File.Kind != sqlcgen.FileKindFolder {
+	if (resolved.Share.Permission != sqlcgen.SharePermissionEdit && resolved.Share.Permission != sqlcgen.SharePermissionUpload) || resolved.File.Kind != sqlcgen.FileKindFolder {
 		return nil, uuid.Nil, ErrForbidden
 	}
 	rootID, ok := dbtypes.GoogleUUID(resolved.File.ID)

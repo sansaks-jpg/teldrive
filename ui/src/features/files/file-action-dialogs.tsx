@@ -5,6 +5,7 @@ import { AppDialog } from "../../components/dialogs/app-dialog";
 import { FilePreviewDialog } from "../../components/file-preview-dialog";
 import { FolderPicker } from "./folder-picker";
 import { ShareDialog } from "./share-dialog";
+import { VersionsDialog } from "./versions-dialog";
 
 export function FileActionDialogs({
   renameFile,
@@ -17,6 +18,8 @@ export function FileActionDialogs({
   destinationAction,
   shareFile,
   onShareClose,
+  versionsFile,
+  onVersionsClose,
   previewFile,
   onPreviewClose,
 }: {
@@ -35,6 +38,8 @@ export function FileActionDialogs({
   };
   shareFile?: FileEntry;
   onShareClose: () => void;
+  versionsFile?: FileEntry;
+  onVersionsClose?: () => void;
   previewFile?: FileEntry;
   onPreviewClose: () => void;
 }) {
@@ -124,6 +129,12 @@ export function FileActionDialogs({
         file={shareFile}
         onOpenChange={(open) => {
           if (!open) onShareClose();
+        }}
+      />
+      <VersionsDialog
+        file={versionsFile}
+        onOpenChange={(open) => {
+          if (!open) onVersionsClose?.();
         }}
       />
       <FilePreviewDialog

@@ -24,7 +24,7 @@ import { useUploadStore } from "@/features/uploads/store";
 import { useAppLocale } from "@/lib/locale";
 import { getQueryClient } from "@/lib/queryClient";
 
-type Permission = "read" | "edit";
+type Permission = "read" | "comment" | "upload" | "edit";
 
 export type SharedBrowserSearch = {
   path: string;
@@ -47,7 +47,12 @@ export function sharedBrowserSearch(search: Record<string, unknown>): SharedBrow
     query: typeof search.query === "string" ? search.query : "",
     view: search.view === "grid" ? "grid" : "list",
     permission:
-      search.permission === "edit" ? "edit" : search.permission === "read" ? "read" : undefined,
+      search.permission === "edit" ||
+      search.permission === "upload" ||
+      search.permission === "comment" ||
+      search.permission === "read"
+        ? search.permission
+        : undefined,
   };
 }
 

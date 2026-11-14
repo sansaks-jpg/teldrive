@@ -58,6 +58,26 @@ WHERE user_id = sqlc.arg(user_id)
   AND role <> 'owner'
 RETURNING *;
 
+-- name: UpdateUserStorageQuota :one
+UPDATE /* TEMPLATE: schema */users
+SET storage_quota_bytes = sqlc.narg(storage_quota_bytes)::bigint,
+    updated_at = now()
+WHERE user_id = sqlc.arg(user_id)
+RETURNING *;
+
+-- name: GetUserStorageUsage :one
+SELECT
+    u.storage_quota_bytes,
+    COALESCE((
+        SELECT sum(f.size)
+        FROM /* TEMPLATE: schema */files f
+        WHERE f.user_id = u.user_id
+          AND f.kind = 'file'
+          AND f.status IN ('active', 'trashed')
+    ), 0)::bigint AS used_bytes
+FROM /* TEMPLATE: schema */users u
+WHERE u.user_id = sqlc.arg(user_id);
+
 -- name: RevokeAllSessionsForUser :execrows
 UPDATE /* TEMPLATE: schema */sessions
 SET revoked_at = COALESCE(revoked_at, now())

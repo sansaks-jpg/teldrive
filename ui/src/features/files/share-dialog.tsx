@@ -22,7 +22,20 @@ import { getQueryClient } from "@/lib/queryClient";
 import { useAppLocale } from "@/lib/locale";
 import { useDateTimeFormatter } from "@/lib/format";
 
-type Permission = "read" | "edit";
+type Permission = "read" | "comment" | "upload" | "edit";
+
+function permissionLabelKey(permission: Permission) {
+  switch (permission) {
+    case "comment":
+      return "share.commenter";
+    case "upload":
+      return "share.uploader";
+    case "edit":
+      return "share.editor";
+    default:
+      return "share.viewer";
+  }
+}
 type ExpirationMode = "never" | "1h" | "1d" | "7d" | "30d" | "custom";
 
 const DURATION_UNITS: Record<string, number> = {
@@ -259,7 +272,7 @@ export function ShareDialog({
                     </p>
                   </div>
                   <Chip variant="tertiary">
-                    {t(grant.permission === "read" ? "share.viewer" : "share.editor")}
+                    {t(permissionLabelKey(grant.permission))}
                   </Chip>
                   <Dropdown>
                     <Button
@@ -274,13 +287,15 @@ export function ShareDialog({
                       <Dropdown.Menu
                         aria-label={t("share.grantActions")}
                         onAction={(key) => {
-                          if (key === "permission") {
+                          const action = String(key);
+                          if (action.startsWith("perm:")) {
+                            const nextPermission = action.slice(5) as Permission;
                             void (async () => {
                               try {
                                 await updateGrant.mutateAsync({
                                   params: { path: { grantId: grant.id } },
                                   body: {
-                                    permission: grant.permission === "read" ? "edit" : "read",
+                                    permission: nextPermission,
                                     clearExpiresAt: false,
                                   },
                                 });
@@ -292,7 +307,7 @@ export function ShareDialog({
                               }
                             })();
                           }
-                          if (key === "remove") {
+                          if (action === "remove") {
                             void (async () => {
                               try {
                                 await revokeGrant.mutateAsync({
@@ -309,12 +324,17 @@ export function ShareDialog({
                           }
                         }}
                       >
-                        <Dropdown.Item id="permission" textValue={t("share.changePermission")}>
-                          <Label>
-                            {t(
-                              grant.permission === "read" ? "share.makeEditor" : "share.makeViewer",
-                            )}
-                          </Label>
+                        <Dropdown.Item id="perm:read" textValue={t("share.viewer")}>
+                          <Label>{t("share.viewer")}</Label>
+                        </Dropdown.Item>
+                        <Dropdown.Item id="perm:comment" textValue={t("share.commenter")}>
+                          <Label>{t("share.commenter")}</Label>
+                        </Dropdown.Item>
+                        <Dropdown.Item id="perm:upload" textValue={t("share.uploader")}>
+                          <Label>{t("share.uploader")}</Label>
+                        </Dropdown.Item>
+                        <Dropdown.Item id="perm:edit" textValue={t("share.editor")}>
+                          <Label>{t("share.editor")}</Label>
                         </Dropdown.Item>
                         <Dropdown.Item id="remove" textValue={t("share.removeAccess")}>
                           <Label>{t("share.removeAccess")}</Label>
@@ -401,7 +421,7 @@ export function ShareDialog({
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">
                       {t("share.linkTitle", {
-                        role: t(link.permission === "read" ? "share.viewer" : "share.editor"),
+                        role: t(permissionLabelKey(link.permission)),
                       })}
                     </p>
                     <p className="truncate text-xs text-muted">
@@ -415,7 +435,7 @@ export function ShareDialog({
                     </p>
                   </div>
                   <Chip variant="tertiary">
-                    {t(link.permission === "read" ? "share.viewer" : "share.editor")}
+                    {t(permissionLabelKey(link.permission))}
                   </Chip>
                   <Dropdown>
                     <Button
@@ -489,13 +509,19 @@ function PermissionPicker({
       onSelectionChange={(key) => onChange(String(key) as Permission)}
     >
       <Select.Trigger className="h-9 min-h-9 py-1.5">
-        <Select.Value>{t(value === "read" ? "share.viewer" : "share.editor")}</Select.Value>
+        <Select.Value>{t(permissionLabelKey(value))}</Select.Value>
         <Select.Indicator />
       </Select.Trigger>
       <Select.Popover>
         <ListBox>
           <ListBox.Item id="read" textValue={t("share.viewer")}>
             {t("share.viewer")}
+          </ListBox.Item>
+          <ListBox.Item id="comment" textValue={t("share.commenter")}>
+            {t("share.commenter")}
+          </ListBox.Item>
+          <ListBox.Item id="upload" textValue={t("share.uploader")}>
+            {t("share.uploader")}
           </ListBox.Item>
           <ListBox.Item id="edit" textValue={t("share.editor")}>
             {t("share.editor")}

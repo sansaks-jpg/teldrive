@@ -141,6 +141,7 @@ export function FileManagerPage({
   const operationLock = useRef(false);
   const [operationPending, setOperationPending] = useState(false);
   const [shareFile, setShareFile] = useState<FileEntry>();
+  const [versionsFile, setVersionsFile] = useState<FileEntry>();
   const [pasteConflictPane, setPasteConflictPane] = useState<PaneId>();
   const primaryUploadFilesTriggerRef = useRef<HTMLButtonElement>(null);
   const primaryUploadFolderTriggerRef = useRef<HTMLButtonElement>(null);
@@ -788,6 +789,10 @@ export function FileManagerPage({
           setActivePane(pane);
           setShareFile(selectedFiles[0]);
         }}
+        onVersions={() => {
+          setActivePane(pane);
+          setVersionsFile(selectedFiles[0]);
+        }}
         onDownload={() => startFileDownload(selectedFiles[0])}
         onCopyDownloadLinks={() => void copyDownloadLinks(pane)}
         onMove={() => {
@@ -1054,6 +1059,8 @@ export function FileManagerPage({
         }
         shareFile={shareFile}
         onShareClose={() => setShareFile(undefined)}
+        versionsFile={versionsFile}
+        onVersionsClose={() => setVersionsFile(undefined)}
         previewFile={previewFile}
         onPreviewClose={() => setPreviewFile(undefined)}
       />

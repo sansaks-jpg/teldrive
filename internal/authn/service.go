@@ -707,6 +707,78 @@ func (s *Service) RevokeUserAccess(ctx context.Context, userID int64) error {
 	return nil
 }
 
+func (s *Service) UpdateUserStorageQuota(ctx context.Context, userID int64, quotaBytes *int64) (*sqlcgen.User, error) {
+	if userID <= 0 || (quotaBytes != nil && *quotaBytes < 0) {
+		return nil, ErrInvalidInput
+	}
+	row, err := s.queries.UpdateUserStorageQuota(ctx, sqlcgen.UpdateUserStorageQuotaParams{
+		StorageQuotaBytes: dbtypes.OptionalInt8(quotaBytes),
+		UserID:            userID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrSessionNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update user storage quota: %w", err)
+	}
+	return row, nil
+}
+
+func (s *Service) GetAdminOverview(ctx context.Context) (*sqlcgen.GetAdminOverviewRow, error) {
+	row, err := s.queries.GetAdminOverview(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get admin overview: %w", err)
+	}
+	return row, nil
+}
+
+func (s *Service) ListAdminUserStorageUsage(ctx context.Context) (map[int64]*sqlcgen.ListAdminUserStorageUsageRow, error) {
+	rows, err := s.queries.ListAdminUserStorageUsage(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list admin user storage usage: %w", err)
+	}
+	out := make(map[int64]*sqlcgen.ListAdminUserStorageUsageRow, len(rows))
+	for _, row := range rows {
+		out[row.UserID] = row
+	}
+	return out, nil
+}
+
+func (s *Service) ListAdminAuditEvents(ctx context.Context, userID *int64, action string, afterCreatedAt *time.Time, afterID *uuid.UUID, pageSize int32) ([]*sqlcgen.ListAdminAuditEventsRow, error) {
+	if pageSize <= 0 || pageSize > 200 {
+		pageSize = 50
+	}
+	var actionPtr *string
+	if trimmed := strings.TrimSpace(action); trimmed != "" {
+		actionPtr = &trimmed
+	}
+	rows, err := s.queries.ListAdminAuditEvents(ctx, sqlcgen.ListAdminAuditEventsParams{
+		UserID:         dbtypes.OptionalInt8(userID),
+		Action:         dbtypes.OptionalText(actionPtr),
+		AfterCreatedAt: dbtypes.OptionalTime(afterCreatedAt),
+		AfterID:        dbtypes.OptionalUUID(afterID),
+		PageSize:       pageSize,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list admin audit events: %w", err)
+	}
+	return rows, nil
+}
+
+func (s *Service) RecordAuditEvent(ctx context.Context, userID *int64, action, resourceType string, resourceID *string, metadata []byte) {
+	if s == nil || s.queries == nil {
+		return
+	}
+	_, _ = s.queries.InsertAuditEvent(ctx, sqlcgen.InsertAuditEventParams{
+		ID:           dbtypes.UUID(uuid.New()),
+		UserID:       dbtypes.OptionalInt8(userID),
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   dbtypes.OptionalText(resourceID),
+		Metadata:     metadata,
+	})
+}
+
 func Capabilities(role sqlcgen.UserRole) []string {
 	capabilities := []string{"files.read", "files.write", "files.share"}
 	if role == sqlcgen.UserRoleAdmin || role == sqlcgen.UserRoleOwner {

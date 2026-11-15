@@ -12,10 +12,12 @@ import {
   Virtualizer,
 } from "react-aria-components";
 import { createPortal } from "react-dom";
-import type { FileEntry } from "@/api/types";
+import type { FileBrowserPreferences, FileEntry } from "@/api/types";
 import { useDateOnlyFormatter, useDateTimeFormatter, useFormatBytes } from "@/lib/format";
 import { useAppLocale } from "@/lib/locale";
+import ArrowDownIcon from "~icons/gravity-ui/arrow-down";
 import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
+import ArrowUpIcon from "~icons/gravity-ui/arrow-up";
 import BackIcon from "~icons/gravity-ui/arrow-left";
 import BookmarkIcon from "~icons/gravity-ui/bookmark";
 import CheckIcon from "~icons/gravity-ui/check";
@@ -71,6 +73,10 @@ type FileBrowserProps = {
   path: string;
   rootLabel: string;
   view: FileBrowserView;
+  sorting?: FileBrowserPreferences;
+  onSortChange?: (sorting: FileBrowserPreferences) => void;
+  onMoveToFolder?: (ids: string[], targetFolder: FileEntry) => void;
+  onDownloadFiles?: (files: FileEntry[]) => void;
   loading: boolean;
   onNavigatePath: (path: string) => void;
   onViewChange: (view: FileBrowserView) => void;
@@ -112,6 +118,10 @@ export function FileBrowser({
   path,
   rootLabel,
   view,
+  sorting,
+  onSortChange,
+  onMoveToFolder,
+  onDownloadFiles,
   loading,
   onNavigatePath,
   onViewChange,
@@ -154,26 +164,25 @@ export function FileBrowser({
         data-testid="file-browser-toolbar"
       >
         <div className="flex min-w-0 flex-wrap items-center gap-2 [&>button]:shrink-0">
-          {onBack ? (
+          {onBack && path !== "/" ? (
             <Button
               isIconOnly
               size="sm"
               variant="ghost"
-              className="hidden size-8 rounded-full sm:inline-flex"
+              className="size-8 rounded-full sm:hidden"
               aria-label={t("browser.back")}
               onPress={onBack}
             >
               <BackIcon className="size-4" />
             </Button>
           ) : null}
-          {!hideFolderControls ? (
+          {!hideFolderControls && path !== "/" ? (
             <Button
               isIconOnly
               size="sm"
               variant="ghost"
               className="size-8 rounded-full"
               aria-label={t("browser.up")}
-              isDisabled={path === "/"}
               onPress={() => {
                 const parts = path.split("/").filter(Boolean);
                 const parentPath = parts.length <= 1 ? "/" : `/${parts.slice(0, -1).join("/")}`;
@@ -266,10 +275,72 @@ export function FileBrowser({
         ) : (
           <>
             {view === "list" && files.length > 0 ? (
-              <div className="hidden shrink-0 grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] items-center gap-2 border-b border-border/60 px-4 py-2 text-xs font-medium text-[#444746] dark:text-[#c4c7c5] sm:grid @xl/file-browser:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] @xl/file-browser:gap-4">
-                <span className="truncate pl-1">{t("drive.columnName")}</span>
-                <span className="hidden @xl/file-browser:block">{t("drive.columnModified")}</span>
-                <span className="hidden sm:block">{t("drive.columnSize")}</span>
+              <div className="hidden shrink-0 grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] items-center gap-2 border-b border-border/60 px-4 py-1.5 text-xs font-medium text-[#444746] dark:text-[#c4c7c5] sm:grid @xl/file-browser:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] @xl/file-browser:gap-4">
+                {(
+                  [
+                    {
+                      key: "name" as const,
+                      label: t("drive.columnName"),
+                      defaultOrder: "asc" as const,
+                      className: "pl-1",
+                    },
+                    {
+                      key: "updatedAt" as const,
+                      label: t("drive.columnModified"),
+                      defaultOrder: "desc" as const,
+                      className: "hidden @xl/file-browser:inline-flex",
+                    },
+                    {
+                      key: "size" as const,
+                      label: t("drive.columnSize"),
+                      defaultOrder: "desc" as const,
+                      className: "hidden sm:inline-flex",
+                    },
+                  ] as const
+                ).map((col) => {
+                  const isActive = sorting?.sort === col.key;
+                  const order = isActive ? sorting.order : col.defaultOrder;
+                  if (!sorting || !onSortChange) {
+                    return (
+                      <span key={col.key} className={`truncate ${col.className}`}>
+                        {col.label}
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={col.key}
+                      type="button"
+                      className={`group/col inline-flex min-w-0 items-center gap-1.5 rounded-md py-1 text-left font-medium transition-colors hover:text-foreground ${col.className}`}
+                      onClick={() =>
+                        onSortChange({
+                          ...sorting,
+                          sort: col.key,
+                          order: isActive
+                            ? sorting.order === "asc"
+                              ? "desc"
+                              : "asc"
+                            : col.defaultOrder,
+                        })
+                      }
+                    >
+                      <span className="truncate">{col.label}</span>
+                      <span
+                        className={`inline-flex size-5 shrink-0 items-center justify-center rounded-full transition-opacity ${
+                          isActive
+                            ? "bg-[#e1e5ea]/80 text-foreground opacity-100 dark:bg-[#333538]"
+                            : "opacity-0 group-hover/col:opacity-65"
+                        }`}
+                      >
+                        {order === "asc" ? (
+                          <ArrowUpIcon className="size-3" />
+                        ) : (
+                          <ArrowDownIcon className="size-3" />
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
                 <span aria-hidden="true" />
               </div>
             ) : null}
@@ -277,6 +348,10 @@ export function FileBrowser({
               <FileCollection
                 files={files}
                 view={view}
+                sorting={sorting}
+                onSortChange={onSortChange}
+                onMoveToFolder={onMoveToFolder}
+                onDownloadFiles={onDownloadFiles}
                 selection={selection}
                 selectionDisabled={selectionDisabled}
                 onOpen={onOpen}
@@ -302,6 +377,10 @@ export function FileBrowser({
 function FileCollection({
   files,
   view,
+  sorting,
+  onSortChange,
+  onMoveToFolder,
+  onDownloadFiles,
   selection,
   selectionDisabled,
   onOpen,
@@ -319,6 +398,10 @@ function FileCollection({
 }: {
   files: FileEntry[];
   view: FileBrowserView;
+  sorting?: FileBrowserPreferences;
+  onSortChange?: (sorting: FileBrowserPreferences) => void;
+  onMoveToFolder?: (ids: string[], targetFolder: FileEntry) => void;
+  onDownloadFiles?: (files: FileEntry[]) => void;
   selection?: FileBrowserProps["selection"];
   selectionDisabled: boolean;
   onOpen: (file: FileEntry) => void;
@@ -343,6 +426,7 @@ function FileCollection({
   const longPressStart = useRef<{ x: number; y: number } | undefined>(undefined);
   const longPressTriggered = useRef(false);
   const [gridWidth, setGridWidth] = useState(0);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -355,6 +439,25 @@ function FileCollection({
     height: number;
   } | null>(null);
   const suppressNextEmptyClick = useRef(false);
+  const suppressRightClickSelection = useRef(false);
+  useEffect(() => {
+    const onPointerDownCapture = (event: PointerEvent) => {
+      if (event.button === 2) {
+        suppressRightClickSelection.current = true;
+        window.setTimeout(() => {
+          suppressRightClickSelection.current = false;
+        }, 150);
+      }
+    };
+    window.addEventListener("pointerdown", onPointerDownCapture, true);
+    return () => window.removeEventListener("pointerdown", onPointerDownCapture, true);
+  }, []);
+  const selectedKeysRef = useRef(selectedKeys);
+  selectedKeysRef.current = selectedKeys;
+  const handleSelectionChange = (next: Selection) => {
+    if (suppressRightClickSelection.current) return;
+    selection?.onSelectionChange(next);
+  };
 
   const compactList =
     typeof window !== "undefined" ? window.innerWidth < 640 : gridWidth > 0 && gridWidth < 640;
@@ -426,7 +529,7 @@ function FileCollection({
       selectionMode={selection ? "multiple" : "none"}
       selectionBehavior={compactList && hasSelection ? "toggle" : "replace"}
       selectedKeys={selection?.selectedKeys}
-      onSelectionChange={selection?.onSelectionChange}
+      onSelectionChange={selection ? handleSelectionChange : undefined}
       disabledKeys={selectionDisabled ? files.map((file) => file.id) : undefined}
       disabledBehavior="selection"
       onClick={(event) => {
@@ -531,17 +634,43 @@ function FileCollection({
     >
       <Collection
         items={files}
-        dependencies={[dimmedIds, showLocations, compactList ? hasSelection : false, compactList]}
+        dependencies={[
+          dimmedIds,
+          showLocations,
+          compactList ? hasSelection : false,
+          compactList,
+          dragOverFolderId,
+        ]}
       >
         {(file) => (
           <GridListItem
             id={file.id}
             textValue={file.name}
+            onPointerDownCapture={(event) => {
+              if (event.button === 2) {
+                suppressRightClickSelection.current = true;
+                window.setTimeout(() => {
+                  suppressRightClickSelection.current = false;
+                }, 150);
+                event.stopPropagation();
+              }
+            }}
+            onMouseDownCapture={(event) => {
+              if (event.button === 2) event.stopPropagation();
+            }}
+            onPointerUpCapture={(event) => {
+              if (event.button === 2) event.stopPropagation();
+            }}
+            onMouseUpCapture={(event) => {
+              if (event.button === 2) event.stopPropagation();
+            }}
             onContextMenu={(event) => {
               if (!rowActions) return;
               event.preventDefault();
               event.stopPropagation();
-              if (selection && selectedKeys !== "all" && !selectedKeys.has(file.id)) {
+              const curKeys = selectedKeysRef.current;
+              const alreadySelected = curKeys === "all" || curKeys.has(file.id);
+              if (selection && !alreadySelected) {
                 selection.onSelectionChange(new Set([file.id]));
               }
               setContextMenu({ x: event.clientX, y: event.clientY, file });
@@ -567,65 +696,119 @@ function FileCollection({
             }}
             onPointerUp={clearLongPress}
             onPointerCancel={clearLongPress}
-            className={(state) =>
-              grid
-                ? [
-                    "group relative flex min-w-0 cursor-default flex-col rounded-2xl border border-transparent bg-[#f0f4f9]/85 p-2.5 outline-none transition-colors dark:bg-[#282a2c]/85",
-                    state.isSelected
-                      ? "border-[#0b57d0] bg-[#c2e7ff]/55 dark:border-[#a8c7fa] dark:bg-[#004a77]"
-                      : "hover:bg-[#e1e5ea]/90 dark:hover:bg-[#333538]",
-
-                    dimmedIds?.has(file.id) && "opacity-45",
-                    state.isFocusVisible && "ring-2 ring-inset ring-accent",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")
-                : [
-                    "group grid min-h-[64px] cursor-default grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2 rounded-2xl bg-[#f4f7fb] px-3.5 py-2.5 outline-none transition-colors dark:bg-[#1e1f20] sm:min-h-11 sm:grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] sm:rounded-none sm:border-b sm:border-border/45 sm:bg-transparent sm:px-4 sm:py-0 sm:last:border-b-0 sm:dark:bg-transparent @xl/file-browser:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] @xl/file-browser:gap-4",
-                    state.isSelected
-                      ? "bg-[#d3e3fd]! dark:bg-[#004a77]!"
-                      : "hover:bg-[#eaf0f7] dark:hover:bg-[#282a2c] sm:hover:bg-[#f0f4f9] sm:dark:hover:bg-[#282a2c]/70",
-
-                    dimmedIds?.has(file.id) && "opacity-45",
-                    state.isFocusVisible && "ring-2 ring-inset ring-accent/30",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")
-            }
+            className="outline-none"
           >
-            {(state) =>
-              grid ? (
-                <GridFile
-                  file={file}
-                  selectable={Boolean(selection)}
-                  inSelectionMode={hasSelection}
-                  compactMenu={compactList}
-                  onEnterSelection={selection ? () => enterFileSelection(file.id) : undefined}
-                  showCheckbox={state.isHovered || state.isFocusVisible || state.isSelected}
-                  location={showLocations ? file.parentPath : undefined}
-                  onOpenContainingFolder={
-                    onOpenContainingFolder ? () => onOpenContainingFolder(file) : undefined
+            {(state) => (
+              // biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop wrapper inside GridListItem
+              <div
+                draggable={Boolean(onMoveToFolder)}
+                onDragStart={(event) => {
+                  if (!onMoveToFolder) return;
+                  const curKeys = selectedKeysRef.current;
+                  const isSelected = curKeys === "all" || curKeys.has(file.id);
+                  const dragIds = isSelected
+                    ? curKeys === "all"
+                      ? files.map((item) => item.id)
+                      : Array.from(curKeys, String)
+                    : [file.id];
+                  event.dataTransfer.setData(
+                    "application/x-teldrive-move",
+                    JSON.stringify(dragIds),
+                  );
+                  event.dataTransfer.effectAllowed = "move";
+                }}
+                onDragOver={(event) => {
+                  if (
+                    !onMoveToFolder ||
+                    file.kind !== "folder" ||
+                    !event.dataTransfer.types.includes("application/x-teldrive-move")
+                  ) {
+                    return;
                   }
-                  onOpen={() => onOpen(file)}
-                  rowActions={rowActions}
-                />
-              ) : (
-                <ListFile
-                  file={file}
-                  selectable={Boolean(selection)}
-                  inSelectionMode={hasSelection}
-                  compactMenu={compactList}
-                  onEnterSelection={selection ? () => enterFileSelection(file.id) : undefined}
-                  showCheckbox={state.isHovered || state.isFocusVisible || state.isSelected}
-                  location={showLocations ? file.parentPath : undefined}
-                  onOpenContainingFolder={
-                    onOpenContainingFolder ? () => onOpenContainingFolder(file) : undefined
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  if (dragOverFolderId !== file.id) setDragOverFolderId(file.id);
+                }}
+                onDragLeave={() => {
+                  if (dragOverFolderId === file.id) setDragOverFolderId(null);
+                }}
+                onDrop={(event) => {
+                  if (!onMoveToFolder || file.kind !== "folder") return;
+                  const raw = event.dataTransfer.getData("application/x-teldrive-move");
+                  if (!raw) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setDragOverFolderId(null);
+                  try {
+                    const dragIds = JSON.parse(raw) as string[];
+                    if (Array.isArray(dragIds) && dragIds.length > 0) {
+                      onMoveToFolder(dragIds, file);
+                    }
+                  } catch {
+                    // ignore malformed drag payload
                   }
-                  onOpen={() => onOpen(file)}
-                  rowActions={rowActions}
-                />
-              )
-            }
+                }}
+                className={
+                  grid
+                    ? [
+                        "group relative flex min-w-0 cursor-default flex-col rounded-2xl border border-transparent bg-[#f0f4f9]/85 p-2.5 outline-none transition-colors dark:bg-[#282a2c]/85",
+                        state.isSelected
+                          ? "border-[#0b57d0] bg-[#c2e7ff]/55 dark:border-[#a8c7fa] dark:bg-[#004a77]"
+                          : "hover:bg-[#e1e5ea]/90 dark:hover:bg-[#333538]",
+                        dragOverFolderId === file.id &&
+                          "ring-2 ring-inset ring-[#0b57d0] bg-[#c2e7ff]/40 dark:ring-[#a8c7fa] dark:bg-[#004a77]/60",
+                        dimmedIds?.has(file.id) && "opacity-45",
+                        state.isFocusVisible && "ring-2 ring-inset ring-accent",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")
+                    : [
+                        "group grid min-h-[64px] cursor-default grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2 rounded-2xl bg-[#f4f7fb] px-3.5 py-2.5 outline-none transition-colors dark:bg-[#1e1f20] sm:min-h-11 sm:grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] sm:rounded-none sm:border-b sm:border-border/45 sm:bg-transparent sm:px-4 sm:py-0 sm:last:border-b-0 sm:dark:bg-transparent @xl/file-browser:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] @xl/file-browser:gap-4",
+                        state.isSelected
+                          ? "bg-[#d3e3fd]! dark:bg-[#004a77]!"
+                          : "hover:bg-[#eaf0f7] dark:hover:bg-[#282a2c] sm:hover:bg-[#f0f4f9] sm:dark:hover:bg-[#282a2c]/70",
+                        dragOverFolderId === file.id &&
+                          "ring-2 ring-inset ring-[#0b57d0] bg-[#c2e7ff]/40 dark:ring-[#a8c7fa] dark:bg-[#004a77]/60",
+                        dimmedIds?.has(file.id) && "opacity-45",
+                        state.isFocusVisible && "ring-2 ring-inset ring-accent/30",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")
+                }
+              >
+                {grid ? (
+                  <GridFile
+                    file={file}
+                    selectable={Boolean(selection)}
+                    inSelectionMode={hasSelection}
+                    compactMenu={compactList}
+                    onEnterSelection={selection ? () => enterFileSelection(file.id) : undefined}
+                    showCheckbox={state.isHovered || state.isFocusVisible || state.isSelected}
+                    location={showLocations ? file.parentPath : undefined}
+                    onOpenContainingFolder={
+                      onOpenContainingFolder ? () => onOpenContainingFolder(file) : undefined
+                    }
+                    onOpen={() => onOpen(file)}
+                    rowActions={rowActions}
+                  />
+                ) : (
+                  <ListFile
+                    file={file}
+                    selectable={Boolean(selection)}
+                    inSelectionMode={hasSelection}
+                    compactMenu={compactList}
+                    onEnterSelection={selection ? () => enterFileSelection(file.id) : undefined}
+                    showCheckbox={state.isHovered || state.isFocusVisible || state.isSelected}
+                    location={showLocations ? file.parentPath : undefined}
+                    onOpenContainingFolder={
+                      onOpenContainingFolder ? () => onOpenContainingFolder(file) : undefined
+                    }
+                    onOpen={() => onOpen(file)}
+                    rowActions={rowActions}
+                  />
+                )}
+              </div>
+            )}
           </GridListItem>
         )}
       </Collection>
@@ -672,15 +855,26 @@ function FileCollection({
             >
               {contextMenu.file ? (
                 <div className="flex flex-col text-sm">
-                  {contextMenu.file.kind === "file" && rowActions?.onDownload ? (
+                  {rowActions?.onDownload || onDownloadFiles ? (
                     <button
                       type="button"
                       role="menuitem"
                       className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
                       onClick={() => {
                         const target = contextMenu.file!;
+                        const curKeys = selectedKeysRef.current;
+                        const selectedList =
+                          curKeys === "all" ? files : files.filter((item) => curKeys.has(item.id));
+                        const useMulti =
+                          selectedList.length > 1 &&
+                          selectedList.some((item) => item.id === target.id) &&
+                          onDownloadFiles;
                         setContextMenu(null);
-                        rowActions.onDownload?.(target);
+                        if (useMulti) {
+                          onDownloadFiles(selectedList);
+                        } else {
+                          rowActions?.onDownload?.(target);
+                        }
                       }}
                     >
                       <DownloadIcon className="size-4 text-muted" />
@@ -883,9 +1077,310 @@ function FileCollection({
     </>
   );
 
+  const folderItems = grid && !compactList ? files.filter((item) => item.kind === "folder") : [];
+  const fileItems =
+    grid && !compactList && folderItems.length > 0
+      ? files.filter((item) => item.kind !== "folder")
+      : files;
+  const splitGridSections = grid && !compactList && folderItems.length > 0;
+
+  const gridSortLabel =
+    sorting?.sort === "name"
+      ? t("drive.columnName")
+      : sorting?.sort === "size"
+        ? t("drive.columnSize")
+        : t("drive.columnModified");
+
   return (
     <>
-      {grid ? (
+      {grid && sorting && onSortChange && files.length > 0 ? (
+        <div className="hidden shrink-0 items-center px-4 pb-1 pt-2 sm:flex">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-[#444746] transition-colors hover:bg-[#e1e5ea]/60 hover:text-foreground dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+            onClick={() =>
+              onSortChange({
+                ...sorting,
+                order: sorting.order === "asc" ? "desc" : "asc",
+              })
+            }
+          >
+            <span>{gridSortLabel}</span>
+            <span className="inline-flex size-4 items-center justify-center rounded-full bg-[#e1e5ea]/80 text-foreground dark:bg-[#333538]">
+              {sorting.order === "asc" ? (
+                <ArrowUpIcon className="size-2.5" />
+              ) : (
+                <ArrowDownIcon className="size-2.5" />
+              )}
+            </span>
+          </button>
+        </div>
+      ) : null}
+      {splitGridSections ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 pb-4 pt-1">
+          <GridList
+            aria-label={t("browser.folderKind")}
+            layout="grid"
+            selectionMode={selection ? "multiple" : "none"}
+            selectedKeys={selection?.selectedKeys}
+            onSelectionChange={selection ? handleSelectionChange : undefined}
+            disabledKeys={selectionDisabled ? files.map((file) => file.id) : undefined}
+            disabledBehavior="selection"
+            onAction={(key) => {
+              const file = folderItems.find((item) => item.id === String(key));
+              if (file) onOpen(file);
+            }}
+            className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3 outline-none"
+          >
+            <Collection items={folderItems} dependencies={[dimmedIds, dragOverFolderId]}>
+              {(folder) => (
+                <GridListItem
+                  id={folder.id}
+                  textValue={folder.name}
+                  onPointerDownCapture={(event) => {
+                    if (event.button === 2) {
+                      suppressRightClickSelection.current = true;
+                      window.setTimeout(() => {
+                        suppressRightClickSelection.current = false;
+                      }, 150);
+                      event.stopPropagation();
+                    }
+                  }}
+                  onMouseDownCapture={(event) => {
+                    if (event.button === 2) event.stopPropagation();
+                  }}
+                  onPointerUpCapture={(event) => {
+                    if (event.button === 2) event.stopPropagation();
+                  }}
+                  onMouseUpCapture={(event) => {
+                    if (event.button === 2) event.stopPropagation();
+                  }}
+                  onContextMenu={(event) => {
+                    if (!rowActions) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const curKeys = selectedKeysRef.current;
+                    const alreadySelected = curKeys === "all" || curKeys.has(folder.id);
+                    if (selection && !alreadySelected) {
+                      selection.onSelectionChange(new Set([folder.id]));
+                    }
+                    setContextMenu({ x: event.clientX, y: event.clientY, file: folder });
+                  }}
+                  className="outline-none"
+                >
+                  {(state) => (
+                    // biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop wrapper inside GridListItem
+                    <div
+                      draggable={Boolean(onMoveToFolder)}
+                      onDragStart={(event) => {
+                        if (!onMoveToFolder) return;
+                        const curKeys = selectedKeysRef.current;
+                        const isSelected = curKeys === "all" || curKeys.has(folder.id);
+                        const dragIds = isSelected
+                          ? curKeys === "all"
+                            ? files.map((item) => item.id)
+                            : Array.from(curKeys, String)
+                          : [folder.id];
+                        event.dataTransfer.setData(
+                          "application/x-teldrive-move",
+                          JSON.stringify(dragIds),
+                        );
+                        event.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragOver={(event) => {
+                        if (
+                          !onMoveToFolder ||
+                          !event.dataTransfer.types.includes("application/x-teldrive-move")
+                        ) {
+                          return;
+                        }
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                        if (dragOverFolderId !== folder.id) setDragOverFolderId(folder.id);
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverFolderId === folder.id) setDragOverFolderId(null);
+                      }}
+                      onDrop={(event) => {
+                        if (!onMoveToFolder) return;
+                        const raw = event.dataTransfer.getData("application/x-teldrive-move");
+                        if (!raw) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setDragOverFolderId(null);
+                        try {
+                          const dragIds = JSON.parse(raw) as string[];
+                          if (Array.isArray(dragIds) && dragIds.length > 0) {
+                            onMoveToFolder(dragIds, folder);
+                          }
+                        } catch {
+                          // ignore malformed drag payload
+                        }
+                      }}
+                      className={[
+                        "group flex h-12 min-w-0 cursor-default items-center gap-2.5 rounded-xl border border-transparent bg-[#f0f4f9]/85 px-3 outline-none transition-colors dark:bg-[#282a2c]/85",
+                        state.isSelected
+                          ? "border-[#0b57d0] bg-[#c2e7ff]/55 dark:border-[#a8c7fa] dark:bg-[#004a77]"
+                          : "hover:bg-[#e1e5ea]/90 dark:hover:bg-[#333538]",
+                        dragOverFolderId === folder.id &&
+                          "ring-2 ring-inset ring-[#0b57d0] bg-[#c2e7ff]/40 dark:ring-[#a8c7fa] dark:bg-[#004a77]/60",
+                        dimmedIds?.has(folder.id) && "opacity-45",
+                        state.isFocusVisible && "ring-2 ring-inset ring-accent",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      <FolderIcon className="size-5 shrink-0 text-[#5f6368] dark:text-[#c4c7c5]" />
+                      <span
+                        className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+                        title={folder.name}
+                      >
+                        {folder.name}
+                      </span>
+                      {rowActions ? (
+                        <fieldset
+                          aria-label={t("drive.rowActions", { name: folder.name })}
+                          className="m-0 flex shrink-0 items-center border-0 p-0"
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <FileItemActionsMenu
+                            file={folder}
+                            onOpen={() => onOpen(folder)}
+                            rowActions={rowActions}
+                            compactMenu={false}
+                            onSelect={selection ? () => enterFileSelection(folder.id) : undefined}
+                          />
+                        </fieldset>
+                      ) : null}
+                    </div>
+                  )}
+                </GridListItem>
+              )}
+            </Collection>
+          </GridList>
+          {fileItems.length > 0 ? (
+            <div className="mt-4 min-h-0 flex-1">
+              <Virtualizer
+                key="grid-files"
+                layout={GridLayout}
+                layoutOptions={{
+                  ...(showLocations ? locatedFileGridLayoutOptions : fileGridLayoutOptions),
+                  maxColumns: Math.max(2, Math.floor((gridWidth + 12) / 208)),
+                }}
+              >
+                <GridList
+                  ref={gridRef}
+                  aria-label={t("browser.files")}
+                  layout="grid"
+                  selectionMode={selection ? "multiple" : "none"}
+                  selectedKeys={selection?.selectedKeys}
+                  onSelectionChange={selection ? handleSelectionChange : undefined}
+                  disabledKeys={selectionDisabled ? files.map((file) => file.id) : undefined}
+                  disabledBehavior="selection"
+                  onAction={(key) => {
+                    const file = fileItems.find((item) => item.id === String(key));
+                    if (file) onOpen(file);
+                  }}
+                  className="outline-none"
+                >
+                  <Collection items={fileItems} dependencies={[dimmedIds, showLocations]}>
+                    {(file) => (
+                      <GridListItem
+                        id={file.id}
+                        textValue={file.name}
+                        onPointerDownCapture={(event) => {
+                          if (event.button === 2) {
+                            suppressRightClickSelection.current = true;
+                            window.setTimeout(() => {
+                              suppressRightClickSelection.current = false;
+                            }, 150);
+                            event.stopPropagation();
+                          }
+                        }}
+                        onMouseDownCapture={(event) => {
+                          if (event.button === 2) event.stopPropagation();
+                        }}
+                        onPointerUpCapture={(event) => {
+                          if (event.button === 2) event.stopPropagation();
+                        }}
+                        onMouseUpCapture={(event) => {
+                          if (event.button === 2) event.stopPropagation();
+                        }}
+                        onContextMenu={(event) => {
+                          if (!rowActions) return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          const alreadySelected =
+                            selectedKeys === "all" || selectedKeys.has(file.id);
+                          if (selection && !alreadySelected) {
+                            selection.onSelectionChange(new Set([file.id]));
+                          }
+                          setContextMenu({ x: event.clientX, y: event.clientY, file });
+                        }}
+                        className="outline-none"
+                      >
+                        {(state) => (
+                          // biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop wrapper inside GridListItem
+                          <div
+                            draggable={Boolean(onMoveToFolder)}
+                            onDragStart={(event) => {
+                              if (!onMoveToFolder) return;
+                              const isSelected =
+                                selectedKeys === "all" || selectedKeys.has(file.id);
+                              const dragIds = isSelected
+                                ? selectedKeys === "all"
+                                  ? files.map((item) => item.id)
+                                  : Array.from(selectedKeys, String)
+                                : [file.id];
+                              event.dataTransfer.setData(
+                                "application/x-teldrive-move",
+                                JSON.stringify(dragIds),
+                              );
+                              event.dataTransfer.effectAllowed = "move";
+                            }}
+                            className={[
+                              "group relative flex min-w-0 cursor-default flex-col rounded-2xl border border-transparent bg-[#f0f4f9]/85 p-2.5 outline-none transition-colors dark:bg-[#282a2c]/85",
+                              state.isSelected
+                                ? "border-[#0b57d0] bg-[#c2e7ff]/55 dark:border-[#a8c7fa] dark:bg-[#004a77]"
+                                : "hover:bg-[#e1e5ea]/90 dark:hover:bg-[#333538]",
+                              dimmedIds?.has(file.id) && "opacity-45",
+                              state.isFocusVisible && "ring-2 ring-inset ring-accent",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                          >
+                            <GridFile
+                              file={file}
+                              selectable={Boolean(selection)}
+                              inSelectionMode={hasSelection}
+                              compactMenu={false}
+                              onEnterSelection={
+                                selection ? () => enterFileSelection(file.id) : undefined
+                              }
+                              showCheckbox={
+                                state.isHovered || state.isFocusVisible || state.isSelected
+                              }
+                              location={showLocations ? file.parentPath : undefined}
+                              onOpenContainingFolder={
+                                onOpenContainingFolder
+                                  ? () => onOpenContainingFolder(file)
+                                  : undefined
+                              }
+                              onOpen={() => onOpen(file)}
+                              rowActions={rowActions}
+                            />
+                          </div>
+                        )}
+                      </GridListItem>
+                    )}
+                  </Collection>
+                </GridList>
+              </Virtualizer>
+            </div>
+          ) : null}
+        </div>
+      ) : grid ? (
         <Virtualizer
           key="grid"
           layout={GridLayout}
@@ -1140,7 +1635,7 @@ function ListFile({
       <span className="hidden truncate text-xs text-muted sm:block">{sizeText}</span>
       <fieldset
         aria-label={t("drive.rowActions", { name: file.name })}
-        className="m-0 flex shrink-0 items-center justify-end gap-0.5 border-0 p-0"
+        className="m-0 flex w-full min-w-0 shrink-0 items-center justify-end gap-0.5 border-0 p-0"
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
@@ -1159,7 +1654,7 @@ function ListFile({
                   <LinkIcon className="size-3.5" />
                 </Button>
               ) : null}
-              {file.kind === "file" && rowActions.onDownload ? (
+              {rowActions.onDownload ? (
                 <Button
                   isIconOnly
                   size="sm"
@@ -1205,7 +1700,13 @@ function ListFile({
                 <SelectionCheckbox file={file} isVisible circle />
               </div>
             ) : null}
-            <div className={inSelectionMode ? "hidden sm:block" : undefined}>
+            <div
+              className={
+                inSelectionMode
+                  ? "hidden w-8 shrink-0 items-center justify-end sm:flex"
+                  : "flex w-8 shrink-0 items-center justify-end"
+              }
+            >
               <FileItemActionsMenu
                 file={file}
                 onOpen={onOpen}
@@ -1368,7 +1869,7 @@ function FileItemActionsMenu({
                         {t("drive.actionRename")}
                       </Button>
                     ) : null}
-                    {file.kind === "file" && rowActions.onDownload ? (
+                    {rowActions.onDownload ? (
                       <Button
                         variant="ghost"
                         className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
@@ -1477,7 +1978,7 @@ function FileItemActionsMenu({
             <FolderIcon className="size-4" />
             <Label>{t("drive.actionOpen")}</Label>
           </Dropdown.Item>
-          {file.kind === "file" && rowActions.onDownload ? (
+          {rowActions.onDownload ? (
             <Dropdown.Item id="download" textValue={t("drive.actionDownload")}>
               <DownloadIcon className="size-4" />
               <Label>{t("drive.actionDownload")}</Label>

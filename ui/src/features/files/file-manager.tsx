@@ -21,7 +21,12 @@ import ChevronDownIcon from "~icons/gravity-ui/chevron-down";
 import SplitIcon from "~icons/gravity-ui/layout-split-columns";
 import CloseIcon from "~icons/gravity-ui/xmark";
 import { useFileClipboardStore } from "./clipboard-store";
-import { absoluteFileDownloadUrl, copyText, startFileDownload } from "./download";
+import {
+  absoluteFileDownloadUrl,
+  copyText,
+  downloadEntriesAsZip,
+  startFileDownload,
+} from "./download";
 import { FileActionDialogs } from "./file-action-dialogs";
 import { FileBrowser } from "./file-browser";
 import { FileSelectionToolbar } from "./file-selection-toolbar";
@@ -629,6 +634,42 @@ export function FileManagerPage({
 
   const copyDownloadLinks = async (pane: PaneId) => copyLinksForFiles(paneSelectedFiles(pane));
 
+  const downloadEntries = (entries: FileEntry[]) => {
+    if (entries.length === 0) return;
+    if (entries.length === 1 && entries[0].kind === "file") {
+      startFileDownload(entries[0]);
+      return;
+    }
+    const archiveName = entries.length === 1 ? entries[0].name : "teldrive-files";
+    void downloadEntriesAsZip(entries, archiveName);
+  };
+
+  const moveItemsToFolder = async (ids: string[], targetFolder: FileEntry, pane: PaneId) => {
+    const filteredIds = ids.filter((id) => id !== targetFolder.id);
+    if (filteredIds.length === 0) return;
+    const allFiles = paneFiles(pane);
+    const items = filteredIds
+      .map((id) => allFiles.find((item) => item.id === id))
+      .filter((item): item is FileEntry => Boolean(item));
+    if (items.length === 0) return;
+    try {
+      setActionError(undefined);
+      if (items.length === 1) {
+        await fileActions.move(items[0], targetFolder.id);
+      } else {
+        await fileActions.bulkMove(filteredIds, targetFolder.id);
+      }
+      setPaneSelectedKeys(pane, new Set());
+      toast(
+        items.length === 1
+          ? `Moved "${items[0].name}" to "${targetFolder.name}"`
+          : `Moved ${items.length} items to "${targetFolder.name}"`,
+      );
+    } catch (err) {
+      toast.error(userMessage(err));
+    }
+  };
+
   const renderToolbar = (pane: PaneId) => {
     if (searchMode)
       return (
@@ -654,7 +695,9 @@ export function FileManagerPage({
       pane === "secondary" ? secondaryUploadFolderTriggerRef : primaryUploadFolderTriggerRef;
     return (
       <>
-        <FileSortControls sorting={sorting} onChange={changeSorting} />
+        <div className={location.view === "list" ? "sm:hidden" : undefined}>
+          <FileSortControls sorting={sorting} onChange={changeSorting} />
+        </div>
         {pane === "primary" && !search.split ? (
           <Button
             isIconOnly
@@ -782,7 +825,7 @@ export function FileManagerPage({
           setActivePane(pane);
           setVersionsFile(selectedFiles[0]);
         }}
-        onDownload={() => startFileDownload(selectedFiles[0])}
+        onDownload={() => downloadEntries(selectedFiles)}
         onCopyDownloadLinks={() => void copyDownloadLinks(pane)}
         onMove={() => {
           setActivePane(pane);
@@ -909,6 +952,14 @@ export function FileManagerPage({
                 : t("drive.myDrive")
         }
         view={location.view}
+        sorting={sorting}
+        onSortChange={changeSorting}
+        onMoveToFolder={
+          !searchMode && !search.recent && !search.bookmarked
+            ? (ids, targetFolder) => void moveItemsToFolder(ids, targetFolder, pane)
+            : undefined
+        }
+        onDownloadFiles={(entries) => downloadEntries(entries)}
         flat={!search.split}
         headerFilters={
           !searchMode && !search.recent && !search.bookmarked && pane === "primary"
@@ -926,7 +977,7 @@ export function FileManagerPage({
           onClearSelection: () => setPaneSelectedKeys(pane, new Set()),
         }}
         rowActions={{
-          onDownload: (file) => startFileDownload(file),
+          onDownload: (file) => downloadEntries([file]),
           onShare: (file) => {
             setActivePane(pane);
             setShareFile(file);
@@ -1073,7 +1124,9 @@ export function FileManagerPage({
         <DropZone
           data-testid={pane === "primary" ? "file-drop-zone" : "file-drop-zone-secondary"}
           aria-label={t("manager.dropInto", { path: location.path })}
-          getDropOperation={() => "copy"}
+          getDropOperation={(types) =>
+            types.has("application/x-teldrive-move") ? "cancel" : "copy"
+          }
           className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden outline-none"
           onDrop={async (event) => {
             const dropped = await Promise.all(

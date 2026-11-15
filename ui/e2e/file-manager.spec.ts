@@ -24,20 +24,11 @@ test("sorting hydrates before the first request and URL overrides saved preferen
   await expect.poll(() => requests.length).toBeGreaterThan(0);
   expect(requests[0].searchParams.get("sort")).toBe("size");
   expect(requests[0].searchParams.get("order")).toBe("desc");
-  const sortOrder = page.getByRole("button", { name: "Toggle sort order" });
-  await expect(sortOrder).toHaveAttribute(
-    "aria-label",
-    "Toggle sort order: descending — switch to ascending",
-  );
-  await expect(sortOrder).toHaveText("");
-  await expect(sortOrder.locator("svg")).toBeVisible();
-  const descendingIcon = await sortOrder.locator("svg").innerHTML();
-  await sortOrder.click();
-  await expect(sortOrder).toHaveAttribute(
-    "aria-label",
-    "Toggle sort order: ascending — switch to descending",
-  );
-  expect(await sortOrder.locator("svg").innerHTML()).not.toBe(descendingIcon);
+  const sizeHeader = page.getByRole("button", { name: "Size" });
+  await expect(sizeHeader).toBeVisible();
+  const descendingIcon = await sizeHeader.locator("svg").innerHTML();
+  await sizeHeader.click();
+  expect(await sizeHeader.locator("svg").innerHTML()).not.toBe(descendingIcon);
   await expect.poll(() => requests.at(-1)?.searchParams.get("order")).toBe("asc");
   await expect.poll(() => preferences.current().files.order).toBe("asc");
   requests.length = 0;
@@ -1270,8 +1261,8 @@ test("split view keeps pane navigation independent and uses browser history", as
 
   await expect(primary.getByRole("textbox", { name: "Search this folder" })).toHaveCount(0);
   await expect(secondary.getByRole("textbox", { name: "Search this folder" })).toHaveCount(0);
-  await expect(secondary.getByRole("button", { name: "Back" })).toBeVisible();
-  await expect(secondary.getByRole("button", { name: "Up one folder" })).toBeDisabled();
+  await expect(secondary.getByRole("button", { name: "Back" })).toHaveCount(0);
+  await expect(secondary.getByRole("button", { name: "Up one folder" })).toHaveCount(0);
 
   const primaryFolder = primary.getByRole("navigation", { name: "Current folder" });
   const secondaryFolder = secondary.getByRole("navigation", { name: "Current folder" });
@@ -1478,7 +1469,7 @@ test.describe("compact file grid", () => {
     await expect(row).toContainText("1.0 kB");
     await expect(row.locator("time")).toHaveAttribute("datetime", now);
     await expect(row.locator("time")).toContainText("7/22/2026");
-    await expect(page.getByRole("row", { name: /Destination/ })).toContainText("Folder");
+    await expect(page.getByRole("row", { name: /Destination/ })).toBeVisible();
     for (const theme of ["light", "dark"]) {
       await page.evaluate((theme) => {
         document.documentElement.classList.toggle("dark", theme === "dark");
@@ -1578,4 +1569,60 @@ test("right-click context menus and marquee drag selection work on desktop", asy
   await page.mouse.up();
   await expect(page.getByRole("row", { name: /alpha\.txt/ })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("row", { name: /beta\.txt/ })).toHaveAttribute("aria-selected", "true");
+});
+
+test("list column headers sort, right-click keeps multi-selection, and drag-and-drop moves into folders", async ({
+  page,
+}) => {
+  await installFileApi(page, {
+    files: { view: "list", sort: "name", order: "asc" },
+    entries: [
+      file({ id: "d1", name: "Docs", kind: "folder" }),
+      file({ id: "f1", name: "alpha.txt", kind: "file", size: 128 }),
+      file({ id: "f2", name: "beta.txt", kind: "file", size: 256 }),
+    ],
+  });
+  const movedCalls: Array<{ fileId: string; parentId?: string }> = [];
+  await page.route("**/api/v1/files/*/move", async (route) => {
+    const req = route.request();
+    const match = new URL(req.url()).pathname.match(/^\/api\/v1\/files\/([^/]+)\/move$/);
+    const body = req.postDataJSON() as { parentId?: string };
+    if (match) movedCalls.push({ fileId: match[1], parentId: body.parentId });
+    return route.fulfill({
+      status: 200,
+      json: file({ id: match?.[1] ?? "f1", name: "alpha.txt", kind: "file", parentId: body.parentId }),
+    });
+  });
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/files");
+
+  // Back and Up buttons should not clutter root My Drive on desktop
+  await expect(page.getByRole("button", { name: "Go back" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Up one folder" })).toHaveCount(0);
+
+  // Clicking Name column header toggles sort order
+  const nameCol = page.getByRole("button", { name: "Name", exact: true });
+  await expect(nameCol).toBeVisible();
+  await nameCol.click();
+  await expect(page).toHaveURL(/order=desc/);
+
+  // Multi-select f1 and f2, then right-click f2 -> both stay selected and Download is shown
+  const row1 = page.getByRole("row", { name: /alpha\.txt/ });
+  const row2 = page.getByRole("row", { name: /beta\.txt/ });
+  await row1.click();
+  await row2.click({ modifiers: ["Control"] });
+  await expect(page.getByText("2 selected")).toBeVisible();
+  await row2.click({ button: "right" });
+  await expect(page.getByText("2 selected")).toBeVisible();
+  await expect(page.getByRole("menu").getByRole("menuitem", { name: "Download" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Drag alpha.txt onto Docs folder -> triggers move API
+  const folderRow = page.getByRole("row", { name: /Destination/ });
+  const draggableFile = row1.locator("[draggable='true']").first();
+  const dropFolder = folderRow.locator("[draggable='true']").first();
+  await draggableFile.dragTo(dropFolder);
+  await expect.poll(() => movedCalls.length).toBeGreaterThan(0);
+  expect(movedCalls[0]).toEqual({ fileId: "f1", parentId: "11111111-1111-4111-8111-111111111111" });
 });

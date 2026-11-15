@@ -209,7 +209,7 @@ export function FileSelectionToolbar({
             <ClockIcon className="size-4" />
           </SelectionActionButton>
         ) : null}
-        {singleSelectedFile?.kind === "file" && onDownload ? (
+        {selectedCount > 0 && onDownload ? (
           <SelectionActionButton
             isIconOnly
             size="sm"

@@ -364,6 +364,7 @@ function Sidebar({
   const { data: user } = useQuery(currentUserQueryOptions());
   const capabilities = user?.capabilities ?? [];
   const canManageJobs = capabilities.includes("system.manageJobs");
+  const canLocalImport = capabilities.includes("system.localImport");
   const visibleNav = getNavForApp(activeApp, capabilities).filter((item) => {
     if (!mobile || activeApp !== "drive") return true;
     // Bottom bar handles Home (recent), Bookmarks, Shared, and Files on mobile Drive.
@@ -499,7 +500,7 @@ function Sidebar({
               variant="secondary"
               aria-label={t("nav.newAction")}
               className={cn(
-                "h-13 rounded-2xl border border-border/50 bg-surface font-medium text-foreground shadow-sm transition-shadow hover:bg-surface hover:shadow-md",
+                "h-13 rounded-2xl border border-border/50 bg-white font-medium text-foreground shadow-sm transition-shadow hover:bg-[#f0f4f9] hover:shadow-md dark:border-transparent dark:bg-[#37393b] dark:hover:bg-[#444746]",
                 collapsed ? "w-10 min-w-0 justify-center px-0" : "w-32 justify-start gap-3 px-4",
               )}
             >
@@ -513,6 +514,7 @@ function Sidebar({
                   if (key === "folder") void triggerDriveAction("drive:new-folder");
                   if (key === "files") void triggerDriveAction("drive:upload-files");
                   if (key === "uploadFolder") void triggerDriveAction("drive:upload-folder");
+                  if (key === "background") void triggerDriveAction("drive:background-upload");
                 }}
               >
                 <Dropdown.Item id="folder" textValue={t("files.newFolder")}>
@@ -527,6 +529,12 @@ function Sidebar({
                   <UploadIcon className="size-4 text-muted" />
                   <Label>{t("files.uploadFolder")}</Label>
                 </Dropdown.Item>
+                {canLocalImport ? (
+                  <Dropdown.Item id="background" textValue={t("uploads.bgTitle")}>
+                    <UploadIcon className="size-4 text-muted" />
+                    <Label>{t("uploads.bgTitle")}</Label>
+                  </Dropdown.Item>
+                ) : null}
               </Dropdown.Menu>
             </Dropdown.Popover>
           </Dropdown>
@@ -916,7 +924,7 @@ function TopBar({
         <header className="shrink-0 bg-sidebar px-2 pb-1.5 pt-2.5">
           <fieldset
             aria-label={t("selection.actions")}
-            className="flex h-12 min-w-0 items-center gap-1 border-0 p-0"
+            className="flex h-12 min-w-0 items-center gap-1 border-0 p-0 [&_button]:shrink-0"
           >
             <Button
               isIconOnly
@@ -1756,7 +1764,7 @@ function Layout() {
               className={cn(
                 "flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface lg:rounded-3xl lg:shadow-xs lg:ring-1 lg:ring-border/35",
                 getWorkspaceApp(pathname) === "drive"
-                  ? "rounded-t-[28px] dark:bg-[#141b1c] p-0 pt-1 lg:p-2"
+                  ? "rounded-t-[28px] bg-white dark:bg-[#131314] p-0 pt-1 lg:rounded-2xl lg:p-2"
                   : "rounded-2xl p-2.5 sm:p-4 lg:p-5",
               )}
             >

@@ -452,7 +452,7 @@ function PublicSharePage() {
                   }
                   selectionOverlay={
                     selectedFiles.length ? (
-                      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
+                      <div className="flex w-full">
                         <fieldset
                           aria-label={t("selection.actions")}
                           className="pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0"

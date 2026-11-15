@@ -203,9 +203,7 @@ function AdminConsole() {
             {overview ? overview.totalUsers : "—"}
           </p>
           <p className="mt-1 text-xs text-muted">
-            {overview
-              ? t("admin.metricUsersDisabled", { count: overview.disabledUsers })
-              : ""}
+            {overview ? t("admin.metricUsersDisabled", { count: overview.disabledUsers }) : ""}
           </p>
         </Card>
         <Card className="rounded-2xl border border-border/50 bg-surface-secondary/25 p-4">
@@ -214,9 +212,7 @@ function AdminConsole() {
             {overview ? formatBytes(overview.totalActiveBytes) : "—"}
           </p>
           <p className="mt-1 text-xs text-muted">
-            {overview
-              ? t("admin.metricFilesCount", { count: overview.totalActiveFiles })
-              : ""}
+            {overview ? t("admin.metricFilesCount", { count: overview.totalActiveFiles }) : ""}
           </p>
         </Card>
         <Card className="rounded-2xl border border-border/50 bg-surface-secondary/25 p-4">
@@ -283,85 +279,85 @@ function AdminConsole() {
                     </div>
                   ) : null}
                   <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-                  <Chip
-                    variant="tertiary"
-                    color={owner ? "accent" : user.role === "admin" ? "warning" : "default"}
-                  >
-                    {user.role}
-                  </Chip>
-                  {user.disabled ? (
-                    <Chip variant="tertiary" color="danger">
-                      {t("users.disabled")}
-                    </Chip>
-                  ) : null}
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      aria-label={t("admin.quotaGbLabel")}
-                      className="w-24"
-                      placeholder="GB"
-                      value={quotaValue}
-                      onChange={(event) =>
-                        setQuotaInputs((prev) => ({
-                          ...prev,
-                          [user.userId]: event.target.value,
-                        }))
-                      }
-                    />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      isDisabled={updateUser.isPending}
-                      onPress={() => void handleSaveQuota(user.userId)}
+                    <Chip
+                      variant="tertiary"
+                      color={owner ? "accent" : user.role === "admin" ? "warning" : "default"}
                     >
-                      {t("admin.saveQuota")}
-                    </Button>
-                  </div>
-                  {!owner && !isSelf ? (
-                    <>
+                      {user.role}
+                    </Chip>
+                    {user.disabled ? (
+                      <Chip variant="tertiary" color="danger">
+                        {t("users.disabled")}
+                      </Chip>
+                    ) : null}
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        aria-label={t("admin.quotaGbLabel")}
+                        className="w-24"
+                        placeholder="GB"
+                        value={quotaValue}
+                        onChange={(event) =>
+                          setQuotaInputs((prev) => ({
+                            ...prev,
+                            [user.userId]: event.target.value,
+                          }))
+                        }
+                      />
                       <Button
                         size="sm"
                         variant="secondary"
                         isDisabled={updateUser.isPending}
-                        onPress={() =>
-                          void handleUpdateUser(user.userId, {
-                            role: user.role === "admin" ? "user" : "admin",
-                          })
-                        }
+                        onPress={() => void handleSaveQuota(user.userId)}
                       >
-                        {t(user.role === "admin" ? "users.makeUser" : "users.makeAdmin")}
+                        {t("admin.saveQuota")}
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        isDisabled={updateUser.isPending}
-                        onPress={() =>
-                          void handleUpdateUser(user.userId, { disabled: !user.disabled })
-                        }
-                      >
-                        {user.disabled ? t("users.enable") : t("users.disable")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        isDisabled={revokeAccess.isPending}
-                        onPress={() =>
-                          void revokeAccess
-                            .mutateAsync({ params: { path: { userId: user.userId } } })
-                            .then(() => {
-                              toast.success(t("users.revoked"));
-                              return refreshAll();
+                    </div>
+                    {!owner && !isSelf ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          isDisabled={updateUser.isPending}
+                          onPress={() =>
+                            void handleUpdateUser(user.userId, {
+                              role: user.role === "admin" ? "user" : "admin",
                             })
-                            .catch((error) =>
-                              toast.error(t("users.revokeFailed"), {
-                                description: userMessage(error),
-                              }),
-                            )
-                        }
-                      >
-                        {t("users.revoke")}
-                      </Button>
-                    </>
-                  ) : null}
+                          }
+                        >
+                          {t(user.role === "admin" ? "users.makeUser" : "users.makeAdmin")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          isDisabled={updateUser.isPending}
+                          onPress={() =>
+                            void handleUpdateUser(user.userId, { disabled: !user.disabled })
+                          }
+                        >
+                          {user.disabled ? t("users.enable") : t("users.disable")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          isDisabled={revokeAccess.isPending}
+                          onPress={() =>
+                            void revokeAccess
+                              .mutateAsync({ params: { path: { userId: user.userId } } })
+                              .then(() => {
+                                toast.success(t("users.revoked"));
+                                return refreshAll();
+                              })
+                              .catch((error) =>
+                                toast.error(t("users.revokeFailed"), {
+                                  description: userMessage(error),
+                                }),
+                              )
+                          }
+                        >
+                          {t("users.revoke")}
+                        </Button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </SettingsRow>

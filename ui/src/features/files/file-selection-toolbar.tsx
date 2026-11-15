@@ -21,7 +21,7 @@ export function SelectionActionButton(
   return (
     <Tooltip delay={300}>
       <Button {...props} />
-      <Tooltip.Content placement="top">{props["aria-label"]}</Tooltip.Content>
+      <Tooltip.Content placement="bottom">{props["aria-label"]}</Tooltip.Content>
     </Tooltip>
   );
 }
@@ -115,14 +115,28 @@ export function FileSelectionToolbar({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 hidden justify-center px-4 sm:flex">
+    <div className="hidden w-full sm:flex">
       <fieldset
         aria-label={t("selection.actions")}
-        className="pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0"
+        className="flex h-8 w-full min-w-0 items-center gap-1 rounded-full bg-[#edf2fa] px-1.5 dark:bg-[#282a2c] [&>button]:shrink-0"
       >
-        <span className="shrink-0 rounded-full bg-[#c2e7ff] px-3 py-2 text-sm font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]">
+        {onClear ? (
+          <SelectionActionButton
+            isIconOnly
+            size="sm"
+            variant="ghost"
+            className="size-8 rounded-full"
+            aria-label={t("selection.clear")}
+            isDisabled={pending}
+            onPress={onClear}
+          >
+            <CloseIcon className="size-4" />
+          </SelectionActionButton>
+        ) : null}
+        <span className="shrink-0 px-2 text-sm font-medium text-foreground">
           {t("selection.count", { count: selectedCount })}
         </span>
+        <span className="mx-1 h-4 w-px shrink-0 bg-border/80" aria-hidden="true" />
         {onCut ? (
           <SelectionActionButton
             isIconOnly
@@ -243,18 +257,6 @@ export function FileSelectionToolbar({
             onPress={onTrash}
           >
             <TrashIcon className="size-4" />
-          </SelectionActionButton>
-        ) : null}
-        {onClear ? (
-          <SelectionActionButton
-            isIconOnly
-            size="sm"
-            variant="ghost"
-            aria-label={t("selection.clear")}
-            isDisabled={pending}
-            onPress={onClear}
-          >
-            <CloseIcon className="size-4" />
           </SelectionActionButton>
         ) : null}
       </fieldset>

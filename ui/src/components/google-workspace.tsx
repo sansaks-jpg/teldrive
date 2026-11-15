@@ -6,13 +6,16 @@ export type WorkspaceAction =
   | "drive:new-folder"
   | "drive:upload-files"
   | "drive:upload-folder"
+  | "drive:background-upload"
   | "photos:new-album"
   | "photos:upload";
 
 const WORKSPACE_ACTION_EVENT = "teldrive:workspace-action";
 
 export function dispatchWorkspaceAction(action: WorkspaceAction) {
-  window.dispatchEvent(new CustomEvent<WorkspaceAction>(WORKSPACE_ACTION_EVENT, { detail: action }));
+  window.dispatchEvent(
+    new CustomEvent<WorkspaceAction>(WORKSPACE_ACTION_EVENT, { detail: action }),
+  );
 }
 
 export function subscribeWorkspaceAction(handler: (action: WorkspaceAction) => void) {
@@ -62,9 +65,15 @@ export function WaffleGridIcon({ className }: { className?: string }) {
 export function GoogleDriveBrandIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={cn("size-6", className)}>
-      <path fill="#0066DA" d="M4.3 18.8 1.9 14.6a1.5 1.5 0 0 1 0-1.5L7.6 3.3a1.5 1.5 0 0 1 1.3-.8h3.3l-5.8 10L4.3 18.8Z" />
+      <path
+        fill="#0066DA"
+        d="M4.3 18.8 1.9 14.6a1.5 1.5 0 0 1 0-1.5L7.6 3.3a1.5 1.5 0 0 1 1.3-.8h3.3l-5.8 10L4.3 18.8Z"
+      />
       <path fill="#00AC47" d="M12.2 2.5h2.9a1.5 1.5 0 0 1 1.3.8l5.7 9.8-3.6 2-6.3-11.1V2.5Z" />
-      <path fill="#FFBA00" d="M22.1 13.1c.2.5.2 1.1-.1 1.6l-2.3 4a1.5 1.5 0 0 1-1.3.8h-9l2.4-4.2h7.9l2.4-2.2Z" />
+      <path
+        fill="#FFBA00"
+        d="M22.1 13.1c.2.5.2 1.1-.1 1.6l-2.3 4a1.5 1.5 0 0 1-1.3.8h-9l2.4-4.2h7.9l2.4-2.2Z"
+      />
       <path fill="#00832D" d="M8.9 2.5 14.8 13l-2.8 2.3H6.4L1.9 13.8l7-11.3Z" opacity="0.22" />
       <path fill="#2684FC" d="M4.3 18.8a1.5 1.5 0 0 0 1.3.7h5l1.6-4.2H6.4l-2.1 3.5Z" />
       <path fill="#EA4335" d="m17.5 15.3 4.6-2.2c.2.5.2 1.1-.1 1.6l-1 1.8-3.5-1.2Z" />
@@ -92,7 +101,11 @@ export function GoogleOneBrandIcon({ className }: { className?: string }) {
         transform="translate(0 1)"
       />
       <path fill="#4285F4" d="M10 13.6V19a2.2 2.2 0 0 0 4.4 0v-8.5L10 13.6Z" />
-      <path fill="#FBBC04" d="M5.6 10.1a2.1 2.1 0 0 0 2.9.5L10 9.5v4.1l-4.4 2.1v-5.6Z" opacity="0.9" />
+      <path
+        fill="#FBBC04"
+        d="M5.6 10.1a2.1 2.1 0 0 0 2.9.5L10 9.5v4.1l-4.4 2.1v-5.6Z"
+        opacity="0.9"
+      />
       <path fill="#34A853" d="M10 19a2.2 2.2 0 0 0 4.4 0v-2.4l-4.4 2v.4Z" />
     </svg>
   );

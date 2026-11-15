@@ -38,7 +38,10 @@ export function VersionsDialog({
   );
 
   const createVersion = $api.useMutation("post", "/v1/files/{fileId}/versions");
-  const restoreVersion = $api.useMutation("post", "/v1/files/{fileId}/versions/{versionId}/restore");
+  const restoreVersion = $api.useMutation(
+    "post",
+    "/v1/files/{fileId}/versions/{versionId}/restore",
+  );
 
   const refreshVersions = async () => {
     await queryClient.invalidateQueries({ queryKey: ["get", "/v1/files/{fileId}/versions"] });

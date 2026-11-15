@@ -539,7 +539,7 @@ test("completed upload appears in the current directory without reloading", asyn
   await page.goto("/files?view=list");
   const row = page.getByRole("row", { name: /fresh-upload.txt/ });
   await expect(row).toHaveCount(0);
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await page.getByRole("button", { name: "New", exact: true }).click();
   const chooserPromise = page.waitForEvent("filechooser");
   await page.getByRole("menuitem", { name: "Upload files", exact: true }).click();
   await (await chooserPromise).setFiles({
@@ -567,7 +567,7 @@ test("upload menu preserves folder hierarchy and exposes byte-weighted tree prog
   });
 
   await page.goto("/files");
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await page.getByRole("button", { name: "New", exact: true }).click();
   await expect(page.getByRole("menuitem", { name: "Upload files" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Upload folder" })).toBeVisible();
 
@@ -611,7 +611,7 @@ test("upload menu preserves folder hierarchy and exposes byte-weighted tree prog
 
 test("upload queue is ephemeral across a browser reload", async ({ page }) => {
   await page.goto("/files");
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await page.getByRole("button", { name: "New", exact: true }).click();
   const fileChooserPromise = page.waitForEvent("filechooser");
   await page.getByRole("menuitem", { name: "Upload files" }).click();
   const fileChooser = await fileChooserPromise;
@@ -635,7 +635,7 @@ test("upload queue is ephemeral across a browser reload", async ({ page }) => {
 
 test("plain multi-file uploads render as flat rows without a batch hierarchy", async ({ page }) => {
   await page.goto("/files");
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await page.getByRole("button", { name: "New", exact: true }).click();
   const fileChooserPromise = page.waitForEvent("filechooser");
   await page.getByRole("menuitem", { name: "Upload files" }).click();
   const fileChooser = await fileChooserPromise;
@@ -692,7 +692,7 @@ test("account encryption default applies to settings, uploads, and URL imports",
   await expect(page.getByRole("switch", { name: "Encrypt uploaded files" })).toBeChecked();
 
   await page.goto("/files");
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await page.getByRole("button", { name: "New", exact: true }).click();
   const fileChooserPromise = page.waitForEvent("filechooser");
   await page.getByRole("menuitem", { name: "Upload files" }).click();
   const fileChooser = await fileChooserPromise;
@@ -707,7 +707,7 @@ test("account encryption default applies to settings, uploads, and URL imports",
   });
   expect((await uploadCreated).postDataJSON()).toMatchObject({ encryption: true });
 
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await page.getByRole("button", { name: "New", exact: true }).click();
   await page.getByRole("menuitem", { name: "Background upload" }).click();
   const dialog = page.getByRole("dialog", { name: "Background upload" });
   await expect(dialog.getByRole("switch", { name: "Encrypt uploaded files" })).toBeChecked();
@@ -839,16 +839,17 @@ test("selection action tooltips label every button on hover and keyboard focus",
 
   const toolbar = page.getByRole("group", { name: "Selected file actions" });
   const labels = [
+    "Clear selection",
     "Cut selected items",
     "Copy selected items",
     "Bookmark selected items",
     "Rename selected item",
     "Share selected item",
+    "Version history",
     "Download selected file",
     "Copy selected file download link",
     "Move selected items",
     "Move selected items to trash",
-    "Clear selection",
   ];
   await expect(toolbar.getByRole("button")).toHaveCount(labels.length);
   for (const label of labels) {
@@ -1293,10 +1294,8 @@ test("selection toolbar stays within narrow viewports and its actions remain rea
 }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto("/files");
-  await page
-    .getByRole("row", { name: /alpha\.txt/ })
-    .locator('[data-slot="checkbox-control"]')
-    .click();
+  await page.getByRole("button", { name: "More actions for alpha.txt" }).click();
+  await page.getByRole("button", { name: "Select", exact: true }).click();
   const toolbar = page.getByRole("group", { name: "Selected file actions" });
   await expect(toolbar).toBeVisible();
   await expect(
@@ -1336,8 +1335,7 @@ test("selection toolbar stays within narrow viewports and its actions remain rea
         return 0;
       return new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top))).size;
     });
-    if (width === 1280) expect(rows).toBe(1);
-    else expect(rows).toBeGreaterThan(1);
+    expect(rows).toBe(1);
     await expect
       .poll(() =>
         page.getByTestId("file-browser-toolbar").evaluate((element) => {
@@ -1354,7 +1352,7 @@ test("selection toolbar stays within narrow viewports and its actions remain rea
   }
 
   await page.setViewportSize({ width: 320, height: 740 });
-  await expect(toolbar).toHaveCSS("flex-wrap", "wrap");
+
   await expect
     .poll(() => toolbar.evaluate((element) => element.scrollWidth - element.clientWidth))
     .toBeLessThanOrEqual(1);
@@ -1538,4 +1536,46 @@ test.describe("compact file grid", () => {
     await expect(page.getByTestId("file-grid-preview")).toHaveCount(0);
     await expect(grid.getByRole("row").first()).toBeVisible();
   });
+});
+
+test("right-click context menus and marquee drag selection work on desktop", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, "desktop mouse interactions");
+  await page.goto("/files");
+
+  // Item context menu
+  await page.getByRole("row", { name: /alpha\.txt/ }).click({ button: "right" });
+  const itemMenu = page.getByRole("menu", { name: "alpha.txt" });
+  await expect(itemMenu).toBeVisible();
+  await expect(itemMenu.getByRole("menuitem", { name: "Download" })).toBeVisible();
+  await expect(itemMenu.getByRole("menuitem", { name: "Rename" })).toBeVisible();
+  await expect(itemMenu.getByRole("menuitem", { name: "Move to trash" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(itemMenu).toHaveCount(0);
+
+  // Empty-area context menu
+  const grid = page.getByRole("grid", { name: "Files and folders", exact: true });
+  const gridBox = (await grid.boundingBox())!;
+  await page.mouse.click(gridBox.x + gridBox.width - 40, gridBox.y + gridBox.height - 40, {
+    button: "right",
+  });
+  const emptyMenu = page.getByRole("menu", { name: "New" });
+  await expect(emptyMenu).toBeVisible();
+  await expect(emptyMenu.getByRole("menuitem", { name: "New folder" })).toBeVisible();
+  await expect(emptyMenu.getByRole("menuitem", { name: "Upload files" })).toBeVisible();
+  await expect(emptyMenu.getByRole("menuitem", { name: "Upload folder" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(emptyMenu).toHaveCount(0);
+
+  // Marquee drag selection from empty area across alpha.txt and beta.txt
+  const alphaBox = (await page.getByRole("row", { name: /alpha\.txt/ }).boundingBox())!;
+  const betaBox = (await page.getByRole("row", { name: /beta\.txt/ }).boundingBox())!;
+  await page.mouse.move(gridBox.x + gridBox.width - 30, betaBox.y + betaBox.height + 24);
+  await page.mouse.down();
+  await page.mouse.move(alphaBox.x + 80, alphaBox.y + 8, { steps: 6 });
+  await page.mouse.up();
+  await expect(page.getByRole("row", { name: /alpha\.txt/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("row", { name: /beta\.txt/ })).toHaveAttribute("aria-selected", "true");
 });

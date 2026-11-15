@@ -25,8 +25,11 @@ import ClockIcon from "~icons/gravity-ui/clock";
 import CopyIcon from "~icons/gravity-ui/copy";
 import CopyLinkIcon from "~icons/gravity-ui/copy-arrow-right";
 import MoreIcon from "~icons/gravity-ui/ellipsis-vertical";
+import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
+import FileIcon from "~icons/gravity-ui/file";
 import FolderIcon from "~icons/gravity-ui/folder";
 import MoveIcon from "~icons/gravity-ui/folder-arrow-right";
+import FolderPlusIcon from "~icons/gravity-ui/folder-plus";
 import GridIcon from "~icons/gravity-ui/layout-cells";
 import LinkIcon from "~icons/gravity-ui/link";
 import ListIcon from "~icons/gravity-ui/list-ul";
@@ -94,6 +97,12 @@ type FileBrowserProps = {
   showLocations?: boolean;
   onOpenContainingFolder?: (file: FileEntry) => void;
   rowActions?: FileRowActionHandlers;
+  emptyAreaActions?: {
+    onNewFolder?: () => void;
+    onUploadFiles?: () => void;
+    onUploadFolder?: () => void;
+    onBackgroundUpload?: () => void;
+  };
   headerFilters?: ReactNode;
   flat?: boolean;
 };
@@ -125,6 +134,7 @@ export function FileBrowser({
   showLocations = false,
   onOpenContainingFolder,
   rowActions,
+  emptyAreaActions,
   headerFilters,
   flat = false,
 }: FileBrowserProps) {
@@ -156,13 +166,14 @@ export function FileBrowser({
               <BackIcon className="size-4" />
             </Button>
           ) : null}
-          {!hideFolderControls && path !== "/" ? (
+          {!hideFolderControls ? (
             <Button
               isIconOnly
               size="sm"
               variant="ghost"
               className="size-8 rounded-full"
               aria-label={t("browser.up")}
+              isDisabled={path === "/"}
               onPress={() => {
                 const parts = path.split("/").filter(Boolean);
                 const parentPath = parts.length <= 1 ? "/" : `/${parts.slice(0, -1).join("/")}`;
@@ -196,43 +207,56 @@ export function FileBrowser({
             }
           >
             {toolbar ? <div className="flex min-w-0 items-center gap-1.5">{toolbar}</div> : null}
-            <div className="inline-flex shrink-0 items-center gap-0.5">
+            <div className="inline-flex shrink-0 items-center overflow-hidden rounded-full border border-[#747775]/55 dark:border-[#8e918f]/50">
               <Button
-                isIconOnly
                 size="sm"
                 variant="ghost"
                 aria-label={t("browser.listView")}
                 aria-pressed={view === "list"}
                 className={
                   view === "list"
-                    ? "h-8 w-11 rounded-full bg-[#c2e7ff] text-[#001d35] dark:bg-[#b8dce6] dark:text-[#002026]"
-                    : "h-8 w-11 rounded-l-full rounded-r-md bg-[#eef2f6] text-[#444746] hover:text-foreground dark:bg-[#223236] dark:text-[#cbe2e8]"
+                    ? "h-8 min-w-12 gap-1 rounded-none bg-[#c2e7ff] px-2.5 text-[#001d35] hover:bg-[#c2e7ff] dark:bg-[#004a77] dark:text-[#c2e7ff] dark:hover:bg-[#004a77]"
+                    : "h-8 min-w-10 rounded-none bg-transparent px-2.5 text-[#444746] hover:bg-[#e1e5ea]/60 hover:text-foreground dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
                 }
                 onPress={() => onViewChange("list")}
               >
-                <ListIcon className="size-4" />
+                {view === "list" ? <CheckIcon className="size-3.5 shrink-0" /> : null}
+                <ListIcon className="size-4 shrink-0" />
               </Button>
+              <span
+                className="h-5 w-px shrink-0 bg-[#747775]/40 dark:bg-[#8e918f]/40"
+                aria-hidden="true"
+              />
               <Button
-                isIconOnly
                 size="sm"
                 variant="ghost"
                 aria-label={t("browser.gridView")}
                 aria-pressed={view === "grid"}
                 className={
                   view === "grid"
-                    ? "h-8 w-11 rounded-full bg-[#c2e7ff] text-[#001d35] dark:bg-[#b8dce6] dark:text-[#002026]"
-                    : "h-8 w-11 rounded-r-full rounded-l-md bg-[#eef2f6] text-[#444746] hover:text-foreground dark:bg-[#223236] dark:text-[#cbe2e8]"
+                    ? "h-8 min-w-12 gap-1 rounded-none bg-[#c2e7ff] px-2.5 text-[#001d35] hover:bg-[#c2e7ff] dark:bg-[#004a77] dark:text-[#c2e7ff] dark:hover:bg-[#004a77]"
+                    : "h-8 min-w-10 rounded-none bg-transparent px-2.5 text-[#444746] hover:bg-[#e1e5ea]/60 hover:text-foreground dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
                 }
                 onPress={() => onViewChange("grid")}
               >
-                <GridIcon className="size-4" />
+                {view === "grid" ? <CheckIcon className="size-3.5 shrink-0" /> : null}
+                <GridIcon className="size-4 shrink-0" />
               </Button>
             </div>
           </div>
         </div>
-        {headerFilters ? <div className="mt-2.5 hidden sm:block">{headerFilters}</div> : null}
+        {selectionOverlay && headerFilters ? (
+          <div className="mt-2.5 hidden sm:block">{selectionOverlay}</div>
+        ) : headerFilters ? (
+          <div className="mt-2.5 hidden sm:block">{headerFilters}</div>
+        ) : null}
       </Card.Header>
-      <Card.Content className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+      <Card.Content className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+        {selectionOverlay && !headerFilters ? (
+          <div className="pointer-events-none absolute inset-x-3 top-2 z-30 hidden sm:block [&>*]:pointer-events-auto">
+            {selectionOverlay}
+          </div>
+        ) : null}
         {loading ? (
           <div className="flex flex-1 min-h-64 items-center justify-center">
             <Spinner size="lg" />
@@ -242,9 +266,9 @@ export function FileBrowser({
         ) : (
           <>
             {view === "list" && files.length > 0 ? (
-              <div className="hidden shrink-0 grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] items-center gap-2 border-b border-border/60 px-4 py-2 text-xs font-medium text-[#444746] dark:text-[#c4c7c5] sm:grid lg:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] lg:gap-4">
+              <div className="hidden shrink-0 grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] items-center gap-2 border-b border-border/60 px-4 py-2 text-xs font-medium text-[#444746] dark:text-[#c4c7c5] sm:grid @xl/file-browser:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] @xl/file-browser:gap-4">
                 <span className="truncate pl-1">{t("drive.columnName")}</span>
-                <span className="hidden lg:block">{t("drive.columnModified")}</span>
+                <span className="hidden @xl/file-browser:block">{t("drive.columnModified")}</span>
                 <span className="hidden sm:block">{t("drive.columnSize")}</span>
                 <span aria-hidden="true" />
               </div>
@@ -265,12 +289,12 @@ export function FileBrowser({
                 showLocations={showLocations}
                 onOpenContainingFolder={onOpenContainingFolder}
                 rowActions={rowActions}
+                emptyAreaActions={emptyAreaActions}
               />
             </div>
           </>
         )}
       </Card.Content>
-      {selectionOverlay}
     </Card>
   );
 }
@@ -291,6 +315,7 @@ function FileCollection({
   showLocations,
   onOpenContainingFolder,
   rowActions,
+  emptyAreaActions,
 }: {
   files: FileEntry[];
   view: FileBrowserView;
@@ -307,6 +332,7 @@ function FileCollection({
   showLocations: boolean;
   onOpenContainingFolder?: (file: FileEntry) => void;
   rowActions?: FileRowActionHandlers;
+  emptyAreaActions?: FileBrowserProps["emptyAreaActions"];
 }) {
   const grid = view === "grid";
   const { t } = useAppLocale();
@@ -317,8 +343,40 @@ function FileCollection({
   const longPressStart = useRef<{ x: number; y: number } | undefined>(undefined);
   const longPressTriggered = useRef(false);
   const [gridWidth, setGridWidth] = useState(0);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    file?: FileEntry;
+  } | null>(null);
+  const [marquee, setMarquee] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const suppressNextEmptyClick = useRef(false);
 
-  const compactList = gridWidth > 0 && gridWidth < 640;
+  const compactList =
+    typeof window !== "undefined" ? window.innerWidth < 640 : gridWidth > 0 && gridWidth < 640;
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        close();
+      }
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
 
   const toggleFileSelection = (id: string) => {
     if (!selection) return;
@@ -372,9 +430,80 @@ function FileCollection({
       disabledKeys={selectionDisabled ? files.map((file) => file.id) : undefined}
       disabledBehavior="selection"
       onClick={(event) => {
+        if (suppressNextEmptyClick.current) {
+          suppressNextEmptyClick.current = false;
+          return;
+        }
         if (!selection) return;
         const target = event.target as HTMLElement;
         if (!target.closest('[role="row"]')) selection.onClearSelection();
+      }}
+      onContextMenu={(event) => {
+        const target = event.target as HTMLElement;
+        if (target.closest('[role="row"]')) return;
+        if (!emptyAreaActions) return;
+        event.preventDefault();
+        setContextMenu({ x: event.clientX, y: event.clientY });
+      }}
+      onPointerDown={(event) => {
+        if (
+          !selection ||
+          selectionDisabled ||
+          event.button !== 0 ||
+          event.pointerType !== "mouse"
+        ) {
+          return;
+        }
+        const target = event.target as HTMLElement;
+        if (target.closest('[role="row"]') || target.closest("button, a, input, [role=button]")) {
+          return;
+        }
+        const container = gridRef.current;
+        if (!container) return;
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+        const baseKeys = additive
+          ? selectedKeys === "all"
+            ? new Set(files.map((item) => item.id))
+            : new Set(Array.from(selectedKeys, String))
+          : new Set<string>();
+        let dragging = false;
+
+        const onMove = (moveEvent: PointerEvent) => {
+          const dx = moveEvent.clientX - startX;
+          const dy = moveEvent.clientY - startY;
+          if (!dragging && Math.hypot(dx, dy) < 6) return;
+          dragging = true;
+          const left = Math.min(startX, moveEvent.clientX);
+          const top = Math.min(startY, moveEvent.clientY);
+          const right = Math.max(startX, moveEvent.clientX);
+          const bottom = Math.max(startY, moveEvent.clientY);
+          setMarquee({ left, top, width: right - left, height: bottom - top });
+
+          const next = new Set(baseKeys);
+          const rows = container.querySelectorAll<HTMLElement>('[role="row"][data-key]');
+          for (const row of rows) {
+            const rect = row.getBoundingClientRect();
+            const intersects =
+              rect.right >= left && rect.left <= right && rect.bottom >= top && rect.top <= bottom;
+            const key = row.dataset.key;
+            if (key && intersects) next.add(key);
+          }
+          selection.onSelectionChange(next);
+        };
+
+        const onUp = () => {
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onUp);
+          if (dragging) {
+            suppressNextEmptyClick.current = true;
+            setMarquee(null);
+          }
+        };
+
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
       }}
       onAction={(key) => {
         if (longPressTriggered.current) {
@@ -398,24 +527,25 @@ function FileCollection({
           <p className="mt-1 text-xs text-muted">{emptyHint}</p>
         </div>
       )}
-      className={`h-full min-h-0 overflow-x-hidden overflow-y-auto outline-none ${hasSelection ? "pb-24" : ""}`}
+      className="h-full min-h-0 overflow-x-hidden overflow-y-auto outline-none"
     >
       <Collection
         items={files}
-        dependencies={[
-          dimmedIds,
-          showLocations,
-          onOpenContainingFolder,
-          rowActions,
-          onOpen,
-          hasSelection,
-          compactList,
-        ]}
+        dependencies={[dimmedIds, showLocations, compactList ? hasSelection : false, compactList]}
       >
         {(file) => (
           <GridListItem
             id={file.id}
             textValue={file.name}
+            onContextMenu={(event) => {
+              if (!rowActions) return;
+              event.preventDefault();
+              event.stopPropagation();
+              if (selection && selectedKeys !== "all" && !selectedKeys.has(file.id)) {
+                selection.onSelectionChange(new Set([file.id]));
+              }
+              setContextMenu({ x: event.clientX, y: event.clientY, file });
+            }}
             onPointerDown={(event) => {
               if (!selection || event.pointerType === "mouse") return;
               longPressTriggered.current = false;
@@ -440,10 +570,10 @@ function FileCollection({
             className={(state) =>
               grid
                 ? [
-                    "group relative flex min-w-0 cursor-default flex-col rounded-2xl border border-transparent bg-[#f0f4f9]/75 p-2.5 outline-none transition-colors dark:bg-[#282a2c]/65",
+                    "group relative flex min-w-0 cursor-default flex-col rounded-2xl border border-transparent bg-[#f0f4f9]/85 p-2.5 outline-none transition-colors dark:bg-[#282a2c]/85",
                     state.isSelected
-                      ? "border-accent/50 bg-[#c2e7ff]/45 dark:bg-[#23434c]"
-                      : "hover:bg-[#e1e5ea]/80 dark:hover:bg-[#333537]",
+                      ? "border-[#0b57d0] bg-[#c2e7ff]/55 dark:border-[#a8c7fa] dark:bg-[#004a77]"
+                      : "hover:bg-[#e1e5ea]/90 dark:hover:bg-[#333538]",
 
                     dimmedIds?.has(file.id) && "opacity-45",
                     state.isFocusVisible && "ring-2 ring-inset ring-accent",
@@ -451,10 +581,10 @@ function FileCollection({
                     .filter(Boolean)
                     .join(" ")
                 : [
-                    "group grid min-h-[64px] cursor-default grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2 rounded-2xl bg-[#f4f7fb] px-3.5 py-2.5 outline-none transition-colors dark:bg-[#1c2425] sm:min-h-12 sm:grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] sm:rounded-none sm:border-b sm:border-border/50 sm:bg-transparent sm:px-4 sm:py-0 sm:last:border-b-0 sm:dark:bg-transparent lg:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] lg:gap-4",
+                    "group grid min-h-[64px] cursor-default grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2 rounded-2xl bg-[#f4f7fb] px-3.5 py-2.5 outline-none transition-colors dark:bg-[#1e1f20] sm:min-h-11 sm:grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] sm:rounded-none sm:border-b sm:border-border/45 sm:bg-transparent sm:px-4 sm:py-0 sm:last:border-b-0 sm:dark:bg-transparent @xl/file-browser:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] @xl/file-browser:gap-4",
                     state.isSelected
-                      ? "bg-[#d3e3fd]! dark:bg-[#23434c]!"
-                      : "hover:bg-[#eaf0f7] dark:hover:bg-[#253031] sm:hover:bg-[#f0f4f9] sm:dark:hover:bg-[#282a2c]/70",
+                      ? "bg-[#d3e3fd]! dark:bg-[#004a77]!"
+                      : "hover:bg-[#eaf0f7] dark:hover:bg-[#282a2c] sm:hover:bg-[#f0f4f9] sm:dark:hover:bg-[#282a2c]/70",
 
                     dimmedIds?.has(file.id) && "opacity-45",
                     state.isFocusVisible && "ring-2 ring-inset ring-accent/30",
@@ -511,26 +641,273 @@ function FileCollection({
     </GridList>
   );
 
-  return grid ? (
-    <Virtualizer
-      key="grid"
-      layout={GridLayout}
-      layoutOptions={{
-        ...(showLocations ? locatedFileGridLayoutOptions : fileGridLayoutOptions),
-        // Prefer ~196px cards, while allowing two smaller tiles in narrow panes.
-        maxColumns: Math.max(2, Math.floor((gridWidth + 12) / 208)),
-      }}
-    >
-      {collection}
-    </Virtualizer>
-  ) : (
-    <Virtualizer
-      key="list"
-      layout={ListLayout}
-      layoutOptions={compactList ? { gap: 6, padding: 12, estimatedRowSize: 64 } : undefined}
-    >
-      {collection}
-    </Virtualizer>
+  const overlays = (
+    <>
+      {marquee
+        ? createPortal(
+            <div
+              aria-hidden="true"
+              style={{
+                left: marquee.left,
+                top: marquee.top,
+                width: marquee.width,
+                height: marquee.height,
+              }}
+              className="pointer-events-none fixed z-[80] rounded-xs border border-[#0b57d0]/80 bg-[#0b57d0]/15 dark:border-[#a8c7fa]/85 dark:bg-[#a8c7fa]/20"
+            />,
+            document.body,
+          )
+        : null}
+      {contextMenu
+        ? createPortal(
+            <div
+              role="menu"
+              aria-label={contextMenu.file ? contextMenu.file.name : t("nav.newAction")}
+              style={{
+                left: Math.min(contextMenu.x, Math.max(8, window.innerWidth - 230)),
+                top: Math.min(contextMenu.y, Math.max(8, window.innerHeight - 340)),
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              className="fixed z-[95] min-w-52 rounded-2xl border border-border/70 bg-[#f8fafd] p-1.5 shadow-2xl dark:bg-[#282a2c]"
+            >
+              {contextMenu.file ? (
+                <div className="flex flex-col text-sm">
+                  {contextMenu.file.kind === "file" && rowActions?.onDownload ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        const target = contextMenu.file!;
+                        setContextMenu(null);
+                        rowActions.onDownload?.(target);
+                      }}
+                    >
+                      <DownloadIcon className="size-4 text-muted" />
+                      <span>{t("drive.actionDownload")}</span>
+                    </button>
+                  ) : null}
+                  {rowActions?.onRename ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        const target = contextMenu.file!;
+                        setContextMenu(null);
+                        rowActions.onRename?.(target);
+                      }}
+                    >
+                      <PencilIcon className="size-4 text-muted" />
+                      <span>{t("drive.actionRename")}</span>
+                    </button>
+                  ) : null}
+                  {rowActions?.onShare ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        const target = contextMenu.file!;
+                        setContextMenu(null);
+                        rowActions.onShare?.(target);
+                      }}
+                    >
+                      <LinkIcon className="size-4 text-muted" />
+                      <span>{t("drive.actionShare")}</span>
+                    </button>
+                  ) : null}
+                  {contextMenu.file.kind === "file" && rowActions?.onCopyLink ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        const target = contextMenu.file!;
+                        setContextMenu(null);
+                        rowActions.onCopyLink?.(target);
+                      }}
+                    >
+                      <CopyLinkIcon className="size-4 text-muted" />
+                      <span>{t("drive.actionCopyLink")}</span>
+                    </button>
+                  ) : null}
+                  {rowActions?.onBookmark ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        const target = contextMenu.file!;
+                        setContextMenu(null);
+                        rowActions.onBookmark?.(target);
+                      }}
+                    >
+                      <BookmarkIcon className="size-4 text-muted" />
+                      <span>
+                        {rowActions.isBookmarked
+                          ? t("drive.actionBookmarkRemove")
+                          : t("drive.actionBookmarkAdd")}
+                      </span>
+                    </button>
+                  ) : null}
+                  {rowActions?.onMove ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        const target = contextMenu.file!;
+                        setContextMenu(null);
+                        rowActions.onMove?.(target);
+                      }}
+                    >
+                      <MoveIcon className="size-4 text-muted" />
+                      <span>{t("drive.actionMove")}</span>
+                    </button>
+                  ) : null}
+                  {rowActions?.onCopy ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        const target = contextMenu.file!;
+                        setContextMenu(null);
+                        rowActions.onCopy?.(target);
+                      }}
+                    >
+                      <CopyIcon className="size-4 text-muted" />
+                      <span>{t("drive.actionCopy")}</span>
+                    </button>
+                  ) : null}
+                  {contextMenu.file.kind === "file" && rowActions?.onVersions ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        const target = contextMenu.file!;
+                        setContextMenu(null);
+                        rowActions.onVersions?.(target);
+                      }}
+                    >
+                      <ClockIcon className="size-4 text-muted" />
+                      <span>{t("versions.action")}</span>
+                    </button>
+                  ) : null}
+                  {rowActions?.onTrash ? (
+                    <>
+                      <Separator className="my-1" />
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-danger hover:bg-danger/10"
+                        onClick={() => {
+                          const target = contextMenu.file!;
+                          setContextMenu(null);
+                          rowActions.onTrash?.(target);
+                        }}
+                      >
+                        <TrashIcon className="size-4" />
+                        <span>{t("drive.actionTrash")}</span>
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="flex flex-col text-sm">
+                  {emptyAreaActions?.onNewFolder ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        setContextMenu(null);
+                        emptyAreaActions.onNewFolder?.();
+                      }}
+                    >
+                      <FolderPlusIcon className="size-4 text-muted" />
+                      <span>{t("files.newFolder")}</span>
+                    </button>
+                  ) : null}
+                  <Separator className="my-1" />
+                  {emptyAreaActions?.onUploadFiles ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        setContextMenu(null);
+                        emptyAreaActions.onUploadFiles?.();
+                      }}
+                    >
+                      <FileIcon className="size-4 text-muted" />
+                      <span>{t("files.uploadFiles")}</span>
+                    </button>
+                  ) : null}
+                  {emptyAreaActions?.onUploadFolder ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        setContextMenu(null);
+                        emptyAreaActions.onUploadFolder?.();
+                      }}
+                    >
+                      <UploadIcon className="size-4 text-muted" />
+                      <span>{t("files.uploadFolder")}</span>
+                    </button>
+                  ) : null}
+                  {emptyAreaActions?.onBackgroundUpload ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex h-9 items-center gap-3 rounded-xl px-3 text-left text-foreground hover:bg-[#e1e5ea]/70 dark:hover:bg-[#37393b]"
+                      onClick={() => {
+                        setContextMenu(null);
+                        emptyAreaActions.onBackgroundUpload?.();
+                      }}
+                    >
+                      <UploadIcon className="size-4 text-muted" />
+                      <span>{t("uploads.bgTitle")}</span>
+                    </button>
+                  ) : null}
+                </div>
+              )}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+
+  return (
+    <>
+      {grid ? (
+        <Virtualizer
+          key="grid"
+          layout={GridLayout}
+          layoutOptions={{
+            ...(showLocations ? locatedFileGridLayoutOptions : fileGridLayoutOptions),
+            // Prefer ~196px cards, while allowing two smaller tiles in narrow panes.
+            maxColumns: Math.max(2, Math.floor((gridWidth + 12) / 208)),
+          }}
+        >
+          {collection}
+        </Virtualizer>
+      ) : (
+        <Virtualizer
+          key="list"
+          layout={ListLayout}
+          layoutOptions={compactList ? { gap: 6, padding: 12, estimatedRowSize: 64 } : undefined}
+        >
+          {collection}
+        </Virtualizer>
+      )}
+      {overlays}
+    </>
   );
 }
 
@@ -726,8 +1103,8 @@ function ListFile({
         <div
           className={
             file.kind === "folder"
-              ? "flex size-10 shrink-0 items-center justify-center rounded-xl bg-transparent sm:size-8 sm:rounded-lg sm:bg-[#f0f4f9] sm:dark:bg-[#282a2c]"
-              : "flex size-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-2xs dark:bg-[#121819] sm:size-8 sm:rounded-lg sm:bg-[#f0f4f9] sm:shadow-none sm:dark:bg-[#282a2c]"
+              ? "flex size-10 shrink-0 items-center justify-center rounded-xl bg-transparent sm:size-7"
+              : "flex size-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-2xs dark:bg-[#282a2c] sm:size-7 sm:bg-transparent sm:shadow-none sm:dark:bg-transparent"
           }
         >
           {file.kind === "folder" ? (
@@ -754,7 +1131,7 @@ function ListFile({
         </div>
       </div>
       <time
-        className="hidden min-w-0 truncate text-xs text-muted lg:block"
+        className="hidden min-w-0 truncate text-xs text-muted @xl/file-browser:block"
         dateTime={file.modTime}
         title={formatDateTime.format(modifiedDate)}
       >
@@ -769,7 +1146,7 @@ function ListFile({
       >
         {rowActions ? (
           <>
-            <div className="hidden lg:flex lg:items-center lg:gap-0.5 lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
+            <div className="hidden @xl/file-browser:flex @xl/file-browser:items-center @xl/file-browser:gap-0.5 @xl/file-browser:opacity-0 @xl/file-browser:transition-opacity @xl/file-browser:group-hover:opacity-100 @xl/file-browser:group-focus-within:opacity-100">
               {rowActions.onShare ? (
                 <Button
                   isIconOnly

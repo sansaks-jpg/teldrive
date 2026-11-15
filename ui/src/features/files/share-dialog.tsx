@@ -271,9 +271,7 @@ export function ShareDialog({
                         : t("share.noExpiration")}
                     </p>
                   </div>
-                  <Chip variant="tertiary">
-                    {t(permissionLabelKey(grant.permission))}
-                  </Chip>
+                  <Chip variant="tertiary">{t(permissionLabelKey(grant.permission))}</Chip>
                   <Dropdown>
                     <Button
                       isIconOnly
@@ -434,9 +432,7 @@ export function ShareDialog({
                         : ` · ${t("share.noExpiration")}`}
                     </p>
                   </div>
-                  <Chip variant="tertiary">
-                    {t(permissionLabelKey(link.permission))}
-                  </Chip>
+                  <Chip variant="tertiary">{t(permissionLabelKey(link.permission))}</Chip>
                   <Dropdown>
                     <Button
                       isIconOnly

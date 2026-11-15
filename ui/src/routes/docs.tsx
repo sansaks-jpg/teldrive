@@ -359,11 +359,7 @@ function DocsWorkspacePage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {doc?.docType === "doc" ? (
-              <Button
-                size="sm"
-                variant="secondary"
-                onPress={() => setPreviewMode((prev) => !prev)}
-              >
+              <Button size="sm" variant="secondary" onPress={() => setPreviewMode((prev) => !prev)}>
                 {previewMode ? t("docs.editMode") : t("docs.previewMode")}
               </Button>
             ) : null}

@@ -17,11 +17,8 @@ import { useUploadStore } from "@/features/uploads/store";
 import { useAppLocale } from "@/lib/locale";
 import { usePreferences, useUpdatePreferences } from "@/lib/preferences";
 import PasteIcon from "~icons/gravity-ui/arrow-right-to-square";
-import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
-import FileIcon from "~icons/gravity-ui/file";
-import FolderIcon from "~icons/gravity-ui/folder";
+import ChevronDownIcon from "~icons/gravity-ui/chevron-down";
 import SplitIcon from "~icons/gravity-ui/layout-split-columns";
-import PlusIcon from "~icons/gravity-ui/plus";
 import CloseIcon from "~icons/gravity-ui/xmark";
 import { useFileClipboardStore } from "./clipboard-store";
 import { absoluteFileDownloadUrl, copyText, startFileDownload } from "./download";
@@ -231,9 +228,12 @@ export function FileManagerPage({
             ? secondaryUploadFolderTriggerRef
             : primaryUploadFolderTriggerRef;
         ref.current?.click();
+      } else if (action === "drive:background-upload" && canLocalImport) {
+        setActivePane(pane);
+        setBackgroundUploadOpen(true);
       }
     });
-  }, [search.split, searchMode]);
+  }, [canLocalImport, search.split, searchMode]);
 
   const primarySelectedIds = selectionIds(primarySelectedKeys, primaryFiles);
   const secondarySelectedIds = selectionIds(secondarySelectedKeys, secondaryFiles);
@@ -677,56 +677,7 @@ export function FileManagerPage({
             <SplitIcon className="size-4" />
           </Button>
         ) : null}
-        <Button
-          isIconOnly
-          size="sm"
-          variant="secondary"
-          className="hidden sm:inline-flex"
-          aria-label={t("files.newFolder")}
-          onPress={() => {
-            setActivePane(pane);
-            setFolderDialogOpen(true);
-          }}
-        >
-          <PlusIcon className="size-4" />
-        </Button>
-        <Dropdown>
-          <Button
-            isIconOnly
-            size="sm"
-            variant="primary"
-            className="hidden sm:inline-flex"
-            aria-label={t("manager.upload")}
-          >
-            <UploadIcon className="size-4" />
-          </Button>
-          <Dropdown.Popover className="min-w-52">
-            <Dropdown.Menu
-              aria-label={t("manager.upload")}
-              onAction={(key) => {
-                setActivePane(pane);
-                if (key === "files") uploadFilesTriggerRef.current?.click();
-                if (key === "folder") uploadFolderTriggerRef.current?.click();
-                if (key === "background") setBackgroundUploadOpen(true);
-              }}
-            >
-              <Dropdown.Item id="files" textValue={t("files.uploadFiles")}>
-                <FileIcon className="size-4" />
-                <Label>{t("files.uploadFiles")}</Label>
-              </Dropdown.Item>
-              <Dropdown.Item id="folder" textValue={t("files.uploadFolder")}>
-                <FolderIcon className="size-4" />
-                <Label>{t("files.uploadFolder")}</Label>
-              </Dropdown.Item>
-              {canLocalImport ? (
-                <Dropdown.Item id="background" textValue={t("uploads.bgTitle")}>
-                  <UploadIcon className="size-4" />
-                  <Label>{t("uploads.bgTitle")}</Label>
-                </Dropdown.Item>
-              ) : null}
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown>
+
         <span className="hidden" aria-hidden="true">
           <FileTrigger
             allowsMultiple
@@ -768,9 +719,9 @@ export function FileManagerPage({
       !(clipboardMode === "cut" && clipboardSourceParentId === paneLocation(pane).parentId);
     if (showClipboard) {
       return (
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
-          <div className="pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0">
-            <span className="shrink-0 rounded-full bg-default/40 px-3 py-2 text-sm font-medium text-foreground">
+        <div className="flex w-full">
+          <div className="flex min-h-10 w-full min-w-0 flex-wrap items-center gap-1 rounded-full bg-[#edf2fa] px-2 py-1 dark:bg-[#282a2c] [&>button]:shrink-0">
+            <span className="shrink-0 px-2 text-sm font-medium text-foreground">
               {t(clipboardMode === "cut" ? "manager.clipCut" : "manager.clipCopied", {
                 count: clipboardItems.length,
               })}
@@ -848,93 +799,94 @@ export function FileManagerPage({
   };
 
   const renderDriveFilterChips = () => (
-    <div className="scrollbar-hide flex items-center gap-2 overflow-x-auto pb-0.5">
-      <Button
-        size="sm"
-        variant="ghost"
-        className={
-          !search.recent && !search.bookmarked && primaryLocation.path === "/"
-            ? "h-8 shrink-0 rounded-lg bg-[#c2e7ff] px-3.5 text-xs font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
-            : "h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
-        }
-        onPress={() =>
-          onLocationChange({
-            ...search,
-            path: "/",
-            parentId: undefined,
-            query: "",
-            recent: undefined,
-            bookmarked: undefined,
-          })
-        }
-      >
-        {t("drive.filterAll")}
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
-        onPress={() =>
-          void navigateTo({
-            to: "/search",
-            search: { kind: "folder" },
-          })
-        }
-      >
-        {t("drive.filterFolders")}
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
-        onPress={() =>
-          void navigateTo({
-            to: "/search",
-            search: { category: ["document"] },
-          })
-        }
-      >
-        {t("drive.filterDocuments")}
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
-        onPress={() =>
-          void navigateTo({
-            to: "/search",
-            search: { category: ["image", "video"] },
-          })
-        }
-      >
-        {t("drive.filterMedia")}
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
-        onPress={() =>
-          void navigateTo({
-            to: "/search",
-            search: { category: ["audio"] },
-          })
-        }
-      >
-        {t("drive.filterAudio")}
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
-        onPress={() =>
-          void navigateTo({
-            to: "/search",
-            search: { category: ["archive"] },
-          })
-        }
-      >
-        {t("drive.filterArchives")}
-      </Button>
+    <div className="flex items-center gap-2">
+      <Dropdown>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 gap-1.5 rounded-lg border border-[#747775]/45 bg-transparent px-3 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:border-[#8e918f]/45 dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+        >
+          <span>{t("search.type")}</span>
+          <ChevronDownIcon className="size-3.5 opacity-80" />
+        </Button>
+        <Dropdown.Popover placement="bottom start" className="min-w-44 rounded-xl p-1">
+          <Dropdown.Menu
+            aria-label={t("search.type")}
+            onAction={(key) => {
+              if (key === "all") {
+                onLocationChange({
+                  ...search,
+                  path: "/",
+                  parentId: undefined,
+                  query: "",
+                  recent: undefined,
+                  bookmarked: undefined,
+                });
+              } else if (key === "folder") {
+                void navigateTo({ to: "/search", search: { kind: "folder" } });
+              } else if (key === "document") {
+                void navigateTo({ to: "/search", search: { category: ["document"] } });
+              } else if (key === "media") {
+                void navigateTo({ to: "/search", search: { category: ["image", "video"] } });
+              } else if (key === "audio") {
+                void navigateTo({ to: "/search", search: { category: ["audio"] } });
+              } else if (key === "archive") {
+                void navigateTo({ to: "/search", search: { category: ["archive"] } });
+              }
+            }}
+          >
+            <Dropdown.Item id="all" textValue={t("drive.filterAll")}>
+              <Label>{t("drive.filterAll")}</Label>
+            </Dropdown.Item>
+            <Dropdown.Item id="folder" textValue={t("drive.filterFolders")}>
+              <Label>{t("drive.filterFolders")}</Label>
+            </Dropdown.Item>
+            <Dropdown.Item id="document" textValue={t("drive.filterDocuments")}>
+              <Label>{t("drive.filterDocuments")}</Label>
+            </Dropdown.Item>
+            <Dropdown.Item id="media" textValue={t("drive.filterMedia")}>
+              <Label>{t("drive.filterMedia")}</Label>
+            </Dropdown.Item>
+            <Dropdown.Item id="audio" textValue={t("drive.filterAudio")}>
+              <Label>{t("drive.filterAudio")}</Label>
+            </Dropdown.Item>
+            <Dropdown.Item id="archive" textValue={t("drive.filterArchives")}>
+              <Label>{t("drive.filterArchives")}</Label>
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown>
+      <Dropdown>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 gap-1.5 rounded-lg border border-[#747775]/45 bg-transparent px-3 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:border-[#8e918f]/45 dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+        >
+          <span>{t("manager.sortModified")}</span>
+          <ChevronDownIcon className="size-3.5 opacity-80" />
+        </Button>
+        <Dropdown.Popover placement="bottom start" className="min-w-44 rounded-xl p-1">
+          <Dropdown.Menu
+            aria-label={t("manager.sortModified")}
+            onAction={(key) => {
+              const nowMs = Date.now();
+              const days = key === "today" ? 1 : key === "week" ? 7 : 30;
+              const updatedAfter = new Date(nowMs - days * 86_400_000).toISOString().slice(0, 10);
+              void navigateTo({ to: "/search", search: { updatedAfter } });
+            }}
+          >
+            <Dropdown.Item id="today" textValue="Today">
+              <Label>Today</Label>
+            </Dropdown.Item>
+            <Dropdown.Item id="week" textValue="Last 7 days">
+              <Label>Last 7 days</Label>
+            </Dropdown.Item>
+            <Dropdown.Item id="month" textValue="Last 30 days">
+              <Label>Last 30 days</Label>
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown>
     </div>
   );
 
@@ -1016,6 +968,36 @@ export function FileManagerPage({
         toolbar={renderToolbar(pane)}
         compactToolbar={Boolean(searchMode)}
         selectionOverlay={!fileQuery.isPlaceholderData ? renderSelectionOverlay(pane) : undefined}
+        emptyAreaActions={
+          !searchMode && !search.recent && !search.bookmarked
+            ? {
+                onNewFolder: () => {
+                  setActivePane(pane);
+                  setFolderDialogOpen(true);
+                },
+                onUploadFiles: () => {
+                  setActivePane(pane);
+                  (pane === "secondary"
+                    ? secondaryUploadFilesTriggerRef
+                    : primaryUploadFilesTriggerRef
+                  ).current?.click();
+                },
+                onUploadFolder: () => {
+                  setActivePane(pane);
+                  (pane === "secondary"
+                    ? secondaryUploadFolderTriggerRef
+                    : primaryUploadFolderTriggerRef
+                  ).current?.click();
+                },
+                onBackgroundUpload: canLocalImport
+                  ? () => {
+                      setActivePane(pane);
+                      setBackgroundUploadOpen(true);
+                    }
+                  : undefined,
+              }
+            : undefined
+        }
         emptyContent={
           searchMode && (missingFolder || invalidDates || !activeSearch) ? (
             <div className="flex h-full flex-col items-center justify-center p-8 text-center">

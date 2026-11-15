@@ -1,13 +1,4 @@
-import {
-  Button,
-  Card,
-  Chip,
-  Dropdown,
-  Input,
-  Label,
-  Spinner,
-  TextField,
-} from "@heroui/react";
+import { Button, Card, Chip, Dropdown, Input, Label, Spinner, TextField } from "@heroui/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileTrigger } from "react-aria-components";
@@ -582,7 +573,9 @@ function PhotosWorkspacePage() {
                     <div className="flex flex-wrap items-baseline justify-between gap-2 px-0.5">
                       <h2 className="text-sm font-semibold text-foreground">{dayLabel}</h2>
                       {cameras.length > 0 ? (
-                        <span className="text-xs text-muted">{cameras.slice(0, 2).join(" · ")}</span>
+                        <span className="text-xs text-muted">
+                          {cameras.slice(0, 2).join(" · ")}
+                        </span>
                       ) : null}
                     </div>
                     <div className="grid grid-cols-3 gap-1 sm:grid-cols-4 sm:gap-1.5 md:grid-cols-5 lg:grid-cols-6">

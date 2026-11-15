@@ -69,7 +69,7 @@ function TrashPage() {
   };
 
   return (
-    <Page>
+    <Page className="p-3 sm:p-4">
       <PageHeader
         title={t("trash.title")}
         description={t("trash.description")}
@@ -98,12 +98,12 @@ function TrashPage() {
         {query.data.items.length === 0 ? (
           <EmptyState title={t("trash.empty")} description={t("trash.emptyHint")} />
         ) : (
-          <Card className="gap-0 overflow-hidden border border-border bg-surface/80 shadow-sm">
+          <Card className="gap-0 overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-none">
             {query.data.items.map((file) => {
               return (
                 <div
                   key={file.id}
-                  className="grid min-h-16 gap-3 border-b border-border px-4 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-center"
+                  className="grid min-h-14 gap-3 border-b border-border/50 px-4 py-2.5 transition-colors last:border-b-0 hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]/70 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-center"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-default/20 text-muted">

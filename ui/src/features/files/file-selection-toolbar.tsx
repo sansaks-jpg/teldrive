@@ -68,7 +68,7 @@ export function FileSelectionToolbar({
         aria-label={t("selection.actions")}
         className="pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0"
       >
-        <span className="shrink-0 rounded-full bg-accent/10 px-3 py-2 text-sm font-medium text-accent">
+        <span className="shrink-0 rounded-full bg-[#c2e7ff] px-3 py-2 text-sm font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]">
           {t("selection.count", { count: selectedCount })}
         </span>
         {onCut ? (

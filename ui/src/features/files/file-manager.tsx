@@ -377,10 +377,8 @@ export function FileManagerPage({
     );
   };
 
-  const toggleBookmarks = async (pane: PaneId) => {
-    const files = paneSelectedFiles(pane);
-    if (files.length === 0 || pending) return;
-    const ids = files.map((file) => file.id);
+  const bookmarkIds = async (ids: string[], pane: PaneId) => {
+    if (ids.length === 0 || pending) return;
     await performAction(
       () => (search.bookmarked ? fileActions.removeBookmarks(ids) : fileActions.bookmarkFiles(ids)),
       search.bookmarked
@@ -392,6 +390,14 @@ export function FileManagerPage({
           }),
       search.bookmarked ? t("manager.unbookmarkFailed") : t("manager.bookmarkFailed"),
       () => setPaneSelectedKeys(pane, new Set()),
+    );
+  };
+
+  const toggleBookmarks = async (pane: PaneId) => {
+    const files = paneSelectedFiles(pane);
+    await bookmarkIds(
+      files.map((file) => file.id),
+      pane,
     );
   };
 
@@ -609,19 +615,21 @@ export function FileManagerPage({
     startFileDownload(file);
   };
 
-  const copyDownloadLinks = async (pane: PaneId) => {
-    const selectedFiles = paneSelectedFiles(pane);
+  const copyLinksForFiles = async (files: FileEntry[]) => {
+    if (files.length === 0) return;
     try {
-      await copyText(selectedFiles.map(absoluteFileDownloadUrl).join("\n"));
+      await copyText(files.map(absoluteFileDownloadUrl).join("\n"));
       toast.success(
-        t(selectedFiles.length === 1 ? "manager.linksCopiedOne" : "manager.linksCopiedMany", {
-          count: selectedFiles.length,
+        t(files.length === 1 ? "manager.linksCopiedOne" : "manager.linksCopiedMany", {
+          count: files.length,
         }),
       );
     } catch (error) {
       toast.error(t("manager.linksCopyFailed"), { description: userMessage(error) });
     }
   };
+
+  const copyDownloadLinks = async (pane: PaneId) => copyLinksForFiles(paneSelectedFiles(pane));
 
   const renderToolbar = (pane: PaneId) => {
     if (searchMode)
@@ -654,6 +662,7 @@ export function FileManagerPage({
             isIconOnly
             size="sm"
             variant="secondary"
+            className="hidden sm:inline-flex"
             aria-label={t("manager.openSplit")}
             onPress={openSplitView}
           >
@@ -830,6 +839,97 @@ export function FileManagerPage({
     );
   };
 
+  const renderDriveFilterChips = () => (
+    <div className="scrollbar-hide flex items-center gap-2 overflow-x-auto pb-0.5">
+      <Button
+        size="sm"
+        variant="ghost"
+        className={
+          !search.recent && !search.bookmarked && primaryLocation.path === "/"
+            ? "h-8 shrink-0 rounded-lg bg-[#c2e7ff] px-3.5 text-xs font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
+            : "h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+        }
+        onPress={() =>
+          onLocationChange({
+            ...search,
+            path: "/",
+            parentId: undefined,
+            query: "",
+            recent: undefined,
+            bookmarked: undefined,
+          })
+        }
+      >
+        {t("drive.filterAll")}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+        onPress={() =>
+          void navigateTo({
+            to: "/search",
+            search: { kind: "folder" },
+          })
+        }
+      >
+        {t("drive.filterFolders")}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+        onPress={() =>
+          void navigateTo({
+            to: "/search",
+            search: { category: ["document"] },
+          })
+        }
+      >
+        {t("drive.filterDocuments")}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+        onPress={() =>
+          void navigateTo({
+            to: "/search",
+            search: { category: ["image", "video"] },
+          })
+        }
+      >
+        {t("drive.filterMedia")}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+        onPress={() =>
+          void navigateTo({
+            to: "/search",
+            search: { category: ["audio"] },
+          })
+        }
+      >
+        {t("drive.filterAudio")}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-8 shrink-0 rounded-lg border border-border/75 bg-surface px-3.5 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+        onPress={() =>
+          void navigateTo({
+            to: "/search",
+            search: { category: ["archive"] },
+          })
+        }
+      >
+        {t("drive.filterArchives")}
+      </Button>
+    </div>
+  );
+
   const renderPane = (pane: PaneId) => {
     const location = paneLocation(pane);
     const files = paneFiles(pane);
@@ -846,9 +946,15 @@ export function FileManagerPage({
               ? t("title.recent")
               : search.bookmarked
                 ? t("title.bookmarks")
-                : t("manager.myFiles")
+                : t("drive.myDrive")
         }
         view={location.view}
+        flat={!search.split}
+        headerFilters={
+          !searchMode && !search.recent && !search.bookmarked && pane === "primary"
+            ? renderDriveFilterChips()
+            : undefined
+        }
         loading={fileQuery.isPending && activeSearch && !missingFolder && !invalidDates}
         onNavigatePath={(path) => navigatePane(pane, { path, query: "", view: location.view })}
         onViewChange={(view) => navigatePane(pane, { ...location, view }, true)}
@@ -858,6 +964,37 @@ export function FileManagerPage({
           selectedKeys,
           onSelectionChange: (selection) => setPaneSelectedKeys(pane, selection),
           onClearSelection: () => setPaneSelectedKeys(pane, new Set()),
+        }}
+        rowActions={{
+          onDownload: (file) => startFileDownload(file),
+          onShare: (file) => {
+            setActivePane(pane);
+            setShareFile(file);
+          },
+          onCopyLink: (file) => void copyLinksForFiles([file]),
+          onRename: (file) => {
+            setActivePane(pane);
+            setRenameFile(file);
+            setRenameName(file.name);
+            setActionError(undefined);
+          },
+          onBookmark: (file) => void bookmarkIds([file.id], pane),
+          onMove: (file) => {
+            setActivePane(pane);
+            setActionError(undefined);
+            setDestination({ mode: "move", files: [file], pane });
+          },
+          onCopy: (file) => {
+            setActivePane(pane);
+            setActionError(undefined);
+            setDestination({ mode: "copy", files: [file], pane });
+          },
+          onVersions: (file) => {
+            setActivePane(pane);
+            setVersionsFile(file);
+          },
+          onTrash: (file) => void trashFiles([file.id], pane),
+          isBookmarked: Boolean(search.bookmarked),
         }}
         selectionDisabled={fileQuery.isPlaceholderData || pending}
         hasNextPage={
@@ -971,7 +1108,7 @@ export function FileManagerPage({
   };
 
   return (
-    <Page className="h-full min-h-0 gap-0 overflow-x-hidden">
+    <Page className="min-h-0 flex-1 gap-0 overflow-x-hidden">
       <PageContent className="flex min-h-0 flex-1 overflow-x-hidden">
         <div {...keyboardProps} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
           {searchMode && primaryFileQuery.isError && (
@@ -994,125 +1131,6 @@ export function FileManagerPage({
                 }
               >
                 {t("picker.retry")}
-              </Button>
-            </div>
-          )}
-          {!searchMode && (
-            <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                className={
-                  !search.recent && !search.bookmarked
-                    ? "h-8 shrink-0 rounded-lg bg-[#c2e7ff] px-3.5 text-xs font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
-                    : "h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
-                }
-                onPress={() =>
-                  onLocationChange({
-                    ...search,
-                    path: "/",
-                    parentId: undefined,
-                    query: "",
-                    recent: undefined,
-                    bookmarked: undefined,
-                  })
-                }
-              >
-                {t("drive.filterAll")}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className={
-                  search.recent
-                    ? "h-8 shrink-0 rounded-lg bg-[#c2e7ff] px-3.5 text-xs font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
-                    : "h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
-                }
-                onPress={() =>
-                  onLocationChange({
-                    ...search,
-                    path: "/",
-                    parentId: undefined,
-                    query: "",
-                    recent: true,
-                    bookmarked: undefined,
-                  })
-                }
-              >
-                {t("nav.recent")}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className={
-                  search.bookmarked && !search.recent
-                    ? "h-8 shrink-0 rounded-lg bg-[#c2e7ff] px-3.5 text-xs font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
-                    : "h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
-                }
-                onPress={() =>
-                  onLocationChange({
-                    ...search,
-                    path: "/",
-                    parentId: undefined,
-                    query: "",
-                    recent: undefined,
-                    bookmarked: true,
-                  })
-                }
-              >
-                {t("nav.bookmarks")}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
-                onPress={() =>
-                  void navigateTo({
-                    to: "/shared-with-me",
-                    search: { path: "/", query: "", view: search.view },
-                  })
-                }
-              >
-                {t("nav.sharedWithMe")}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
-                onPress={() =>
-                  void navigateTo({
-                    to: "/search",
-                    search: { category: ["document"] },
-                  })
-                }
-              >
-                {t("drive.filterDocuments")}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
-                onPress={() =>
-                  void navigateTo({
-                    to: "/search",
-                    search: { category: ["image", "video"] },
-                  })
-                }
-              >
-                {t("drive.filterMedia")}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
-                onPress={() =>
-                  void navigateTo({
-                    to: "/search",
-                    search: { kind: "folder" },
-                  })
-                }
-              >
-                {t("drive.filterFolders")}
               </Button>
             </div>
           )}

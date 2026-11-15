@@ -5,7 +5,7 @@ import {
   Chip,
   cn,
   Dropdown,
-  InputGroup,
+  Input,
   Kbd,
   Label,
   Separator,
@@ -383,11 +383,11 @@ function Sidebar({
         activeOptions={{ includeSearch: false }}
         preload="intent"
         className={cn(
-          buttonVariants({ variant: active ? "secondary" : "ghost" }),
+          buttonVariants({ variant: "ghost" }),
           "h-10 w-full justify-start rounded-full px-3 text-sm font-medium",
           active
-            ? "bg-accent/10 text-accent"
-            : "text-muted hover:bg-default/30 hover:text-foreground",
+            ? "bg-accent/10 bg-[#c2e7ff]! font-semibold text-[#001d35]! dark:bg-[#004a77]! dark:text-[#c2e7ff]!"
+            : "text-[#444746] hover:bg-[#e1e5ea]/70 hover:text-foreground dark:text-[#c4c7c5] dark:hover:bg-[#333538]/70",
         )}
         onClick={() => onNavigate?.()}
       >
@@ -794,26 +794,24 @@ function TopBar({
           });
         }}
       >
-        <InputGroup
+        <div
           className={cn(
-            "w-full rounded-full border-0 shadow-none transition-shadow",
+            "flex w-full items-center gap-2 rounded-full transition-all",
             desktop
-              ? "h-11 bg-[#e9eef6] px-2 focus-within:bg-surface focus-within:shadow-md dark:bg-[#282a2c]"
-              : "h-10 bg-transparent px-1 focus-within:bg-transparent",
+              ? "h-11 bg-[#e9eef6] px-4 focus-within:bg-surface focus-within:shadow-md focus-within:ring-1 focus-within:ring-border/40 dark:bg-[#282a2c]"
+              : "h-10 bg-transparent px-1",
           )}
-          variant="secondary"
         >
           {desktop && (
-            <InputGroup.Prefix>
-              <SearchIcon className="size-4 text-muted" />
-            </InputGroup.Prefix>
+            <SearchIcon className="size-4.5 shrink-0 text-[#444746] dark:text-[#c4c7c5]" />
           )}
-          <InputGroup.Input
+          <Input
             ref={searchRef}
             aria-label={t("search.aria")}
             value={searchText}
             maxLength={512}
             enterKeyHint="search"
+            variant="secondary"
             onCompositionStart={() => {
               composingSearch.current = true;
               if (searchTimer.current) window.clearTimeout(searchTimer.current);
@@ -836,49 +834,61 @@ function TopBar({
               scheduleSearch(value);
             }}
             placeholder={appMeta.searchPlaceholder}
-            className="min-w-0 text-sm"
+            className="h-8 w-0 min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-sm leading-normal text-foreground shadow-none outline-none ring-0 focus:ring-0 focus-visible:ring-0"
           />
-          {desktop && (
-            <InputGroup.Suffix className="hidden md:flex">
-              <Kbd>Ctrl K</Kbd>
-            </InputGroup.Suffix>
+          {searchText ? (
+            <Button
+              isIconOnly
+              size="sm"
+              variant="ghost"
+              className="size-7 shrink-0 rounded-full text-muted hover:text-foreground"
+              aria-label={t("search.clear")}
+              onPress={() => {
+                setSearchText("");
+                if (searchTimer.current) window.clearTimeout(searchTimer.current);
+                if (activeApp === "photos") {
+                  void navigate({
+                    to: "/photos",
+                    search: { ...routeSearch, q: undefined } as never,
+                    replace: true,
+                  });
+                } else if (pathname === "/search") {
+                  void navigate({
+                    to: "/files",
+                    search: { path: "/", query: "", view: "list" },
+                    replace: true,
+                  });
+                }
+              }}
+            >
+              <CloseIcon className="size-3.5" />
+            </Button>
+          ) : (
+            desktop && <Kbd className="hidden shrink-0 md:inline-flex">Ctrl K</Kbd>
           )}
-        </InputGroup>
+        </div>
       </form>
     </search>
   );
 
   if (!desktop) {
     return (
-      <header className="shrink-0 bg-sidebar px-3 pb-1.5 pt-2.5">
-        <div className="flex h-12 items-center gap-1 rounded-full border border-border/50 bg-[#e9eef6] px-1.5 shadow-xs dark:bg-[#282a2c]">
+      <header className="shrink-0 bg-sidebar px-3 pb-2 pt-2.5">
+        <div className="flex h-12 items-center gap-1 rounded-full bg-[#e9eef6] px-1.5 shadow-xs dark:bg-[#282a2c]">
           <Button
             isIconOnly
             variant="ghost"
             size="sm"
-            className="size-9 shrink-0 rounded-full"
+            className="size-9 shrink-0 rounded-full text-[#444746] dark:text-[#c4c7c5]"
             onPress={onOpenMobile}
             aria-label={t("sidebar.open")}
           >
             <MenuIcon className="size-4.5" />
           </Button>
           {searchForm}
-          <div className="flex shrink-0 items-center gap-0.5 pr-0.5">
+          <div className="flex shrink-0 items-center gap-1 pr-0.5">
             <AppSwitcher />
-            <Button
-              isIconOnly
-              variant="ghost"
-              size="sm"
-              className="size-9 rounded-full"
-              onPress={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-              aria-label={t("theme.toggle")}
-            >
-              {resolvedTheme === "dark" ? (
-                <SunIcon className="size-4" />
-              ) : (
-                <MoonIcon className="size-4" />
-              )}
-            </Button>
+            <HeaderAccountAvatar />
           </div>
         </div>
       </header>
@@ -891,7 +901,7 @@ function TopBar({
         isIconOnly
         variant="ghost"
         size="sm"
-        className="size-9 rounded-full"
+        className="size-9 rounded-full text-[#444746] dark:text-[#c4c7c5]"
         onPress={onToggleSidebar}
         aria-label={collapsed ? t("sidebar.expand") : t("sidebar.collapse")}
       >
@@ -900,11 +910,11 @@ function TopBar({
 
       {searchForm}
 
-      <div className="ml-auto flex shrink-0 items-center gap-1">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <Button
           isIconOnly
           variant="ghost"
-          className="size-9 rounded-full"
+          className="size-9 rounded-full text-[#444746] dark:text-[#c4c7c5]"
           onPress={() => void navigate({ to: "/settings" })}
           aria-label={t("title.settings")}
         >
@@ -914,7 +924,7 @@ function TopBar({
         <Button
           isIconOnly
           variant="ghost"
-          className="size-9 rounded-full"
+          className="size-9 rounded-full text-[#444746] dark:text-[#c4c7c5]"
           onPress={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           aria-label={t("theme.toggle")}
         >
@@ -924,8 +934,88 @@ function TopBar({
             <MoonIcon className="size-4.5" />
           )}
         </Button>
+        <HeaderAccountAvatar />
       </div>
     </header>
+  );
+}
+
+function HeaderAccountAvatar() {
+  const { t } = useAppLocale();
+  const navigate = useNavigate();
+  const { resolvedTheme, setTheme } = useTheme();
+  const { data: user } = useQuery(currentUserQueryOptions());
+  const logout = $api.useMutation("post", "/v1/auth/cookie/logout");
+
+  const displayName =
+    user?.displayName?.trim() ||
+    user?.username?.trim() ||
+    (user ? t("account.userFallback", { id: user.userId }) : t("account.title"));
+  const initials =
+    displayName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "U";
+
+  const signOut = async () => {
+    try {
+      await logout.mutateAsync({});
+      await clearDocumentCache().catch(() => {});
+      getQueryClient().clear();
+      await navigate({ to: "/login", search: { redirect: "/files" }, replace: true });
+    } catch (error) {
+      toast.error(t("account.logoutFailed"), { description: userMessage(error) });
+    }
+  };
+
+  return (
+    <Dropdown>
+      <Dropdown.Trigger
+        aria-label={displayName}
+        className="inline-flex size-9 shrink-0 items-center justify-center rounded-full p-0.5 outline-none"
+      >
+        <Avatar className="size-8 h-8 w-8 shrink-0 overflow-hidden rounded-full ring-1 ring-border/40">
+          <Avatar.Image alt={displayName} src="/api/v1/me/photo" />
+          <Avatar.Fallback>{initials}</Avatar.Fallback>
+        </Avatar>
+      </Dropdown.Trigger>
+      <Dropdown.Popover placement="bottom end" className="min-w-56 rounded-2xl p-1.5">
+        <div className="px-3 py-2">
+          <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
+          {user?.username ? (
+            <p className="truncate text-xs text-muted">@{user.username}</p>
+          ) : null}
+        </div>
+        <Separator className="my-1" />
+        <Dropdown.Menu
+          aria-label={displayName}
+          onAction={(key) => {
+            if (key === "settings") void navigate({ to: "/settings" });
+            else if (key === "theme") setTheme(resolvedTheme === "dark" ? "light" : "dark");
+            else if (key === "logout") void signOut();
+          }}
+        >
+          <Dropdown.Item id="settings" textValue={t("account.settings")}>
+            <SettingsIcon className="size-4" />
+            <Label>{t("account.settings")}</Label>
+          </Dropdown.Item>
+          <Dropdown.Item id="theme" textValue={t("theme.toggle")}>
+            {resolvedTheme === "dark" ? (
+              <SunIcon className="size-4" />
+            ) : (
+              <MoonIcon className="size-4" />
+            )}
+            <Label>{t("theme.toggle")}</Label>
+          </Dropdown.Item>
+          <Dropdown.Item id="logout" textValue={t("account.logout")} isDisabled={logout.isPending}>
+            <LogoutIcon className="size-4" />
+            <Label>{logout.isPending ? t("account.loggingOut") : t("account.logout")}</Label>
+          </Dropdown.Item>
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown>
   );
 }
 
@@ -1101,7 +1191,9 @@ function MobileBottomBar() {
             <div
               className={cn(
                 "flex h-7 w-14 items-center justify-center rounded-full transition-colors",
-                active ? "bg-accent/15 text-accent" : "text-muted",
+                active
+                  ? "bg-accent/10 bg-[#c2e7ff]! text-[#001d35]! dark:bg-[#004a77]! dark:text-[#c2e7ff]!"
+                  : "text-[#444746] dark:text-[#c4c7c5]",
               )}
             >
               <Icon className="size-4.5" />
@@ -1112,7 +1204,7 @@ function MobileBottomBar() {
                 active ? "font-semibold text-foreground" : "font-medium text-muted",
               )}
             >
-              {t(item.labelKey)}
+              {item.key === "sharedWithMe" ? t("nav.shared") : t(item.labelKey)}
             </span>
           </Link>
         );
@@ -1276,8 +1368,13 @@ function Layout() {
             onToggleSidebar={() => setCollapsed((value) => !value)}
             onOpenMobile={() => setMobileOpen(true)}
           />
-          <main className="min-w-0 flex-1 select-none overflow-hidden px-2 pb-2 pt-1 sm:px-4 sm:pb-4 lg:px-5 lg:pb-5 lg:pt-0">
-            <div className="flex h-full min-h-0 flex-col overflow-y-auto rounded-3xl bg-background/60 p-2 sm:p-4 lg:bg-surface lg:p-5 lg:shadow-xs lg:ring-1 lg:ring-border/35">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col select-none overflow-hidden px-2 pb-2 pt-1 sm:px-4 sm:pb-4 lg:px-4 lg:pb-4 lg:pt-0">
+            <div
+              className={cn(
+                "flex min-h-0 flex-1 flex-col overflow-y-auto rounded-2xl bg-surface lg:rounded-3xl lg:shadow-xs lg:ring-1 lg:ring-border/35",
+                getWorkspaceApp(pathname) === "drive" ? "p-0 lg:p-2" : "p-2.5 sm:p-4 lg:p-5",
+              )}
+            >
               <Outlet />
             </div>
           </main>

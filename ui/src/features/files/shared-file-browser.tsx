@@ -268,13 +268,14 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
   };
 
   return (
-    <Page className="h-full min-h-0 gap-0 overflow-x-hidden">
+    <Page className="min-h-0 flex-1 gap-0 overflow-x-hidden">
       <PageContent className="flex min-h-0 flex-1 overflow-x-hidden">
         <FileBrowser
           files={files}
           path={search.path}
           rootLabel={rootLabel}
           view={search.view}
+          flat
           loading={loading}
           onNavigatePath={(path) => {
             if (path === "/") {
@@ -289,6 +290,22 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
           onViewChange={(view) => navigate({ ...search, view }, true)}
           onOpen={openFile}
           onBack={() => window.history.back()}
+          rowActions={{
+            onDownload: (file) => startFileDownload(file),
+            onShare: mode === "shared" ? (file) => setShareFile(file) : undefined,
+            onRename: (file) => {
+              if (permissionFor(file) !== "edit") return;
+              setRenameFile(file);
+              setRenameName(file.name);
+            },
+            onTrash: (file) => {
+              if (permissionFor(file) !== "edit") return;
+              void fileActions.trash(file.id).then(async () => {
+                if (atRoot) await refreshRoots();
+                else await childrenQuery.refetch();
+              });
+            },
+          }}
           selection={{
             selectedKeys,
             onSelectionChange: setSelectedKeys,
@@ -334,7 +351,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
             selectedCount > 0 ? (
               <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
                 <div className="pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0">
-                  <span className="shrink-0 rounded-full bg-accent/10 px-3 py-2 text-sm font-medium text-accent">
+                  <span className="shrink-0 rounded-full bg-[#c2e7ff] px-3 py-2 text-sm font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]">
                     {t("selection.count", { count: selectedCount })}
                   </span>
                   {singleSelected && selectedWritable ? (

@@ -1,4 +1,4 @@
-import { Button, Card, Checkbox, Spinner } from "@heroui/react";
+import { Button, Card, Checkbox, Dropdown, Label, Separator, Spinner } from "@heroui/react";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import {
   Collection,
@@ -12,16 +12,40 @@ import {
   Virtualizer,
 } from "react-aria-components";
 import type { FileEntry } from "@/api/types";
-import { useAppLocale } from "@/lib/locale";
 import { useDateOnlyFormatter, useDateTimeFormatter, useFormatBytes } from "@/lib/format";
+import { useAppLocale } from "@/lib/locale";
+import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
 import BackIcon from "~icons/gravity-ui/arrow-left";
+import BookmarkIcon from "~icons/gravity-ui/bookmark";
+import ChevronRightIcon from "~icons/gravity-ui/chevron-right";
 import UpIcon from "~icons/gravity-ui/chevron-up";
+import ClockIcon from "~icons/gravity-ui/clock";
+import CopyIcon from "~icons/gravity-ui/copy";
+import CopyLinkIcon from "~icons/gravity-ui/copy-arrow-right";
+import MoreIcon from "~icons/gravity-ui/ellipsis-vertical";
 import FolderIcon from "~icons/gravity-ui/folder";
+import MoveIcon from "~icons/gravity-ui/folder-arrow-right";
 import GridIcon from "~icons/gravity-ui/layout-cells";
+import LinkIcon from "~icons/gravity-ui/link";
 import ListIcon from "~icons/gravity-ui/list-ul";
+import PencilIcon from "~icons/gravity-ui/pencil";
+import TrashIcon from "~icons/gravity-ui/trash-bin";
 import { FileTypeIcon } from "./file-type-icon";
 
 export type FileBrowserView = "list" | "grid";
+
+export type FileRowActionHandlers = {
+  onDownload?: (file: FileEntry) => void;
+  onShare?: (file: FileEntry) => void;
+  onCopyLink?: (file: FileEntry) => void;
+  onRename?: (file: FileEntry) => void;
+  onBookmark?: (file: FileEntry) => void;
+  onMove?: (file: FileEntry) => void;
+  onCopy?: (file: FileEntry) => void;
+  onVersions?: (file: FileEntry) => void;
+  onTrash?: (file: FileEntry) => void;
+  isBookmarked?: boolean;
+};
 
 const fileGridLayoutOptions = {
   // Estimate a single-line filename; the virtualizer measures wrapped names.
@@ -67,6 +91,9 @@ type FileBrowserProps = {
   hideFolderControls?: boolean;
   showLocations?: boolean;
   onOpenContainingFolder?: (file: FileEntry) => void;
+  rowActions?: FileRowActionHandlers;
+  headerFilters?: ReactNode;
+  flat?: boolean;
 };
 
 export function FileBrowser({
@@ -95,35 +122,45 @@ export function FileBrowser({
   hideFolderControls = false,
   showLocations = false,
   onOpenContainingFolder,
+  rowActions,
+  headerFilters,
+  flat = false,
 }: FileBrowserProps) {
   const { t } = useAppLocale();
   const resolvedEmptyHint = emptyHint ?? t("browser.emptyHint");
   const resolvedEmptyTitle = emptyTitle ?? t("browser.emptyTitle");
   return (
-    <Card className="@container/file-browser relative flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-sm">
+    <Card
+      className={
+        flat
+          ? "@container/file-browser relative flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden rounded-none border-0 bg-transparent shadow-none"
+          : "@container/file-browser relative flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-sm"
+      }
+    >
       <Card.Header
-        className={`shrink-0 border-b border-border/50 px-3 sm:px-4 ${compactToolbar ? "py-2" : "py-3"}`}
+        className={`shrink-0 border-b border-border/45 px-3 sm:px-4 ${compactToolbar ? "py-2" : "py-2.5"}`}
         data-testid="file-browser-toolbar"
       >
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5 [&>button]:shrink-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 [&>button]:shrink-0">
           {onBack ? (
             <Button
               isIconOnly
               size="sm"
               variant="ghost"
+              className="size-8 rounded-full"
               aria-label={t("browser.back")}
               onPress={onBack}
             >
               <BackIcon className="size-4" />
             </Button>
           ) : null}
-          {!hideFolderControls && (
+          {!hideFolderControls && path !== "/" ? (
             <Button
               isIconOnly
               size="sm"
               variant="ghost"
+              className="size-8 rounded-full"
               aria-label={t("browser.up")}
-              isDisabled={path === "/"}
               onPress={() => {
                 const parts = path.split("/").filter(Boolean);
                 const parentPath = parts.length <= 1 ? "/" : `/${parts.slice(0, -1).join("/")}`;
@@ -132,9 +169,9 @@ export function FileBrowser({
             >
               <UpIcon className="size-4" />
             </Button>
-          )}
+          ) : null}
           {!hideFolderControls && (
-            <div className="min-w-20 flex-1 overflow-hidden">
+            <div className="min-w-24 flex-1 overflow-hidden">
               <FileBrowserBreadcrumb
                 path={path}
                 rootLabel={rootLabel}
@@ -142,32 +179,47 @@ export function FileBrowser({
               />
             </div>
           )}
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-1 sm:w-auto sm:flex-1 sm:justify-end [&>button]:shrink-0">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto sm:flex-none sm:justify-end [&>button]:shrink-0">
             {toolbar}
-            <Button
-              isIconOnly
-              size="sm"
-              variant={view === "list" ? "secondary" : "ghost"}
-              aria-label={t("browser.listView")}
-              onPress={() => onViewChange("list")}
-            >
-              <ListIcon className="size-4" />
-            </Button>
-            <Button
-              isIconOnly
-              size="sm"
-              variant={view === "grid" ? "secondary" : "ghost"}
-              aria-label={t("browser.gridView")}
-              onPress={() => onViewChange("grid")}
-            >
-              <GridIcon className="size-4" />
-            </Button>
+            <div className="inline-flex h-8 shrink-0 items-center rounded-full border border-border/70 bg-surface p-0.5">
+              <Button
+                isIconOnly
+                size="sm"
+                variant="ghost"
+                aria-label={t("browser.listView")}
+                aria-pressed={view === "list"}
+                className={
+                  view === "list"
+                    ? "h-7 w-9 rounded-full bg-[#c2e7ff] text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
+                    : "h-7 w-9 rounded-full text-muted hover:text-foreground"
+                }
+                onPress={() => onViewChange("list")}
+              >
+                <ListIcon className="size-4" />
+              </Button>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="ghost"
+                aria-label={t("browser.gridView")}
+                aria-pressed={view === "grid"}
+                className={
+                  view === "grid"
+                    ? "h-7 w-9 rounded-full bg-[#c2e7ff] text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
+                    : "h-7 w-9 rounded-full text-muted hover:text-foreground"
+                }
+                onPress={() => onViewChange("grid")}
+              >
+                <GridIcon className="size-4" />
+              </Button>
+            </div>
           </div>
         </div>
+        {headerFilters ? <div className="mt-2.5">{headerFilters}</div> : null}
       </Card.Header>
       <Card.Content className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
         {loading ? (
-          <div className="flex h-full min-h-64 items-center justify-center">
+          <div className="flex flex-1 min-h-64 items-center justify-center">
             <Spinner size="lg" />
           </div>
         ) : emptyContent ? (
@@ -175,13 +227,14 @@ export function FileBrowser({
         ) : (
           <>
             {view === "list" && files.length > 0 ? (
-              <div className="grid shrink-0 grid-cols-[minmax(0,1fr)] items-center gap-2 border-b border-border/50 bg-surface-secondary/35 px-3 py-2 text-xs font-medium text-muted sm:grid-cols-[minmax(0,1fr)_6rem] sm:px-4 lg:grid-cols-[minmax(0,1fr)_8rem_10rem] lg:gap-4">
+              <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2 border-b border-border/60 px-3 py-2 text-xs font-medium text-[#444746] dark:text-[#c4c7c5] sm:grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] sm:px-4 lg:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] lg:gap-4">
                 <span className="truncate pl-1">{t("drive.columnName")}</span>
-                <span className="hidden sm:block">{t("drive.columnSize")}</span>
                 <span className="hidden lg:block">{t("drive.columnModified")}</span>
+                <span className="hidden sm:block">{t("drive.columnSize")}</span>
+                <span aria-hidden="true" />
               </div>
             ) : null}
-            <div className="min-h-0 flex-1">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <FileCollection
                 files={files}
                 view={view}
@@ -196,6 +249,7 @@ export function FileBrowser({
                 emptyTitle={resolvedEmptyTitle}
                 showLocations={showLocations}
                 onOpenContainingFolder={onOpenContainingFolder}
+                rowActions={rowActions}
               />
             </div>
           </>
@@ -221,6 +275,7 @@ function FileCollection({
   emptyTitle,
   showLocations,
   onOpenContainingFolder,
+  rowActions,
 }: {
   files: FileEntry[];
   view: FileBrowserView;
@@ -236,6 +291,7 @@ function FileCollection({
   emptyTitle: string;
   showLocations: boolean;
   onOpenContainingFolder?: (file: FileEntry) => void;
+  rowActions?: FileRowActionHandlers;
 }) {
   const grid = view === "grid";
   const { t } = useAppLocale();
@@ -284,7 +340,10 @@ function FileCollection({
       )}
       className={`h-full min-h-0 overflow-x-hidden overflow-y-auto outline-none ${hasSelection ? "pb-24" : ""}`}
     >
-      <Collection items={files} dependencies={[dimmedIds, showLocations, onOpenContainingFolder]}>
+      <Collection
+        items={files}
+        dependencies={[dimmedIds, showLocations, onOpenContainingFolder, rowActions, onOpen]}
+      >
         {(file) => (
           <GridListItem
             id={file.id}
@@ -292,7 +351,7 @@ function FileCollection({
             className={(state) =>
               grid
                 ? [
-                    "group relative flex min-w-0 cursor-default flex-col rounded-2xl border border-transparent bg-[#f0f4f9]/70 p-2.5 outline-none transition-colors dark:bg-[#282a2c]/60",
+                    "group relative flex min-w-0 cursor-default flex-col rounded-2xl border border-transparent bg-[#f0f4f9]/75 p-2.5 outline-none transition-colors dark:bg-[#282a2c]/65",
                     state.isSelected
                       ? "border-accent/50 bg-[#c2e7ff]/45 dark:bg-[#004a77]/45"
                       : "hover:bg-[#e1e5ea]/80 dark:hover:bg-[#333537]",
@@ -303,9 +362,10 @@ function FileCollection({
                     .filter(Boolean)
                     .join(" ")
                 : [
-                    "group grid min-h-14 cursor-default grid-cols-[minmax(0,1fr)] items-center gap-2 border-b border-border px-3 outline-none transition-colors last:border-b-0 sm:grid-cols-[minmax(0,1fr)_6rem] sm:px-4 lg:grid-cols-[minmax(0,1fr)_8rem_10rem] lg:gap-4",
-                    "hover:bg-default/20",
-                    state.isSelected && "bg-accent/10",
+                    "group grid min-h-14 cursor-default grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2 border-b border-border/50 px-3 outline-none transition-colors last:border-b-0 sm:grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] sm:px-4 lg:min-h-12 lg:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] lg:gap-4",
+                    state.isSelected
+                      ? "bg-[#c2e7ff]/45 dark:bg-[#004a77]/45"
+                      : "hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]/70",
 
                     dimmedIds?.has(file.id) && "opacity-45",
                     state.isFocusVisible && "ring-2 ring-inset ring-accent/30",
@@ -324,6 +384,8 @@ function FileCollection({
                   onOpenContainingFolder={
                     onOpenContainingFolder ? () => onOpenContainingFolder(file) : undefined
                   }
+                  onOpen={() => onOpen(file)}
+                  rowActions={rowActions}
                 />
               ) : (
                 <ListFile
@@ -334,6 +396,8 @@ function FileCollection({
                   onOpenContainingFolder={
                     onOpenContainingFolder ? () => onOpenContainingFolder(file) : undefined
                   }
+                  onOpen={() => onOpen(file)}
+                  rowActions={rowActions}
                 />
               )
             }
@@ -380,12 +444,14 @@ function SelectionCheckbox({ file, isVisible }: { file: FileEntry; isVisible: bo
       className={({ isSelected }) =>
         [
           "shrink-0 transition-opacity",
-          isSelected || isVisible ? "opacity-100" : "opacity-0 [@media(hover:none)]:opacity-100",
+          isSelected || isVisible
+            ? "opacity-100"
+            : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
         ].join(" ")
       }
     >
       <Checkbox.Content>
-        <Checkbox.Control>
+        <Checkbox.Control className="border-muted/60 bg-transparent data-[selected=true]:border-accent data-[selected=true]:bg-accent before:hidden">
           <Checkbox.Indicator />
         </Checkbox.Control>
       </Checkbox.Content>
@@ -399,12 +465,16 @@ function GridFile({
   showCheckbox,
   location,
   onOpenContainingFolder,
+  onOpen,
+  rowActions,
 }: {
   file: FileEntry;
   selectable: boolean;
   showCheckbox: boolean;
   location?: string;
   onOpenContainingFolder?: () => void;
+  onOpen: () => void;
+  rowActions?: FileRowActionHandlers;
 }) {
   const { t } = useAppLocale();
   const formatBytes = useFormatBytes();
@@ -417,6 +487,19 @@ function GridFile({
         <div className="absolute start-3 top-3 z-10">
           <SelectionCheckbox file={file} isVisible={showCheckbox} />
         </div>
+      ) : null}
+      {rowActions ? (
+        <fieldset
+          aria-label={t("drive.rowActions", { name: file.name })}
+          className={[
+            "absolute end-2.5 top-2.5 z-10 m-0 border-0 p-0 transition-opacity",
+            showCheckbox ? "opacity-100" : "opacity-0 [@media(hover:none)]:opacity-100",
+          ].join(" ")}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <FileItemActionsMenu file={file} onOpen={onOpen} rowActions={rowActions} />
+        </fieldset>
       ) : null}
       <div
         className="flex aspect-[16/11] w-full shrink-0 items-center justify-center rounded-xl bg-surface shadow-xs"
@@ -464,12 +547,16 @@ function ListFile({
   showCheckbox,
   location,
   onOpenContainingFolder,
+  onOpen,
+  rowActions,
 }: {
   file: FileEntry;
   selectable: boolean;
   showCheckbox: boolean;
   location?: string;
   onOpenContainingFolder?: () => void;
+  onOpen: () => void;
+  rowActions?: FileRowActionHandlers;
 }) {
   const { t } = useAppLocale();
   const formatBytes = useFormatBytes();
@@ -486,7 +573,7 @@ function ListFile({
     <>
       <div className="flex min-w-0 items-center gap-3">
         {selectable ? <SelectionCheckbox file={file} isVisible={showCheckbox} /> : null}
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-default/30">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#f0f4f9] dark:bg-[#282a2c]">
           {file.kind === "folder" ? (
             <FolderIcon className="size-4.5 text-[#5f6368] dark:text-[#c4c7c5]" />
           ) : (
@@ -495,7 +582,7 @@ function ListFile({
         </div>
         <div className="min-w-0 flex-1">
           <span
-            className="block truncate text-sm font-medium group-hover:text-accent"
+            className="block truncate text-sm font-medium text-foreground group-hover:text-[#0b57d0] dark:group-hover:text-[#a8c7fa]"
             title={file.name}
           >
             {file.name}
@@ -508,11 +595,196 @@ function ListFile({
           </span>
         </div>
       </div>
-      <span className="hidden text-xs text-muted sm:block">{sizeText}</span>
-      <time className="hidden min-w-0 text-xs text-muted lg:block" dateTime={file.modTime}>
-        {formatDateTime.format(modifiedDate)}
+      <time
+        className="hidden min-w-0 truncate text-xs text-muted lg:block"
+        dateTime={file.modTime}
+        title={formatDateTime.format(modifiedDate)}
+      >
+        {formatDate.format(modifiedDate)}
       </time>
+      <span className="hidden truncate text-xs text-muted sm:block">{sizeText}</span>
+      <fieldset
+        aria-label={t("drive.rowActions", { name: file.name })}
+        className="m-0 flex shrink-0 items-center justify-end gap-0.5 border-0 p-0"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {rowActions ? (
+          <>
+            <div className="hidden lg:flex lg:items-center lg:gap-0.5 lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
+              {rowActions.onShare ? (
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="ghost"
+                  className="size-7 rounded-full text-muted hover:text-foreground"
+                  aria-label={t("drive.actionShare")}
+                  onPress={() => rowActions.onShare?.(file)}
+                >
+                  <LinkIcon className="size-3.5" />
+                </Button>
+              ) : null}
+              {file.kind === "file" && rowActions.onDownload ? (
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="ghost"
+                  className="size-7 rounded-full text-muted hover:text-foreground"
+                  aria-label={t("drive.actionDownload")}
+                  onPress={() => rowActions.onDownload?.(file)}
+                >
+                  <DownloadIcon className="size-3.5" />
+                </Button>
+              ) : null}
+              {rowActions.onRename ? (
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="ghost"
+                  className="size-7 rounded-full text-muted hover:text-foreground"
+                  aria-label={t("drive.actionRename")}
+                  onPress={() => rowActions.onRename?.(file)}
+                >
+                  <PencilIcon className="size-3.5" />
+                </Button>
+              ) : null}
+              {rowActions.onBookmark ? (
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="ghost"
+                  className="size-7 rounded-full text-muted hover:text-foreground"
+                  aria-label={
+                    rowActions.isBookmarked
+                      ? t("drive.actionBookmarkRemove")
+                      : t("drive.actionBookmarkAdd")
+                  }
+                  onPress={() => rowActions.onBookmark?.(file)}
+                >
+                  <BookmarkIcon className="size-3.5" />
+                </Button>
+              ) : null}
+            </div>
+            <FileItemActionsMenu file={file} onOpen={onOpen} rowActions={rowActions} />
+          </>
+        ) : null}
+      </fieldset>
     </>
+  );
+}
+
+function FileItemActionsMenu({
+  file,
+  onOpen,
+  rowActions,
+}: {
+  file: FileEntry;
+  onOpen: () => void;
+  rowActions: FileRowActionHandlers;
+}) {
+  const { t } = useAppLocale();
+  return (
+    <Dropdown>
+      <Button
+        isIconOnly
+        size="sm"
+        variant="ghost"
+        className="size-8 rounded-full text-muted hover:bg-[#e1e5ea]/80 hover:text-foreground dark:hover:bg-[#333538]"
+        aria-label={t("drive.rowActions", { name: file.name })}
+      >
+        <MoreIcon className="size-4" />
+      </Button>
+      <Dropdown.Popover placement="bottom end" className="min-w-48 rounded-2xl p-1.5">
+        <Dropdown.Menu
+          aria-label={t("drive.rowActions", { name: file.name })}
+          onAction={(key) => {
+            if (key === "open") onOpen();
+            else if (key === "download") rowActions.onDownload?.(file);
+            else if (key === "share") rowActions.onShare?.(file);
+            else if (key === "copy-link") rowActions.onCopyLink?.(file);
+            else if (key === "rename") rowActions.onRename?.(file);
+            else if (key === "bookmark") rowActions.onBookmark?.(file);
+            else if (key === "move") rowActions.onMove?.(file);
+            else if (key === "copy") rowActions.onCopy?.(file);
+            else if (key === "versions") rowActions.onVersions?.(file);
+            else if (key === "trash") rowActions.onTrash?.(file);
+          }}
+        >
+          <Dropdown.Item id="open" textValue={t("drive.actionOpen")}>
+            <FolderIcon className="size-4" />
+            <Label>{t("drive.actionOpen")}</Label>
+          </Dropdown.Item>
+          {file.kind === "file" && rowActions.onDownload ? (
+            <Dropdown.Item id="download" textValue={t("drive.actionDownload")}>
+              <DownloadIcon className="size-4" />
+              <Label>{t("drive.actionDownload")}</Label>
+            </Dropdown.Item>
+          ) : null}
+          {rowActions.onShare ? (
+            <Dropdown.Item id="share" textValue={t("drive.actionShare")}>
+              <LinkIcon className="size-4" />
+              <Label>{t("drive.actionShare")}</Label>
+            </Dropdown.Item>
+          ) : null}
+          {file.kind === "file" && rowActions.onCopyLink ? (
+            <Dropdown.Item id="copy-link" textValue={t("drive.actionCopyLink")}>
+              <CopyLinkIcon className="size-4" />
+              <Label>{t("drive.actionCopyLink")}</Label>
+            </Dropdown.Item>
+          ) : null}
+          {rowActions.onRename ? (
+            <Dropdown.Item id="rename" textValue={t("drive.actionRename")}>
+              <PencilIcon className="size-4" />
+              <Label>{t("drive.actionRename")}</Label>
+            </Dropdown.Item>
+          ) : null}
+          {rowActions.onBookmark ? (
+            <Dropdown.Item
+              id="bookmark"
+              textValue={
+                rowActions.isBookmarked
+                  ? t("drive.actionBookmarkRemove")
+                  : t("drive.actionBookmarkAdd")
+              }
+            >
+              <BookmarkIcon className="size-4" />
+              <Label>
+                {rowActions.isBookmarked
+                  ? t("drive.actionBookmarkRemove")
+                  : t("drive.actionBookmarkAdd")}
+              </Label>
+            </Dropdown.Item>
+          ) : null}
+          {rowActions.onMove ? (
+            <Dropdown.Item id="move" textValue={t("drive.actionMove")}>
+              <MoveIcon className="size-4" />
+              <Label>{t("drive.actionMove")}</Label>
+            </Dropdown.Item>
+          ) : null}
+          {rowActions.onCopy ? (
+            <Dropdown.Item id="copy" textValue={t("drive.actionCopy")}>
+              <CopyIcon className="size-4" />
+              <Label>{t("drive.actionCopy")}</Label>
+            </Dropdown.Item>
+          ) : null}
+          {file.kind === "file" && rowActions.onVersions ? (
+            <Dropdown.Item id="versions" textValue={t("versions.action")}>
+              <ClockIcon className="size-4" />
+              <Label>{t("versions.action")}</Label>
+            </Dropdown.Item>
+          ) : null}
+          {rowActions.onTrash ? (
+            <>
+              <Separator className="my-1" />
+              <Dropdown.Item id="trash" textValue={t("drive.actionTrash")} className="text-danger">
+                <TrashIcon className="size-4" />
+                <Label>{t("drive.actionTrash")}</Label>
+              </Dropdown.Item>
+            </>
+          ) : null}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown>
   );
 }
 
@@ -560,11 +832,23 @@ function FileBrowserBreadcrumb({
         size="sm"
         variant="ghost"
         aria-label={rootLabel}
-        className="h-8 max-w-9 shrink-0 gap-1.5 overflow-hidden rounded-lg px-2 text-muted hover:text-foreground @lg/file-browser:max-w-44"
+        className={
+          parts.length === 0
+            ? "h-9 w-auto max-w-none shrink-0 gap-2.5 overflow-visible rounded-full px-2.5 text-lg font-normal text-foreground @lg/file-browser:text-[22px]"
+            : "h-8 max-w-9 shrink-0 gap-2 overflow-hidden rounded-full px-2.5 text-muted hover:text-foreground @lg/file-browser:max-w-48"
+        }
         onPress={() => onNavigatePath("/")}
       >
         <FolderIcon className="size-4 shrink-0" />
-        <span className="hidden truncate @lg/file-browser:inline">{rootLabel}</span>
+        <span
+          className={
+            parts.length === 0
+              ? "whitespace-nowrap"
+              : "hidden truncate @lg/file-browser:inline"
+          }
+        >
+          {rootLabel}
+        </span>
       </Button>
       {parts.map((part, index) => {
         const currentPath = `/${parts.slice(0, index + 1).join("/")}`;
@@ -577,11 +861,11 @@ function FileBrowserBreadcrumb({
             : "hidden @4xl/file-browser:flex";
         return (
           <span key={currentPath} className={`${visibility} min-w-0 items-center gap-1`}>
-            <span className="shrink-0 text-muted/60">/</span>
+            <ChevronRightIcon className="size-4 shrink-0 text-muted/60" />
             {isCurrent ? (
               <span
                 aria-current="page"
-                className="min-w-0 truncate px-1 text-sm font-medium text-foreground"
+                className="min-w-0 truncate px-1.5 text-lg font-normal text-foreground @lg/file-browser:text-[22px]"
                 title={part}
               >
                 {part}
@@ -590,7 +874,7 @@ function FileBrowserBreadcrumb({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 min-w-0 max-w-40 truncate rounded-lg px-2 text-muted hover:text-foreground"
+                className="h-8 min-w-0 max-w-40 truncate rounded-full px-2.5 text-muted hover:text-foreground"
                 onPress={() => onNavigatePath(currentPath)}
               >
                 {part}

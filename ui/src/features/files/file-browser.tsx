@@ -113,6 +113,71 @@ type FileBrowserProps = {
   flat?: boolean;
 };
 
+function startMoveDrag(
+  event: React.DragEvent,
+  file: FileEntry,
+  files: FileEntry[],
+  selectedKeys: "all" | Set<string | number | bigint> | Selection,
+) {
+  const isSelected = selectedKeys === "all" || selectedKeys.has(file.id);
+  const dragIds = isSelected
+    ? selectedKeys === "all"
+      ? files.map((item) => item.id)
+      : Array.from(selectedKeys, String)
+    : [file.id];
+  event.dataTransfer.setData("application/x-teldrive-move", JSON.stringify(dragIds));
+  event.dataTransfer.effectAllowed = "move";
+
+  // Custom drag ghost showing exact item count when dragging one or more items
+  const ghost = document.createElement("div");
+  ghost.style.position = "fixed";
+  ghost.style.top = "-9999px";
+  ghost.style.left = "-9999px";
+  ghost.style.zIndex = "99999";
+  ghost.style.display = "inline-flex";
+  ghost.style.alignItems = "center";
+  ghost.style.gap = "8px";
+  ghost.style.padding = "8px 14px";
+  ghost.style.borderRadius = "9999px";
+  ghost.style.background = "#1a73e8";
+  ghost.style.color = "#ffffff";
+  ghost.style.fontSize = "13px";
+  ghost.style.fontWeight = "600";
+  ghost.style.boxShadow = "0 6px 20px rgba(0, 0, 0, 0.35)";
+  ghost.style.pointerEvents = "none";
+  ghost.style.whiteSpace = "nowrap";
+
+  if (dragIds.length > 1) {
+    const count = document.createElement("span");
+    count.textContent = String(dragIds.length);
+    count.style.display = "inline-flex";
+    count.style.alignItems = "center";
+    count.style.justifyContent = "center";
+    count.style.minWidth = "22px";
+    count.style.height = "22px";
+    count.style.padding = "0 6px";
+    count.style.borderRadius = "9999px";
+    count.style.background = "#ffffff";
+    count.style.color = "#1a73e8";
+    count.style.fontSize = "12px";
+    count.style.fontWeight = "700";
+    ghost.appendChild(count);
+
+    const text = document.createElement("span");
+    text.textContent = `Moving ${dragIds.length} items`;
+    ghost.appendChild(text);
+  } else {
+    const label = file.name.length > 28 ? `${file.name.slice(0, 25)}...` : file.name;
+    ghost.textContent = `Moving ${label}`;
+  }
+
+  document.body.appendChild(ghost);
+  event.dataTransfer.setDragImage(ghost, 20, 18);
+  window.requestAnimationFrame(() => {
+    ghost.remove();
+  });
+}
+
 export function FileBrowser({
   files,
   path,
@@ -704,18 +769,20 @@ function FileCollection({
                 draggable={Boolean(onMoveToFolder)}
                 onDragStart={(event) => {
                   if (!onMoveToFolder) return;
-                  const curKeys = selectedKeysRef.current;
-                  const isSelected = curKeys === "all" || curKeys.has(file.id);
-                  const dragIds = isSelected
-                    ? curKeys === "all"
-                      ? files.map((item) => item.id)
-                      : Array.from(curKeys, String)
-                    : [file.id];
-                  event.dataTransfer.setData(
-                    "application/x-teldrive-move",
-                    JSON.stringify(dragIds),
-                  );
-                  event.dataTransfer.effectAllowed = "move";
+                  startMoveDrag(event, file, files, selectedKeysRef.current);
+                }}
+                onDragEnter={(event) => {
+                  if (
+                    !onMoveToFolder ||
+                    file.kind !== "folder" ||
+                    !event.dataTransfer.types.includes("application/x-teldrive-move")
+                  ) {
+                    return;
+                  }
+                  event.preventDefault();
+                  event.stopPropagation();
+                  event.dataTransfer.dropEffect = "move";
+                  if (dragOverFolderId !== file.id) setDragOverFolderId(file.id);
                 }}
                 onDragOver={(event) => {
                   if (
@@ -726,6 +793,7 @@ function FileCollection({
                     return;
                   }
                   event.preventDefault();
+                  event.stopPropagation();
                   event.dataTransfer.dropEffect = "move";
                   if (dragOverFolderId !== file.id) setDragOverFolderId(file.id);
                 }}
@@ -740,8 +808,8 @@ function FileCollection({
                   event.stopPropagation();
                   setDragOverFolderId(null);
                   try {
-                    const dragIds = JSON.parse(raw) as string[];
-                    if (Array.isArray(dragIds) && dragIds.length > 0) {
+                    const dragIds = (JSON.parse(raw) as string[]).filter((id) => id !== file.id);
+                    if (dragIds.length > 0) {
                       onMoveToFolder(dragIds, file);
                     }
                   } catch {
@@ -1174,18 +1242,19 @@ function FileCollection({
                       draggable={Boolean(onMoveToFolder)}
                       onDragStart={(event) => {
                         if (!onMoveToFolder) return;
-                        const curKeys = selectedKeysRef.current;
-                        const isSelected = curKeys === "all" || curKeys.has(folder.id);
-                        const dragIds = isSelected
-                          ? curKeys === "all"
-                            ? files.map((item) => item.id)
-                            : Array.from(curKeys, String)
-                          : [folder.id];
-                        event.dataTransfer.setData(
-                          "application/x-teldrive-move",
-                          JSON.stringify(dragIds),
-                        );
-                        event.dataTransfer.effectAllowed = "move";
+                        startMoveDrag(event, folder, files, selectedKeysRef.current);
+                      }}
+                      onDragEnter={(event) => {
+                        if (
+                          !onMoveToFolder ||
+                          !event.dataTransfer.types.includes("application/x-teldrive-move")
+                        ) {
+                          return;
+                        }
+                        event.preventDefault();
+                        event.stopPropagation();
+                        event.dataTransfer.dropEffect = "move";
+                        if (dragOverFolderId !== folder.id) setDragOverFolderId(folder.id);
                       }}
                       onDragOver={(event) => {
                         if (
@@ -1195,6 +1264,7 @@ function FileCollection({
                           return;
                         }
                         event.preventDefault();
+                        event.stopPropagation();
                         event.dataTransfer.dropEffect = "move";
                         if (dragOverFolderId !== folder.id) setDragOverFolderId(folder.id);
                       }}
@@ -1209,8 +1279,10 @@ function FileCollection({
                         event.stopPropagation();
                         setDragOverFolderId(null);
                         try {
-                          const dragIds = JSON.parse(raw) as string[];
-                          if (Array.isArray(dragIds) && dragIds.length > 0) {
+                          const dragIds = (JSON.parse(raw) as string[]).filter(
+                            (id) => id !== folder.id,
+                          );
+                          if (dragIds.length > 0) {
                             onMoveToFolder(dragIds, folder);
                           }
                         } catch {
@@ -1326,18 +1398,7 @@ function FileCollection({
                             draggable={Boolean(onMoveToFolder)}
                             onDragStart={(event) => {
                               if (!onMoveToFolder) return;
-                              const isSelected =
-                                selectedKeys === "all" || selectedKeys.has(file.id);
-                              const dragIds = isSelected
-                                ? selectedKeys === "all"
-                                  ? files.map((item) => item.id)
-                                  : Array.from(selectedKeys, String)
-                                : [file.id];
-                              event.dataTransfer.setData(
-                                "application/x-teldrive-move",
-                                JSON.stringify(dragIds),
-                              );
-                              event.dataTransfer.effectAllowed = "move";
+                              startMoveDrag(event, file, files, selectedKeysRef.current);
                             }}
                             className={[
                               "group relative flex min-w-0 cursor-default flex-col rounded-2xl border border-transparent bg-[#f0f4f9]/85 p-2.5 outline-none transition-colors dark:bg-[#282a2c]/85",

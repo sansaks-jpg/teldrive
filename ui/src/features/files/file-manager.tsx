@@ -6,7 +6,7 @@ import { useKeyboard } from "react-aria/useKeyboard";
 import { DropZone, FileTrigger, type Selection } from "react-aria-components";
 import { toast } from "sonner";
 import { normalizeApiError, userMessage } from "@/api/errors";
-import type { FileEntry } from "@/api/types";
+import type { FileCategory, FileEntry } from "@/api/types";
 import { currentUserQueryOptions } from "@/auth/queries";
 import { BackgroundUploadDialog } from "@/components/background-upload-dialog";
 import { AppDialog } from "@/components/dialogs/app-dialog";
@@ -105,6 +105,30 @@ export function FileManagerPage({
   const invalidDates = criteria ? invalidSearchDates(criteria) : false;
   const activeSearch = criteria ? hasSearchCriteria(criteria) : true;
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterType, setFilterType] = useState<
+    "all" | "folder" | "document" | "media" | "audio" | "archive"
+  >("all");
+  const [filterModified, setFilterModified] = useState<"all" | "today" | "week" | "month">("all");
+  const filterKind: "folder" | undefined = filterType === "folder" ? "folder" : undefined;
+  const filterCategories: FileCategory[] | undefined =
+    filterType === "document"
+      ? ["document"]
+      : filterType === "media"
+        ? ["image", "video"]
+        : filterType === "audio"
+          ? ["audio"]
+          : filterType === "archive"
+            ? ["archive"]
+            : undefined;
+  const filterUpdatedAfter =
+    filterModified === "all"
+      ? undefined
+      : new Date(
+          Date.now() -
+            (filterModified === "today" ? 1 : filterModified === "week" ? 7 : 30) * 86_400_000,
+        )
+          .toISOString()
+          .slice(0, 10);
   const { data: currentUser } = useQuery(currentUserQueryOptions());
   const canLocalImport = Boolean(currentUser?.capabilities.includes("system.localImport"));
 
@@ -167,7 +191,13 @@ export function FileManagerPage({
       q: primaryLocation.query || undefined,
       ...sorting,
       view: primaryLocation.view,
-      ...(criteria ? driveSearchOptions(criteria) : {}),
+      ...(criteria
+        ? driveSearchOptions(criteria)
+        : {
+            kind: filterKind,
+            category: filterCategories,
+            updatedAfter: filterUpdatedAfter,
+          }),
       bookmarked: search.bookmarked,
       ...recentCriteria,
     },
@@ -200,6 +230,8 @@ export function FileManagerPage({
       : {
           parentId: primaryLocation.parentId,
           q: primaryLocation.query,
+          filterType,
+          filterModified,
         }),
   });
   useEffect(() => setPrimarySelectedKeys(new Set()), [primaryCriteriaKey]);
@@ -841,95 +873,137 @@ export function FileManagerPage({
     );
   };
 
+  const filterTypeLabel =
+    filterType === "folder"
+      ? t("drive.filterFolders")
+      : filterType === "document"
+        ? t("drive.filterDocuments")
+        : filterType === "media"
+          ? t("drive.filterMedia")
+          : filterType === "audio"
+            ? t("drive.filterAudio")
+            : filterType === "archive"
+              ? t("drive.filterArchives")
+              : t("search.type");
+
+  const filterModifiedLabel =
+    filterModified === "today"
+      ? "Today"
+      : filterModified === "week"
+        ? "Last 7 days"
+        : filterModified === "month"
+          ? "Last 30 days"
+          : t("manager.sortModified");
+
   const renderDriveFilterChips = () => (
-    <div className="flex items-center gap-2">
-      <Dropdown>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 gap-1.5 rounded-lg border border-[#747775]/45 bg-transparent px-3 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:border-[#8e918f]/45 dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
-        >
-          <span>{t("search.type")}</span>
-          <ChevronDownIcon className="size-3.5 opacity-80" />
-        </Button>
-        <Dropdown.Popover placement="bottom start" className="min-w-44 rounded-xl p-1">
-          <Dropdown.Menu
-            aria-label={t("search.type")}
-            onAction={(key) => {
-              if (key === "all") {
-                onLocationChange({
-                  ...search,
-                  path: "/",
-                  parentId: undefined,
-                  query: "",
-                  recent: undefined,
-                  bookmarked: undefined,
-                });
-              } else if (key === "folder") {
-                void navigateTo({ to: "/search", search: { kind: "folder" } });
-              } else if (key === "document") {
-                void navigateTo({ to: "/search", search: { category: ["document"] } });
-              } else if (key === "media") {
-                void navigateTo({ to: "/search", search: { category: ["image", "video"] } });
-              } else if (key === "audio") {
-                void navigateTo({ to: "/search", search: { category: ["audio"] } });
-              } else if (key === "archive") {
-                void navigateTo({ to: "/search", search: { category: ["archive"] } });
-              }
-            }}
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="inline-flex items-center">
+        <Dropdown>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={
+              filterType !== "all"
+                ? `h-8 gap-1.5 bg-[#c2e7ff]/60 px-3 text-xs font-medium text-[#001d35] hover:bg-[#c2e7ff] dark:bg-[#004a77] dark:text-[#c2e7ff] dark:hover:bg-[#004a77]/80 rounded-l-lg rounded-r-none border border-r-0 border-[#0b57d0]/40 dark:border-[#a8c7fa]/40`
+                : "h-8 gap-1.5 rounded-lg border border-[#747775]/45 bg-transparent px-3 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:border-[#8e918f]/45 dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+            }
           >
-            <Dropdown.Item id="all" textValue={t("drive.filterAll")}>
-              <Label>{t("drive.filterAll")}</Label>
-            </Dropdown.Item>
-            <Dropdown.Item id="folder" textValue={t("drive.filterFolders")}>
-              <Label>{t("drive.filterFolders")}</Label>
-            </Dropdown.Item>
-            <Dropdown.Item id="document" textValue={t("drive.filterDocuments")}>
-              <Label>{t("drive.filterDocuments")}</Label>
-            </Dropdown.Item>
-            <Dropdown.Item id="media" textValue={t("drive.filterMedia")}>
-              <Label>{t("drive.filterMedia")}</Label>
-            </Dropdown.Item>
-            <Dropdown.Item id="audio" textValue={t("drive.filterAudio")}>
-              <Label>{t("drive.filterAudio")}</Label>
-            </Dropdown.Item>
-            <Dropdown.Item id="archive" textValue={t("drive.filterArchives")}>
-              <Label>{t("drive.filterArchives")}</Label>
-            </Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown.Popover>
-      </Dropdown>
-      <Dropdown>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 gap-1.5 rounded-lg border border-[#747775]/45 bg-transparent px-3 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:border-[#8e918f]/45 dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
-        >
-          <span>{t("manager.sortModified")}</span>
-          <ChevronDownIcon className="size-3.5 opacity-80" />
-        </Button>
-        <Dropdown.Popover placement="bottom start" className="min-w-44 rounded-xl p-1">
-          <Dropdown.Menu
-            aria-label={t("manager.sortModified")}
-            onAction={(key) => {
-              const nowMs = Date.now();
-              const days = key === "today" ? 1 : key === "week" ? 7 : 30;
-              const updatedAfter = new Date(nowMs - days * 86_400_000).toISOString().slice(0, 10);
-              void navigateTo({ to: "/search", search: { updatedAfter } });
-            }}
+            <span>{filterTypeLabel}</span>
+            <ChevronDownIcon className="size-3.5 opacity-80" />
+          </Button>
+          <Dropdown.Popover placement="bottom start" className="min-w-44 rounded-xl p-1">
+            <Dropdown.Menu
+              aria-label={t("search.type")}
+              onAction={(key) => {
+                setFilterType(
+                  String(key) as "all" | "folder" | "document" | "media" | "audio" | "archive",
+                );
+              }}
+            >
+              <Dropdown.Item id="all" textValue={t("drive.filterAll")}>
+                <Label>{t("drive.filterAll")}</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="folder" textValue={t("drive.filterFolders")}>
+                <Label>{t("drive.filterFolders")}</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="document" textValue={t("drive.filterDocuments")}>
+                <Label>{t("drive.filterDocuments")}</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="media" textValue={t("drive.filterMedia")}>
+                <Label>{t("drive.filterMedia")}</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="audio" textValue={t("drive.filterAudio")}>
+                <Label>{t("drive.filterAudio")}</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="archive" textValue={t("drive.filterArchives")}>
+                <Label>{t("drive.filterArchives")}</Label>
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown>
+        {filterType !== "all" ? (
+          <Button
+            isIconOnly
+            size="sm"
+            variant="ghost"
+            aria-label="Clear type filter"
+            onPress={() => setFilterType("all")}
+            className="h-8 w-7 rounded-l-none rounded-r-lg border border-[#0b57d0]/40 bg-[#c2e7ff]/60 text-[#001d35] hover:bg-[#c2e7ff] dark:border-[#a8c7fa]/40 dark:bg-[#004a77] dark:text-[#c2e7ff] dark:hover:bg-[#004a77]/80"
           >
-            <Dropdown.Item id="today" textValue="Today">
-              <Label>Today</Label>
-            </Dropdown.Item>
-            <Dropdown.Item id="week" textValue="Last 7 days">
-              <Label>Last 7 days</Label>
-            </Dropdown.Item>
-            <Dropdown.Item id="month" textValue="Last 30 days">
-              <Label>Last 30 days</Label>
-            </Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown.Popover>
-      </Dropdown>
+            <CloseIcon className="size-3.5" />
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="inline-flex items-center">
+        <Dropdown>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={
+              filterModified !== "all"
+                ? "h-8 gap-1.5 rounded-l-lg rounded-r-none border border-r-0 border-[#0b57d0]/40 bg-[#c2e7ff]/60 px-3 text-xs font-medium text-[#001d35] hover:bg-[#c2e7ff] dark:border-[#a8c7fa]/40 dark:bg-[#004a77] dark:text-[#c2e7ff] dark:hover:bg-[#004a77]/80"
+                : "h-8 gap-1.5 rounded-lg border border-[#747775]/45 bg-transparent px-3 text-xs font-medium text-[#444746] hover:bg-[#f0f4f9] dark:border-[#8e918f]/45 dark:text-[#c4c7c5] dark:hover:bg-[#282a2c]"
+            }
+          >
+            <span>{filterModifiedLabel}</span>
+            <ChevronDownIcon className="size-3.5 opacity-80" />
+          </Button>
+          <Dropdown.Popover placement="bottom start" className="min-w-44 rounded-xl p-1">
+            <Dropdown.Menu
+              aria-label={t("manager.sortModified")}
+              onAction={(key) => {
+                setFilterModified(String(key) as "all" | "today" | "week" | "month");
+              }}
+            >
+              <Dropdown.Item id="all" textValue={t("drive.filterAll")}>
+                <Label>{t("drive.filterAll")}</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="today" textValue="Today">
+                <Label>Today</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="week" textValue="Last 7 days">
+                <Label>Last 7 days</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="month" textValue="Last 30 days">
+                <Label>Last 30 days</Label>
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown>
+        {filterModified !== "all" ? (
+          <Button
+            isIconOnly
+            size="sm"
+            variant="ghost"
+            aria-label="Clear modified filter"
+            onPress={() => setFilterModified("all")}
+            className="h-8 w-7 rounded-l-none rounded-r-lg border border-[#0b57d0]/40 bg-[#c2e7ff]/60 text-[#001d35] hover:bg-[#c2e7ff] dark:border-[#a8c7fa]/40 dark:bg-[#004a77] dark:text-[#c2e7ff] dark:hover:bg-[#004a77]/80"
+          >
+            <CloseIcon className="size-3.5" />
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 

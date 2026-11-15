@@ -64,6 +64,21 @@ function PhotosWorkspacePage() {
   const selectedAlbumId = search.albumId;
   const trimmedSearch = (search.q ?? "").trim().toLowerCase();
 
+  const photoSettings = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("teldrive:photos-settings:v1");
+      if (!raw) return { showVideosInTimeline: true, showScreenshots: true, memoriesBanner: true };
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      return {
+        showVideosInTimeline: parsed.showVideosInTimeline !== false,
+        showScreenshots: parsed.showScreenshots !== false,
+        memoriesBanner: parsed.memoriesBanner !== false,
+      };
+    } catch {
+      return { showVideosInTimeline: true, showScreenshots: true, memoriesBanner: true };
+    }
+  }, []);
+
   const [previewFile, setPreviewFile] = useState<FileEntry>();
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
   const [albumName, setAlbumName] = useState("");
@@ -145,6 +160,17 @@ function PhotosWorkspacePage() {
 
   const filteredItems = useMemo(() => {
     const result = items.filter((item) => {
+      if (mode === "timeline") {
+        if (!photoSettings.showVideosInTimeline && item.file.mimeType?.startsWith("video/")) {
+          return false;
+        }
+        if (!photoSettings.showScreenshots) {
+          const lower = item.file.name.toLowerCase();
+          if (lower.includes("screen") || lower.includes("shot")) {
+            return false;
+          }
+        }
+      }
       if (mode === "videos" && !item.file.mimeType?.startsWith("video/")) {
         return false;
       }
@@ -172,7 +198,7 @@ function PhotosWorkspacePage() {
       );
     }
     return result;
-  }, [items, mode, trimmedSearch]);
+  }, [items, mode, photoSettings.showScreenshots, photoSettings.showVideosInTimeline, trimmedSearch]);
 
   const filteredAlbums = useMemo(() => {
     if (!trimmedSearch) return albums;
@@ -182,6 +208,7 @@ function PhotosWorkspacePage() {
   }, [albums, trimmedSearch]);
 
   const highlightCards = useMemo(() => {
+    if (!photoSettings.memoriesBanner) return [];
     const firstImage = items.find((item) => item.file.mimeType?.startsWith("image/"));
     const favoriteItem =
       items.find((item) => item.favorite && item.file.mimeType?.startsWith("image/")) ??
@@ -235,7 +262,7 @@ function PhotosWorkspacePage() {
       });
     }
     return cards;
-  }, [albums.length, items, t]);
+  }, [albums.length, items, photoSettings.memoriesBanner, t]);
 
   const groupedByDate = useMemo(() => {
     const groups = new Map<

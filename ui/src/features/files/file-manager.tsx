@@ -126,9 +126,7 @@ export function FileManagerPage({
       : new Date(
           Date.now() -
             (filterModified === "today" ? 1 : filterModified === "week" ? 7 : 30) * 86_400_000,
-        )
-          .toISOString()
-          .slice(0, 10);
+        ).toISOString();
   const { data: currentUser } = useQuery(currentUserQueryOptions());
   const canLocalImport = Boolean(currentUser?.capabilities.includes("system.localImport"));
 

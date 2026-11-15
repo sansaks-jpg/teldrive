@@ -14,6 +14,8 @@ import { isPreviewable } from "@/components/file-preview-dialog";
 import { subscribeWorkspaceAction } from "@/components/google-workspace";
 import { Page, PageContent } from "@/components/page";
 import { useUploadStore } from "@/features/uploads/store";
+import { useAppLocale } from "@/lib/locale";
+import { usePreferences, useUpdatePreferences } from "@/lib/preferences";
 import PasteIcon from "~icons/gravity-ui/arrow-right-to-square";
 import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
 import FileIcon from "~icons/gravity-ui/file";
@@ -21,11 +23,9 @@ import FolderIcon from "~icons/gravity-ui/folder";
 import SplitIcon from "~icons/gravity-ui/layout-split-columns";
 import PlusIcon from "~icons/gravity-ui/plus";
 import CloseIcon from "~icons/gravity-ui/xmark";
-
 import { useFileClipboardStore } from "./clipboard-store";
 import { absoluteFileDownloadUrl, copyText, startFileDownload } from "./download";
 import { FileActionDialogs } from "./file-action-dialogs";
-import { useAppLocale } from "@/lib/locale";
 import { FileBrowser } from "./file-browser";
 import { FileSelectionToolbar } from "./file-selection-toolbar";
 import { FileSortControls } from "./file-sort-controls";
@@ -38,9 +38,7 @@ import {
   invalidSearchDates,
   type SearchState,
 } from "./search-state";
-
 import type { FileSort, SortOrder } from "./sort-preference";
-import { usePreferences, useUpdatePreferences } from "@/lib/preferences";
 
 type FileBrowserView = "list" | "grid";
 type PaneId = "primary" | "secondary";
@@ -842,6 +840,9 @@ export function FileManagerPage({
         }}
         onTrash={() => void trashSelected(pane)}
         onClear={() => setPaneSelectedKeys(pane, new Set())}
+        onSelectAll={() =>
+          setPaneSelectedKeys(pane, new Set(paneFiles(pane).map((file) => file.id)))
+        }
       />
     );
   };

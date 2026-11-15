@@ -67,6 +67,10 @@
 
 /* ─── Base layer: theme variable overrides ─── */
 @layer base {
+  html {
+    height: 100%;
+  }
+
   body {
     height: 100%;
     overflow: hidden;
@@ -152,7 +156,7 @@
     --muted-background: oklch(0.26 0.006 260);
     --muted: oklch(0.74 0.008 260);
 
-    --default: oklch(0.30 0.008 260);
+    --default: oklch(0.3 0.008 260);
     --default-foreground: oklch(0.92 0.005 260);
 
     --field-background: oklch(0.275 0.006 260);

@@ -3,13 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { FileTrigger, type Selection } from "react-aria-components";
 import { toast } from "sonner";
-import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
-import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
-import PencilIcon from "~icons/gravity-ui/pencil";
-import PlusIcon from "~icons/gravity-ui/plus";
-import LinkIcon from "~icons/gravity-ui/link";
-import TrashIcon from "~icons/gravity-ui/trash-bin";
-import CloseIcon from "~icons/gravity-ui/xmark";
 import { $api, fetchClient } from "@/api/client";
 import { userMessage } from "@/api/errors";
 import type { FileEntry } from "@/api/types";
@@ -18,11 +11,19 @@ import { FilePreviewDialog, isPreviewable } from "@/components/file-preview-dial
 import { Page, PageContent } from "@/components/page";
 import { startFileDownload } from "@/features/files/download";
 import { FileBrowser, type FileBrowserView } from "@/features/files/file-browser";
+import { useMobileSelectionStore } from "@/features/files/mobile-selection-store";
 import { useFileActions } from "@/features/files/mutations";
 import { ShareDialog } from "@/features/files/share-dialog";
 import { useUploadStore } from "@/features/uploads/store";
 import { useAppLocale } from "@/lib/locale";
 import { getQueryClient } from "@/lib/queryClient";
+import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
+import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
+import LinkIcon from "~icons/gravity-ui/link";
+import PencilIcon from "~icons/gravity-ui/pencil";
+import PlusIcon from "~icons/gravity-ui/plus";
+import TrashIcon from "~icons/gravity-ui/trash-bin";
+import CloseIcon from "~icons/gravity-ui/xmark";
 
 type Permission = "read" | "comment" | "upload" | "edit";
 
@@ -128,6 +129,8 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
   const selectedWritable =
     selectedFiles.length > 0 && selectedFiles.every((file) => permissionFor(file) === "edit");
   const currentFolderEditable = !atRoot && (mode === "shared" || search.permission === "edit");
+  const setMobileSelection = useMobileSelectionStore((state) => state.setSelection);
+  const clearMobileSelection = useMobileSelectionStore((state) => state.clearSelection);
 
   const refreshRoots = async () => {
     if (mode === "with-me") await sharedWithMeQuery.refetch();
@@ -249,6 +252,43 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
     }
   };
 
+  useEffect(() => {
+    if (selectedCount === 0) {
+      clearMobileSelection();
+      return;
+    }
+    setMobileSelection({
+      count: selectedCount,
+      singleKind: singleSelected?.kind,
+      pending: fileActions.pending,
+      onClear: () => setSelectedKeys(new Set()),
+      onSelectAll: () => setSelectedKeys(new Set(files.map((file) => file.id))),
+      onRename:
+        singleSelected && selectedWritable
+          ? () => {
+              setRenameFile(singleSelected);
+              setRenameName(singleSelected.name);
+            }
+          : undefined,
+      onShare: singleSelected && mode === "shared" ? () => setShareFile(singleSelected) : undefined,
+      onDownload:
+        singleSelected?.kind === "file" ? () => startFileDownload(singleSelected) : undefined,
+      onStopSharing: mode === "shared" && atRoot ? () => void stopSharingSelected() : undefined,
+      onTrash: mode === "with-me" && selectedWritable ? () => void trashSelected() : undefined,
+    });
+    return () => clearMobileSelection();
+  }, [
+    selectedCount,
+    singleSelected,
+    selectedWritable,
+    mode,
+    atRoot,
+    files,
+    fileActions.pending,
+    setMobileSelection,
+    clearMobileSelection,
+  ]);
+
   const openFile = (file: FileEntry) => {
     if (file.kind === "folder") {
       navigate({
@@ -349,7 +389,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
           }
           selectionOverlay={
             selectedCount > 0 ? (
-              <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
+              <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 hidden justify-center px-4 sm:flex">
                 <div className="pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0">
                   <span className="shrink-0 rounded-full bg-[#c2e7ff] px-3 py-2 text-sm font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]">
                     {t("selection.count", { count: selectedCount })}

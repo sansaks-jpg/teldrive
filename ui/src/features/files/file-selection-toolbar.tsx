@@ -1,5 +1,5 @@
 import { Button, Tooltip } from "@heroui/react";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useEffect } from "react";
 import { useAppLocale } from "@/lib/locale";
 import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
 import BookmarkIcon from "~icons/gravity-ui/bookmark";
@@ -13,6 +13,7 @@ import CutIcon from "~icons/gravity-ui/scissors";
 import TrashIcon from "~icons/gravity-ui/trash-bin";
 import CloseIcon from "~icons/gravity-ui/xmark";
 import type { FileEntry } from "../../api/types";
+import { useMobileSelectionStore } from "./mobile-selection-store";
 
 export function SelectionActionButton(
   props: ComponentProps<typeof Button> & { "aria-label": string },
@@ -40,6 +41,7 @@ export function FileSelectionToolbar({
   onMove,
   onTrash,
   onClear,
+  onSelectAll,
 }: {
   selectedFiles: FileEntry[];
   pending: boolean;
@@ -55,15 +57,65 @@ export function FileSelectionToolbar({
   onMove?: () => void;
   onTrash?: () => void;
   onClear?: () => void;
+  onSelectAll?: () => void;
 }) {
   const { t } = useAppLocale();
-  if (selectedFiles.length === 0) return null;
+  const setMobileSelection = useMobileSelectionStore((state) => state.setSelection);
+  const clearMobileSelection = useMobileSelectionStore((state) => state.clearSelection);
   const selectedCount = selectedFiles.length;
   const singleSelectedFile = selectedCount === 1 ? selectedFiles[0] : undefined;
   const selectedOnlyFiles = selectedFiles.every((file) => file.kind === "file");
 
+  useEffect(() => {
+    if (selectedCount === 0) {
+      clearMobileSelection();
+      return;
+    }
+    setMobileSelection({
+      count: selectedCount,
+      singleKind: singleSelectedFile?.kind,
+      pending,
+      bookmarked,
+      onClear,
+      onSelectAll,
+      onCut,
+      onCopy,
+      onBookmark,
+      onRename: singleSelectedFile ? onRename : undefined,
+      onShare: singleSelectedFile ? onShare : undefined,
+      onVersions: singleSelectedFile?.kind === "file" ? onVersions : undefined,
+      onDownload: singleSelectedFile?.kind === "file" ? onDownload : undefined,
+      onCopyDownloadLinks: selectedOnlyFiles ? onCopyDownloadLinks : undefined,
+      onMove,
+      onTrash,
+    });
+    return () => clearMobileSelection();
+  }, [
+    selectedCount,
+    singleSelectedFile,
+    selectedOnlyFiles,
+    pending,
+    bookmarked,
+    onClear,
+    onSelectAll,
+    onCut,
+    onCopy,
+    onBookmark,
+    onRename,
+    onShare,
+    onVersions,
+    onDownload,
+    onCopyDownloadLinks,
+    onMove,
+    onTrash,
+    setMobileSelection,
+    clearMobileSelection,
+  ]);
+
+  if (selectedCount === 0) return null;
+
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
+    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 hidden justify-center px-4 sm:flex">
       <fieldset
         aria-label={t("selection.actions")}
         className="pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0"

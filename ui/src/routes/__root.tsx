@@ -24,40 +24,52 @@ import { type Ref, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   dispatchWorkspaceAction,
-  getWorkspaceApp,
   GoogleDocsBrandIcon,
   GoogleDriveBrandIcon,
   GoogleOneBrandIcon,
   GooglePhotosBrandIcon,
+  getWorkspaceApp,
   WaffleGridIcon,
   type WorkspaceAction,
   type WorkspaceAppId,
 } from "@/components/google-workspace";
 import { clearDocumentCache } from "@/features/files/document-cache";
+import { useMobileSelectionStore } from "@/features/files/mobile-selection-store";
 import { useFormatBytes } from "@/lib/format";
 import { useAppLocale } from "@/lib/locale";
 import { useTheme } from "@/lib/theme";
-import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
+import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
 import LogoutIcon from "~icons/gravity-ui/arrow-right-from-square";
+import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
 import MenuIcon from "~icons/gravity-ui/bars";
 import BookmarkIcon from "~icons/gravity-ui/bookmark";
 import ChevronLeftIcon from "~icons/gravity-ui/chevron-left";
 import ChevronRightIcon from "~icons/gravity-ui/chevron-right";
+import ClockIcon from "~icons/gravity-ui/clock";
+import CopyIcon from "~icons/gravity-ui/copy";
+import CopyLinkIcon from "~icons/gravity-ui/copy-arrow-right";
 import StorageIcon from "~icons/gravity-ui/database";
+import MoreIcon from "~icons/gravity-ui/ellipsis-vertical";
 import FileIcon from "~icons/gravity-ui/file";
 import FolderIcon from "~icons/gravity-ui/folder";
+import MoveIcon from "~icons/gravity-ui/folder-arrow-right";
 import FolderFillIcon from "~icons/gravity-ui/folder-fill";
 import FolderPlusIcon from "~icons/gravity-ui/folder-plus";
 import SettingsIcon from "~icons/gravity-ui/gear";
 import HeartIcon from "~icons/gravity-ui/heart";
 import HouseIcon from "~icons/gravity-ui/house";
 import HouseFillIcon from "~icons/gravity-ui/house-fill";
+import LinkIcon from "~icons/gravity-ui/link";
+import UnshareIcon from "~icons/gravity-ui/link-slash";
 import TasksIcon from "~icons/gravity-ui/list-ul";
 import SearchIcon from "~icons/gravity-ui/magnifier";
 import MoonIcon from "~icons/gravity-ui/moon";
+import PencilIcon from "~icons/gravity-ui/pencil";
 import PersonsIcon from "~icons/gravity-ui/persons";
 import PlusIcon from "~icons/gravity-ui/plus";
+import CutIcon from "~icons/gravity-ui/scissors";
 import ShieldIcon from "~icons/gravity-ui/shield-check";
+import SelectAllIcon from "~icons/gravity-ui/square-check";
 import StarIcon from "~icons/gravity-ui/star";
 import StarFillIcon from "~icons/gravity-ui/star-fill";
 import SunIcon from "~icons/gravity-ui/sun";
@@ -124,7 +136,10 @@ const MOBILE_DRIVE_NAV: AppNavItem[] = [
     icon: PersonsIcon,
     activeIcon: PersonsIcon,
     to: "/shared-with-me",
-    isActive: (pathname) => pathname.startsWith("/shared-with-me"),
+    isActive: (pathname) =>
+      pathname.startsWith("/shared-with-me") ||
+      pathname === "/shared" ||
+      pathname.startsWith("/shared/"),
   },
   {
     key: "mobile-files",
@@ -196,8 +211,7 @@ const PHOTOS_NAV: AppNavItem[] = [
     to: "/photos",
     search: { mode: "timeline" },
     isActive: (pathname, search) =>
-      pathname.startsWith("/photos") &&
-      (!search.mode || search.mode === "timeline"),
+      pathname.startsWith("/photos") && (!search.mode || search.mode === "timeline"),
   },
   {
     key: "photos-favorites",
@@ -205,8 +219,7 @@ const PHOTOS_NAV: AppNavItem[] = [
     icon: HeartIcon,
     to: "/photos",
     search: { mode: "favorites" },
-    isActive: (pathname, search) =>
-      pathname.startsWith("/photos") && search.mode === "favorites",
+    isActive: (pathname, search) => pathname.startsWith("/photos") && search.mode === "favorites",
   },
   {
     key: "photos-albums",
@@ -230,8 +243,7 @@ const PHOTOS_NAV: AppNavItem[] = [
     icon: PictureIcon,
     to: "/photos",
     search: { mode: "screenshots" },
-    isActive: (pathname, search) =>
-      pathname.startsWith("/photos") && search.mode === "screenshots",
+    isActive: (pathname, search) => pathname.startsWith("/photos") && search.mode === "screenshots",
   },
   {
     key: "photos-recent",
@@ -351,9 +363,12 @@ function Sidebar({
   const ActiveBrandIcon = appMeta.brand;
   const { data: user } = useQuery(currentUserQueryOptions());
   const capabilities = user?.capabilities ?? [];
-  const isAdmin = capabilities.includes("system.manageUsers");
   const canManageJobs = capabilities.includes("system.manageJobs");
-  const visibleNav = getNavForApp(activeApp, capabilities);
+  const visibleNav = getNavForApp(activeApp, capabilities).filter((item) => {
+    if (!mobile || activeApp !== "drive") return true;
+    // Bottom bar handles Home (recent), Bookmarks, Shared, and Files on mobile Drive.
+    return item.key === "trash";
+  });
 
   const storageQuery = $api.useQuery(
     "get",
@@ -477,81 +492,7 @@ function Sidebar({
         </div>
       </div>
 
-      {mobile && (
-        <div className="mx-3 mb-2 rounded-2xl border border-border/50 bg-surface-secondary/50 p-2">
-          <p className="mb-1.5 px-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
-            {t("apps.workspaceSwitch")}
-          </p>
-          <div className="grid grid-cols-2 gap-1.5">
-            <Link
-              to="/files"
-              search={{ path: "/", query: "", view: "list" }}
-              onClick={() => onNavigate?.()}
-              className={cn(
-                "flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-medium transition-colors",
-                activeApp === "drive"
-                  ? "bg-surface text-foreground shadow-xs"
-                  : "text-muted hover:bg-surface/60 hover:text-foreground",
-              )}
-            >
-              <GoogleDriveBrandIcon className="size-4 shrink-0" />
-              <span className="truncate">{t("apps.drive")}</span>
-            </Link>
-            <Link
-              to="/photos"
-              onClick={() => onNavigate?.()}
-              className={cn(
-                "flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-medium transition-colors",
-                activeApp === "photos"
-                  ? "bg-surface text-foreground shadow-xs"
-                  : "text-muted hover:bg-surface/60 hover:text-foreground",
-              )}
-            >
-              <GooglePhotosBrandIcon className="size-4 shrink-0" />
-              <span className="truncate">{t("apps.photos")}</span>
-            </Link>
-            <Link
-              to={isAdmin ? "/admin" : "/storage"}
-              onClick={() => onNavigate?.()}
-              className={cn(
-                "flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-medium transition-colors",
-                activeApp === "one"
-                  ? "bg-surface text-foreground shadow-xs"
-                  : "text-muted hover:bg-surface/60 hover:text-foreground",
-              )}
-            >
-              <GoogleOneBrandIcon className="size-4 shrink-0" />
-              <span className="truncate">{t("apps.one")}</span>
-            </Link>
-            <Link
-              to="/docs"
-              onClick={() => onNavigate?.()}
-              className={cn(
-                "flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-medium transition-colors",
-                activeApp === "docs"
-                  ? "bg-surface text-foreground shadow-xs"
-                  : "text-muted hover:bg-surface/60 hover:text-foreground",
-              )}
-            >
-              <GoogleDocsBrandIcon className="size-4 shrink-0" />
-              <span className="truncate">{t("apps.docs")}</span>
-            </Link>
-          </div>
-          {canManageJobs && activeApp !== "one" ? (
-            <Link
-              to="/tasks"
-              search={{ status: "running", query: "" }}
-              onClick={() => onNavigate?.()}
-              className="mt-1.5 flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface/60 hover:text-foreground"
-            >
-              <TasksIcon className="size-3.5 shrink-0" />
-              <span>{t("nav.tasks")}</span>
-            </Link>
-          ) : null}
-        </div>
-      )}
-
-      {activeApp === "drive" && (
+      {!mobile && activeApp === "drive" && (
         <div className="px-3 pt-1">
           <Dropdown>
             <Button
@@ -559,13 +500,11 @@ function Sidebar({
               aria-label={t("nav.newAction")}
               className={cn(
                 "h-13 rounded-2xl border border-border/50 bg-surface font-medium text-foreground shadow-sm transition-shadow hover:bg-surface hover:shadow-md",
-                collapsed && !mobile
-                  ? "w-10 min-w-0 justify-center px-0"
-                  : "w-32 justify-start gap-3 px-4",
+                collapsed ? "w-10 min-w-0 justify-center px-0" : "w-32 justify-start gap-3 px-4",
               )}
             >
               <PlusIcon className="size-5 shrink-0 text-foreground" />
-              {(!collapsed || mobile) && <span className="text-sm">{t("nav.newAction")}</span>}
+              {!collapsed && <span className="text-sm">{t("nav.newAction")}</span>}
             </Button>
             <Dropdown.Popover placement="bottom start" className="min-w-56 rounded-2xl p-1.5">
               <Dropdown.Menu
@@ -594,7 +533,7 @@ function Sidebar({
         </div>
       )}
 
-      {activeApp === "photos" && (
+      {!mobile && activeApp === "photos" && (
         <div className="px-3 pt-1">
           <Dropdown>
             <Button
@@ -602,13 +541,11 @@ function Sidebar({
               aria-label={t("photos.newAlbum")}
               className={cn(
                 "h-13 rounded-2xl border border-border/50 bg-surface font-medium text-foreground shadow-sm transition-shadow hover:bg-surface hover:shadow-md",
-                collapsed && !mobile
-                  ? "w-10 min-w-0 justify-center px-0"
-                  : "w-44 justify-start gap-3 px-4",
+                collapsed ? "w-10 min-w-0 justify-center px-0" : "w-44 justify-start gap-3 px-4",
               )}
             >
               <PlusIcon className="size-5 shrink-0 text-accent" />
-              {(!collapsed || mobile) && <span className="text-sm">{t("photos.newAlbum")}</span>}
+              {!collapsed && <span className="text-sm">{t("photos.newAlbum")}</span>}
             </Button>
             <Dropdown.Popover placement="bottom start" className="min-w-52 rounded-2xl p-1.5">
               <Dropdown.Menu
@@ -634,6 +571,43 @@ function Sidebar({
 
       <nav aria-label={t("sidebar.nav")} className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
         {visibleNav.map(renderItem)}
+        {mobile && activeApp === "drive" && canManageJobs ? (
+          <Link
+            to="/tasks"
+            search={{ status: "running", query: "" }}
+            activeOptions={{ includeSearch: false }}
+            preload="intent"
+            className={cn(
+              buttonVariants({ variant: "ghost" }),
+              "h-10 w-full justify-start rounded-full px-3 text-sm font-medium",
+              pathname.startsWith("/tasks")
+                ? "bg-accent/10 bg-[#c2e7ff]! font-semibold text-[#001d35]! dark:bg-[#004a77]! dark:text-[#c2e7ff]!"
+                : "text-[#444746] hover:bg-[#e1e5ea]/70 hover:text-foreground dark:text-[#c4c7c5] dark:hover:bg-[#333538]/70",
+            )}
+            onClick={() => onNavigate?.()}
+          >
+            <TasksIcon className="size-4 shrink-0" />
+            <span className="ml-3 truncate">{t("nav.tasks")}</span>
+          </Link>
+        ) : null}
+        {mobile ? (
+          <Link
+            to="/settings"
+            activeOptions={{ includeSearch: false }}
+            preload="intent"
+            className={cn(
+              buttonVariants({ variant: "ghost" }),
+              "h-10 w-full justify-start rounded-full px-3 text-sm font-medium",
+              pathname.startsWith("/settings")
+                ? "bg-accent/10 bg-[#c2e7ff]! font-semibold text-[#001d35]! dark:bg-[#004a77]! dark:text-[#c2e7ff]!"
+                : "text-[#444746] hover:bg-[#e1e5ea]/70 hover:text-foreground dark:text-[#c4c7c5] dark:hover:bg-[#333538]/70",
+            )}
+            onClick={() => onNavigate?.()}
+          >
+            <SettingsIcon className="size-4 shrink-0" />
+            <span className="ml-3 truncate">{t("title.settings")}</span>
+          </Link>
+        ) : null}
       </nav>
 
       {(!collapsed || mobile) && storageStats ? (
@@ -659,72 +633,77 @@ function Sidebar({
       ) : null}
 
       <div className="border-t border-border/50 px-3 py-3">
-        <Dropdown isOpen={accountMenuOpen} onOpenChange={setAccountMenuOpen}>
-          {collapsed && !mobile ? (
-            <Dropdown.Trigger className="flex size-10 items-center justify-center rounded-full hover:bg-default/30">
-              <Avatar className="size-8 cursor-pointer">
-                <Avatar.Image alt={displayName} src="/api/v1/me/photo" />
-                <Avatar.Fallback>{initials}</Avatar.Fallback>
-              </Avatar>
-            </Dropdown.Trigger>
-          ) : (
-            <Button
-              variant="ghost"
-              aria-label={t("account.menu")}
-              className="flex h-14 w-full items-center justify-start gap-3 rounded-xl px-2 text-muted hover:bg-default/30 hover:text-foreground"
-            >
-              <Avatar className="size-9 shrink-0">
-                <Avatar.Image alt={displayName} src="/api/v1/me/photo" />
-                <Avatar.Fallback>{initials}</Avatar.Fallback>
-              </Avatar>
-              <div className="min-w-0 overflow-hidden whitespace-nowrap text-left">
-                <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
-                <p className="truncate text-xs text-muted">{secondaryLabel}</p>
-              </div>
-            </Button>
-          )}
-          <Dropdown.Popover placement="top start" className="min-w-52">
-            <Dropdown.Menu
-              aria-label={t("account.menu")}
-              onAction={(key) => {
-                if (key === "logout") void signOut();
-              }}
-            >
-              <Dropdown.Item
-                id="settings"
-                textValue={t("account.settings")}
-                render={({ ref, ...itemProps }) => {
-                  return (
-                    // @ts-expect-error HeroUI types render props for a menu item div; this render target is an anchor.
-                    <Link
-                      {...itemProps}
-                      ref={ref as Ref<HTMLAnchorElement>}
-                      to="/settings"
-                      preload="intent"
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                        onNavigate?.();
-                      }}
-                    />
-                  );
+        {!mobile && (
+          <Dropdown isOpen={accountMenuOpen} onOpenChange={setAccountMenuOpen}>
+            {collapsed ? (
+              <Dropdown.Trigger className="flex size-10 items-center justify-center rounded-full hover:bg-default/30">
+                <Avatar className="size-8 cursor-pointer">
+                  <Avatar.Image alt={displayName} src="/api/v1/me/photo" />
+                  <Avatar.Fallback>{initials}</Avatar.Fallback>
+                </Avatar>
+              </Dropdown.Trigger>
+            ) : (
+              <Button
+                variant="ghost"
+                aria-label={t("account.menu")}
+                className="flex h-14 w-full items-center justify-start gap-3 rounded-xl px-2 text-muted hover:bg-default/30 hover:text-foreground"
+              >
+                <Avatar className="size-9 shrink-0">
+                  <Avatar.Image alt={displayName} src="/api/v1/me/photo" />
+                  <Avatar.Fallback>{initials}</Avatar.Fallback>
+                </Avatar>
+                <div className="min-w-0 overflow-hidden whitespace-nowrap text-left">
+                  <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
+                  <p className="truncate text-xs text-muted">{secondaryLabel}</p>
+                </div>
+              </Button>
+            )}
+            <Dropdown.Popover placement="top start" className="min-w-52">
+              <Dropdown.Menu
+                aria-label={t("account.menu")}
+                onAction={(key) => {
+                  if (key === "logout") void signOut();
                 }}
               >
-                <SettingsIcon className="size-4" />
-                <Label>{t("account.settings")}</Label>
-              </Dropdown.Item>
-              <Dropdown.Item
-                id="logout"
-                textValue={t("account.logout")}
-                isDisabled={logout.isPending}
-              >
-                <LogoutIcon className="size-4" />
-                <Label>{logout.isPending ? t("account.loggingOut") : t("account.logout")}</Label>
-              </Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown>
+                <Dropdown.Item
+                  id="settings"
+                  textValue={t("account.settings")}
+                  render={({ ref, ...itemProps }) => {
+                    return (
+                      // @ts-expect-error HeroUI types render props for a menu item div; this render target is an anchor.
+                      <Link
+                        {...itemProps}
+                        ref={ref as Ref<HTMLAnchorElement>}
+                        to="/settings"
+                        preload="intent"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          onNavigate?.();
+                        }}
+                      />
+                    );
+                  }}
+                >
+                  <SettingsIcon className="size-4" />
+                  <Label>{t("account.settings")}</Label>
+                </Dropdown.Item>
+                <Dropdown.Item
+                  id="logout"
+                  textValue={t("account.logout")}
+                  isDisabled={logout.isPending}
+                >
+                  <LogoutIcon className="size-4" />
+                  <Label>{logout.isPending ? t("account.loggingOut") : t("account.logout")}</Label>
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown>
+        )}
         {(!collapsed || mobile) && (
-          <p className="mt-2 truncate px-2 text-xs text-muted" title={versionLabel}>
+          <p
+            className={cn("truncate px-2 text-xs text-muted", !mobile && "mt-2")}
+            title={versionLabel}
+          >
             {versionLabel}
           </p>
         )}
@@ -758,6 +737,7 @@ function TopBar({
   const locationKey = useLocation({ select: (location) => location.href });
   const activeApp = getWorkspaceApp(pathname);
   const appMeta = getAppMeta(activeApp, t);
+  const mobileSelection = useMobileSelectionStore((state) => state.selection);
 
   const scheduleSearch = (value: string) => {
     if (searchTimer.current) window.clearTimeout(searchTimer.current);
@@ -922,6 +902,194 @@ function TopBar({
   );
 
   if (!desktop) {
+    if (mobileSelection && mobileSelection.count > 0) {
+      const hasOverflow = Boolean(
+        mobileSelection.onDownload ||
+          mobileSelection.onRename ||
+          mobileSelection.onBookmark ||
+          mobileSelection.onCopyDownloadLinks ||
+          mobileSelection.onCut ||
+          mobileSelection.onCopy ||
+          mobileSelection.onVersions,
+      );
+      return (
+        <header className="shrink-0 bg-sidebar px-2 pb-1.5 pt-2.5">
+          <fieldset
+            aria-label={t("selection.actions")}
+            className="flex h-12 min-w-0 items-center gap-1 border-0 p-0"
+          >
+            <Button
+              isIconOnly
+              variant="ghost"
+              size="sm"
+              className="size-10 shrink-0 rounded-full text-[#0b57d0] dark:text-[#7cd0e3]"
+              aria-label={t("selection.clear")}
+              isDisabled={mobileSelection.pending}
+              onPress={() => mobileSelection.onClear?.()}
+            >
+              <CloseIcon className="size-5" />
+            </Button>
+            <span className="min-w-0 truncate px-1 text-lg font-medium text-[#0b57d0] dark:text-[#7cd0e3]">
+              {t("selection.count", { count: mobileSelection.count })}
+            </span>
+            <div className="ml-auto flex shrink-0 items-center gap-0.5 text-[#0b57d0] dark:text-[#7cd0e3]">
+              {mobileSelection.onShare ? (
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  size="sm"
+                  className="size-10 rounded-full text-inherit"
+                  aria-label={t("selection.share")}
+                  isDisabled={mobileSelection.pending}
+                  onPress={() => mobileSelection.onShare?.()}
+                >
+                  <LinkIcon className="size-5" />
+                </Button>
+              ) : null}
+              {mobileSelection.onMove ? (
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  size="sm"
+                  className="size-10 rounded-full text-inherit"
+                  aria-label={t("selection.move")}
+                  isDisabled={mobileSelection.pending}
+                  onPress={() => mobileSelection.onMove?.()}
+                >
+                  <MoveIcon className="size-5" />
+                </Button>
+              ) : null}
+              {mobileSelection.onTrash ? (
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  size="sm"
+                  className="size-10 rounded-full text-inherit"
+                  aria-label={t("selection.trash")}
+                  isDisabled={mobileSelection.pending}
+                  onPress={() => mobileSelection.onTrash?.()}
+                >
+                  <TrashIcon className="size-5" />
+                </Button>
+              ) : mobileSelection.onStopSharing ? (
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  size="sm"
+                  className="size-10 rounded-full text-inherit"
+                  aria-label={t("selection.stopSharing")}
+                  isDisabled={mobileSelection.pending}
+                  onPress={() => mobileSelection.onStopSharing?.()}
+                >
+                  <UnshareIcon className="size-5" />
+                </Button>
+              ) : null}
+              {mobileSelection.onSelectAll ? (
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  size="sm"
+                  className="size-10 rounded-full text-inherit"
+                  aria-label={t("selection.selectAll")}
+                  isDisabled={mobileSelection.pending}
+                  onPress={() => mobileSelection.onSelectAll?.()}
+                >
+                  <SelectAllIcon className="size-5" />
+                </Button>
+              ) : null}
+              {hasOverflow ? (
+                <Dropdown>
+                  <Button
+                    isIconOnly
+                    variant="ghost"
+                    size="sm"
+                    className="size-10 rounded-full text-inherit"
+                    aria-label={t("selection.actions")}
+                  >
+                    <MoreIcon className="size-5" />
+                  </Button>
+                  <Dropdown.Popover placement="bottom end" className="min-w-48 rounded-2xl p-1.5">
+                    <Dropdown.Menu
+                      aria-label={t("selection.actions")}
+                      onAction={(key) => {
+                        if (key === "download") mobileSelection.onDownload?.();
+                        else if (key === "rename") mobileSelection.onRename?.();
+                        else if (key === "bookmark") mobileSelection.onBookmark?.();
+                        else if (key === "copy-links") mobileSelection.onCopyDownloadLinks?.();
+                        else if (key === "cut") mobileSelection.onCut?.();
+                        else if (key === "copy") mobileSelection.onCopy?.();
+                        else if (key === "versions") mobileSelection.onVersions?.();
+                      }}
+                    >
+                      {mobileSelection.onDownload ? (
+                        <Dropdown.Item id="download" textValue={t("selection.download")}>
+                          <DownloadIcon className="size-4" />
+                          <Label>{t("drive.actionDownload")}</Label>
+                        </Dropdown.Item>
+                      ) : null}
+                      {mobileSelection.onRename ? (
+                        <Dropdown.Item id="rename" textValue={t("selection.rename")}>
+                          <PencilIcon className="size-4" />
+                          <Label>{t("drive.actionRename")}</Label>
+                        </Dropdown.Item>
+                      ) : null}
+                      {mobileSelection.onBookmark ? (
+                        <Dropdown.Item
+                          id="bookmark"
+                          textValue={
+                            mobileSelection.bookmarked
+                              ? t("selection.bookmarkRemove")
+                              : t("selection.bookmarkAdd")
+                          }
+                        >
+                          <BookmarkIcon className="size-4" />
+                          <Label>
+                            {mobileSelection.bookmarked
+                              ? t("drive.actionBookmarkRemove")
+                              : t("drive.actionBookmarkAdd")}
+                          </Label>
+                        </Dropdown.Item>
+                      ) : null}
+                      {mobileSelection.onCopyDownloadLinks ? (
+                        <Dropdown.Item
+                          id="copy-links"
+                          textValue={
+                            mobileSelection.count === 1
+                              ? t("selection.copyLinkOne")
+                              : t("selection.copyLinkMany")
+                          }
+                        >
+                          <CopyLinkIcon className="size-4" />
+                          <Label>{t("drive.actionCopyLink")}</Label>
+                        </Dropdown.Item>
+                      ) : null}
+                      {mobileSelection.onCut ? (
+                        <Dropdown.Item id="cut" textValue={t("selection.cut")}>
+                          <CutIcon className="size-4" />
+                          <Label>{t("selection.cut")}</Label>
+                        </Dropdown.Item>
+                      ) : null}
+                      {mobileSelection.onCopy ? (
+                        <Dropdown.Item id="copy" textValue={t("selection.copy")}>
+                          <CopyIcon className="size-4" />
+                          <Label>{t("drive.actionCopy")}</Label>
+                        </Dropdown.Item>
+                      ) : null}
+                      {mobileSelection.onVersions ? (
+                        <Dropdown.Item id="versions" textValue={t("versions.action")}>
+                          <ClockIcon className="size-4" />
+                          <Label>{t("versions.action")}</Label>
+                        </Dropdown.Item>
+                      ) : null}
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown>
+              ) : null}
+            </div>
+          </fieldset>
+        </header>
+      );
+    }
     return (
       <header className="shrink-0 bg-sidebar px-3 pb-1 pt-2.5">
         <div className="flex h-12 items-center gap-2">
@@ -955,7 +1123,11 @@ function TopBar({
         onPress={onToggleSidebar}
         aria-label={collapsed ? t("sidebar.expand") : t("sidebar.collapse")}
       >
-        {collapsed ? <ChevronRightIcon className="size-4" /> : <ChevronLeftIcon className="size-4" />}
+        {collapsed ? (
+          <ChevronRightIcon className="size-4" />
+        ) : (
+          <ChevronLeftIcon className="size-4" />
+        )}
       </Button>
 
       {searchForm}
@@ -1034,9 +1206,7 @@ function HeaderAccountAvatar() {
       <Dropdown.Popover placement="bottom end" className="min-w-56 rounded-2xl p-1.5">
         <div className="px-3 py-2">
           <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
-          {user?.username ? (
-            <p className="truncate text-xs text-muted">@{user.username}</p>
-          ) : null}
+          {user?.username ? <p className="truncate text-xs text-muted">@{user.username}</p> : null}
         </div>
         <Separator className="my-1" />
         <Dropdown.Menu
@@ -1079,7 +1249,9 @@ function AppSwitcher() {
   const canManageJobs = Boolean(user?.capabilities.includes("system.manageJobs"));
   const [open, setOpen] = useState(false);
 
-  const go = (path: "/files" | "/photos" | "/admin" | "/storage" | "/docs" | "/tasks" | "/settings") => {
+  const go = (
+    path: "/files" | "/photos" | "/admin" | "/storage" | "/docs" | "/tasks" | "/settings",
+  ) => {
     setOpen(false);
     if (path === "/files") {
       void navigate({ to: "/files", search: { path: "/", query: "", view: "list" } });
@@ -1112,9 +1284,7 @@ function AppSwitcher() {
             onPress={() => go("/files")}
             className={cn(
               "h-auto flex-col items-center gap-2 rounded-2xl p-3 text-center",
-              activeApp === "drive"
-                ? "bg-accent/10 text-foreground"
-                : "hover:bg-surface-secondary",
+              activeApp === "drive" ? "bg-accent/10 text-foreground" : "hover:bg-surface-secondary",
             )}
           >
             <div className="flex size-11 items-center justify-center rounded-2xl bg-surface-secondary">
@@ -1142,9 +1312,7 @@ function AppSwitcher() {
             onPress={() => go(isAdmin ? "/admin" : "/storage")}
             className={cn(
               "h-auto flex-col items-center gap-2 rounded-2xl p-3 text-center",
-              activeApp === "one"
-                ? "bg-accent/10 text-foreground"
-                : "hover:bg-surface-secondary",
+              activeApp === "one" ? "bg-accent/10 text-foreground" : "hover:bg-surface-secondary",
             )}
           >
             <div className="flex size-11 items-center justify-center rounded-2xl bg-surface-secondary">
@@ -1157,9 +1325,7 @@ function AppSwitcher() {
             onPress={() => go("/docs")}
             className={cn(
               "h-auto flex-col items-center gap-1.5 rounded-2xl p-3 text-center",
-              activeApp === "docs"
-                ? "bg-accent/10 text-foreground"
-                : "hover:bg-surface-secondary",
+              activeApp === "docs" ? "bg-accent/10 text-foreground" : "hover:bg-surface-secondary",
             )}
           >
             <div className="flex size-11 items-center justify-center rounded-2xl bg-surface-secondary">
@@ -1217,12 +1383,25 @@ function MobileDriveSubTabs() {
     select: (location) => location.search as Record<string, unknown>,
   });
   const activeApp = getWorkspaceApp(pathname);
+  const mobileSelection = useMobileSelectionStore((state) => state.selection);
+  const { data: user } = useQuery(currentUserQueryOptions());
+  const canManageJobs = Boolean(user?.capabilities.includes("system.manageJobs"));
 
+  if (mobileSelection && mobileSelection.count > 0) return null;
   if (activeApp !== "drive" || pathname.startsWith("/trash") || pathname.startsWith("/search")) {
     return null;
   }
 
-  const inHomeMode = routeSearch.recent === true || pathname.startsWith("/tasks");
+  const inHomeMode =
+    (pathname.startsWith("/files") && routeSearch.recent === true) || pathname.startsWith("/tasks");
+  const inSharedRootMode =
+    (pathname.startsWith("/shared-with-me") || pathname === "/shared") &&
+    !(typeof routeSearch.parentId === "string" && routeSearch.parentId.length > 0);
+
+  if (!inHomeMode && !inSharedRootMode) {
+    return null;
+  }
+
   const tabs: Array<{
     key: string;
     label: string;
@@ -1230,39 +1409,39 @@ function MobileDriveSubTabs() {
     search?: Record<string, unknown>;
     active: boolean;
   }> = inHomeMode
-    ? [
-        {
-          key: "suggested",
-          label: t("drive.suggested"),
-          to: "/files",
-          search: { recent: true },
-          active: pathname.startsWith("/files") && routeSearch.recent === true,
-        },
-        {
-          key: "activity",
-          label: t("drive.activity"),
-          to: "/tasks",
-          active: pathname.startsWith("/tasks"),
-        },
-      ]
+    ? canManageJobs
+      ? [
+          {
+            key: "suggested",
+            label: t("drive.suggested"),
+            to: "/files",
+            search: { recent: true },
+            active: pathname.startsWith("/files") && routeSearch.recent === true,
+          },
+          {
+            key: "activity",
+            label: t("drive.activity"),
+            to: "/tasks",
+            active: pathname.startsWith("/tasks"),
+          },
+        ]
+      : []
     : [
-        {
-          key: "my-drive",
-          label: t("drive.myDrive"),
-          to: "/files",
-          search: {},
-          active:
-            pathname.startsWith("/files") &&
-            routeSearch.recent !== true &&
-            routeSearch.bookmarked !== true,
-        },
         {
           key: "shared-with-me",
           label: t("nav.sharedWithMe"),
           to: "/shared-with-me",
           active: pathname.startsWith("/shared-with-me"),
         },
+        {
+          key: "shared-by-me",
+          label: t("nav.shared"),
+          to: "/shared",
+          active: pathname === "/shared",
+        },
       ];
+
+  if (tabs.length === 0) return null;
 
   return (
     <div className="flex h-11 shrink-0 items-stretch bg-sidebar px-2 lg:hidden">
@@ -1305,16 +1484,14 @@ function MobileBottomBar() {
   const { data: user } = useQuery(currentUserQueryOptions());
   const capabilities = user?.capabilities ?? [];
   const items =
-    activeApp === "drive"
-      ? MOBILE_DRIVE_NAV
-      : getNavForApp(activeApp, capabilities).slice(0, 4);
+    activeApp === "drive" ? MOBILE_DRIVE_NAV : getNavForApp(activeApp, capabilities).slice(0, 4);
 
   if (items.length === 0) return null;
 
   return (
     <nav
       aria-label={t("apps.companionRail")}
-      className="flex h-[68px] shrink-0 items-center justify-around bg-sidebar px-2 pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="relative z-0 flex h-[68px] shrink-0 items-center justify-around bg-sidebar px-2 pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       {items.map((item) => {
         const active = item.isActive(pathname, routeSearch);
@@ -1355,11 +1532,16 @@ function MobileFloatingActionButton() {
   const { t } = useAppLocale();
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
+  const routeSearch = useLocation({
+    select: (location) => location.search as Record<string, unknown>,
+  });
+  const mobileSelection = useMobileSelectionStore((state) => state.selection);
+  const hasMobileSelection = (mobileSelection?.count ?? 0) > 0;
   const [speedDialOpen, setSpeedDialOpen] = useState(false);
 
   useEffect(() => {
     setSpeedDialOpen(false);
-  }, [pathname]);
+  }, [pathname, hasMobileSelection]);
 
   useEffect(() => {
     if (!speedDialOpen) return;
@@ -1370,15 +1552,16 @@ function MobileFloatingActionButton() {
     return () => window.removeEventListener("keydown", onKey);
   }, [speedDialOpen]);
 
-  if (pathname === "/files") {
+  if (mobileSelection && mobileSelection.count > 0) return null;
+
+  if (pathname === "/files" && routeSearch.bookmarked !== true) {
     return (
       <>
         {speedDialOpen ? (
-          <Button
-            variant="ghost"
-            aria-label={t("sidebar.close")}
-            className="fixed inset-0 z-40 h-full w-full rounded-none bg-black/65 backdrop-blur-[1px] lg:hidden"
-            onPress={() => setSpeedDialOpen(false)}
+          <div
+            aria-hidden="true"
+            className="fixed inset-0 z-40 bg-black/65 backdrop-blur-[1px] lg:hidden"
+            onClick={() => setSpeedDialOpen(false)}
           />
         ) : null}
         <div className="fixed bottom-20 right-4 z-50 flex flex-col items-end gap-3 lg:hidden">
@@ -1433,17 +1616,7 @@ function MobileFloatingActionButton() {
                 {t("files.newFolder")}
               </Button>
             </div>
-          ) : (
-            <Button
-              isIconOnly
-              variant="secondary"
-              aria-label={t("drive.quickUpload")}
-              className="size-11 rounded-xl bg-[#d3e3fd] text-[#041e49] shadow-md dark:bg-[#234357] dark:text-[#d3e3fd]"
-              onPress={() => dispatchWorkspaceAction("drive:upload-files")}
-            >
-              <UploadIcon className="size-5" />
-            </Button>
-          )}
+          ) : null}
           <Button
             isIconOnly
             variant="secondary"
@@ -1536,23 +1709,21 @@ function Layout() {
       navigate={(path) => navigate({ to: String(path) })}
       useHref={(path) => String(path)}
     >
-      <div className="flex h-dvh w-full overflow-hidden bg-sidebar text-foreground">
+      <div className="relative z-0 flex h-dvh w-full overflow-hidden bg-sidebar text-foreground">
         {desktop && <Sidebar collapsed={collapsed} />}
         {!desktop && mobileOpen && (
           <div
-            className="fixed inset-0 z-50 flex"
+            className="fixed inset-0 z-[80] flex"
             role="dialog"
             aria-modal="true"
             aria-label={t("sidebar.dialog")}
           >
-            <Button
-              type="button"
-              variant="ghost"
-              aria-label={t("sidebar.close")}
-              className="absolute inset-0 h-full w-full rounded-none bg-black/55 backdrop-blur-sm"
-              onPress={() => setMobileOpen(false)}
+            <div
+              aria-hidden="true"
+              className="fixed inset-0 bg-black/55 backdrop-blur-xs"
+              onClick={() => setMobileOpen(false)}
             />
-            <div className="relative z-10 h-full animate-in slide-in-from-left duration-200">
+            <div className="relative z-10 h-full bg-sidebar shadow-2xl">
               <Sidebar collapsed={false} mobile onNavigate={() => setMobileOpen(false)} />
               <Button
                 isIconOnly
@@ -1567,7 +1738,7 @@ function Layout() {
           </div>
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="relative z-0 flex min-w-0 flex-1 flex-col overflow-hidden">
           <TopBar
             collapsed={collapsed}
             desktop={desktop}

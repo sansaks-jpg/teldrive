@@ -1,5 +1,5 @@
 import { Button, Card, Checkbox, Dropdown, Label, Separator, Spinner } from "@heroui/react";
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Collection,
   GridLayout,
@@ -11,12 +11,14 @@ import {
   Size,
   Virtualizer,
 } from "react-aria-components";
+import { createPortal } from "react-dom";
 import type { FileEntry } from "@/api/types";
 import { useDateOnlyFormatter, useDateTimeFormatter, useFormatBytes } from "@/lib/format";
 import { useAppLocale } from "@/lib/locale";
 import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
 import BackIcon from "~icons/gravity-ui/arrow-left";
 import BookmarkIcon from "~icons/gravity-ui/bookmark";
+import CheckIcon from "~icons/gravity-ui/check";
 import ChevronRightIcon from "~icons/gravity-ui/chevron-right";
 import UpIcon from "~icons/gravity-ui/chevron-up";
 import ClockIcon from "~icons/gravity-ui/clock";
@@ -147,7 +149,7 @@ export function FileBrowser({
               isIconOnly
               size="sm"
               variant="ghost"
-              className={path === "/" ? "hidden size-8 rounded-full sm:inline-flex" : "size-8 rounded-full"}
+              className="hidden size-8 rounded-full sm:inline-flex"
               aria-label={t("browser.back")}
               onPress={onBack}
             >
@@ -167,13 +169,14 @@ export function FileBrowser({
                 onNavigatePath(parentPath);
               }}
             >
-              <UpIcon className="size-4" />
+              <BackIcon className="size-4 sm:hidden" />
+              <UpIcon className="hidden size-4 sm:block" />
             </Button>
           ) : null}
           {!hideFolderControls && (
             <div
               className={
-                toolbar && path === "/"
+                path === "/"
                   ? "hidden min-w-24 flex-1 overflow-hidden sm:block"
                   : "min-w-24 flex-1 overflow-hidden"
               }
@@ -187,7 +190,7 @@ export function FileBrowser({
           )}
           <div
             className={
-              toolbar && path === "/"
+              toolbar
                 ? "flex w-full min-w-0 flex-wrap items-center justify-between gap-1.5 sm:ml-auto sm:w-auto sm:flex-none sm:justify-end [&>button]:shrink-0"
                 : "ml-auto flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1.5 [&>button]:shrink-0"
             }
@@ -310,9 +313,43 @@ function FileCollection({
   const selectedKeys = selection?.selectedKeys ?? new Set<React.Key>();
   const hasSelection = selection ? selectedKeys === "all" || selectedKeys.size > 0 : false;
   const gridRef = useRef<HTMLDivElement>(null);
+  const longPressTimer = useRef<number | undefined>(undefined);
+  const longPressStart = useRef<{ x: number; y: number } | undefined>(undefined);
+  const longPressTriggered = useRef(false);
   const [gridWidth, setGridWidth] = useState(0);
 
   const compactList = gridWidth > 0 && gridWidth < 640;
+
+  const toggleFileSelection = (id: string) => {
+    if (!selection) return;
+    const next =
+      selectedKeys === "all"
+        ? new Set(files.map((item) => item.id))
+        : new Set(Array.from(selectedKeys, String));
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    selection.onSelectionChange(next);
+  };
+
+  const enterFileSelection = (id: string) => {
+    if (!selection) return;
+    const next =
+      selectedKeys === "all"
+        ? new Set(files.map((item) => item.id))
+        : new Set(Array.from(selectedKeys, String));
+    next.add(id);
+    selection.onSelectionChange(next);
+  };
+
+  const clearLongPress = () => {
+    if (longPressTimer.current !== undefined) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = undefined;
+    }
+    longPressStart.current = undefined;
+  };
+
+  useEffect(() => clearLongPress, []);
 
   useLayoutEffect(() => {
     const element = gridRef.current;
@@ -329,7 +366,7 @@ function FileCollection({
       aria-label={t("browser.files")}
       layout={grid ? "grid" : "stack"}
       selectionMode={selection ? "multiple" : "none"}
-      selectionBehavior="replace"
+      selectionBehavior={compactList && hasSelection ? "toggle" : "replace"}
       selectedKeys={selection?.selectedKeys}
       onSelectionChange={selection?.onSelectionChange}
       disabledKeys={selectionDisabled ? files.map((file) => file.id) : undefined}
@@ -340,7 +377,16 @@ function FileCollection({
         if (!target.closest('[role="row"]')) selection.onClearSelection();
       }}
       onAction={(key) => {
-        const file = files.find((item) => item.id === key);
+        if (longPressTriggered.current) {
+          longPressTriggered.current = false;
+          return;
+        }
+        const id = String(key);
+        if (compactList && hasSelection && selection) {
+          toggleFileSelection(id);
+          return;
+        }
+        const file = files.find((item) => item.id === id);
         if (file) onOpen(file);
       }}
       renderEmptyState={() => (
@@ -356,18 +402,47 @@ function FileCollection({
     >
       <Collection
         items={files}
-        dependencies={[dimmedIds, showLocations, onOpenContainingFolder, rowActions, onOpen]}
+        dependencies={[
+          dimmedIds,
+          showLocations,
+          onOpenContainingFolder,
+          rowActions,
+          onOpen,
+          hasSelection,
+          compactList,
+        ]}
       >
         {(file) => (
           <GridListItem
             id={file.id}
             textValue={file.name}
+            onPointerDown={(event) => {
+              if (!selection || event.pointerType === "mouse") return;
+              longPressTriggered.current = false;
+              longPressStart.current = { x: event.clientX, y: event.clientY };
+              clearLongPress();
+              longPressTimer.current = window.setTimeout(() => {
+                longPressTriggered.current = true;
+                enterFileSelection(file.id);
+              }, 420);
+            }}
+            onPointerMove={(event) => {
+              if (!longPressStart.current) return;
+              if (
+                Math.abs(event.clientX - longPressStart.current.x) > 8 ||
+                Math.abs(event.clientY - longPressStart.current.y) > 8
+              ) {
+                clearLongPress();
+              }
+            }}
+            onPointerUp={clearLongPress}
+            onPointerCancel={clearLongPress}
             className={(state) =>
               grid
                 ? [
                     "group relative flex min-w-0 cursor-default flex-col rounded-2xl border border-transparent bg-[#f0f4f9]/75 p-2.5 outline-none transition-colors dark:bg-[#282a2c]/65",
                     state.isSelected
-                      ? "border-accent/50 bg-[#c2e7ff]/45 dark:bg-[#004a77]/45"
+                      ? "border-accent/50 bg-[#c2e7ff]/45 dark:bg-[#23434c]"
                       : "hover:bg-[#e1e5ea]/80 dark:hover:bg-[#333537]",
 
                     dimmedIds?.has(file.id) && "opacity-45",
@@ -378,7 +453,7 @@ function FileCollection({
                 : [
                     "group grid min-h-[64px] cursor-default grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2 rounded-2xl bg-[#f4f7fb] px-3.5 py-2.5 outline-none transition-colors dark:bg-[#1c2425] sm:min-h-12 sm:grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] sm:rounded-none sm:border-b sm:border-border/50 sm:bg-transparent sm:px-4 sm:py-0 sm:last:border-b-0 sm:dark:bg-transparent lg:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] lg:gap-4",
                     state.isSelected
-                      ? "bg-[#c2e7ff]/45 dark:bg-[#004a77]/45"
+                      ? "bg-[#d3e3fd]! dark:bg-[#23434c]!"
                       : "hover:bg-[#eaf0f7] dark:hover:bg-[#253031] sm:hover:bg-[#f0f4f9] sm:dark:hover:bg-[#282a2c]/70",
 
                     dimmedIds?.has(file.id) && "opacity-45",
@@ -393,6 +468,9 @@ function FileCollection({
                 <GridFile
                   file={file}
                   selectable={Boolean(selection)}
+                  inSelectionMode={hasSelection}
+                  compactMenu={compactList}
+                  onEnterSelection={selection ? () => enterFileSelection(file.id) : undefined}
                   showCheckbox={state.isHovered || state.isFocusVisible || state.isSelected}
                   location={showLocations ? file.parentPath : undefined}
                   onOpenContainingFolder={
@@ -405,6 +483,9 @@ function FileCollection({
                 <ListFile
                   file={file}
                   selectable={Boolean(selection)}
+                  inSelectionMode={hasSelection}
+                  compactMenu={compactList}
+                  onEnterSelection={selection ? () => enterFileSelection(file.id) : undefined}
                   showCheckbox={state.isHovered || state.isFocusVisible || state.isSelected}
                   location={showLocations ? file.parentPath : undefined}
                   onOpenContainingFolder={
@@ -453,7 +534,15 @@ function FileCollection({
   );
 }
 
-function SelectionCheckbox({ file, isVisible }: { file: FileEntry; isVisible: boolean }) {
+function SelectionCheckbox({
+  file,
+  isVisible,
+  circle = false,
+}: {
+  file: FileEntry;
+  isVisible: boolean;
+  circle?: boolean;
+}) {
   const { t } = useAppLocale();
   return (
     <Checkbox
@@ -461,7 +550,7 @@ function SelectionCheckbox({ file, isVisible }: { file: FileEntry; isVisible: bo
       aria-label={t("browser.selectName", { name: file.name })}
       className={({ isSelected }) =>
         [
-          "shrink-0 transition-opacity",
+          "group/cb shrink-0 transition-opacity",
           isSelected || isVisible
             ? "opacity-100"
             : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
@@ -469,9 +558,18 @@ function SelectionCheckbox({ file, isVisible }: { file: FileEntry; isVisible: bo
       }
     >
       <Checkbox.Content>
-        <Checkbox.Control className="border-muted/60 bg-transparent data-[selected=true]:border-accent data-[selected=true]:bg-accent before:hidden">
-          <Checkbox.Indicator />
-        </Checkbox.Control>
+        {circle ? (
+          <span
+            data-slot="checkbox-control"
+            className="inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground/70 bg-transparent text-transparent transition-colors group-data-[selected=true]/cb:border-[#0b57d0] group-data-[selected=true]/cb:bg-[#0b57d0] group-data-[selected=true]/cb:text-white dark:border-[#c4c7c5] dark:group-data-[selected=true]/cb:border-[#b8dce6] dark:group-data-[selected=true]/cb:bg-[#b8dce6] dark:group-data-[selected=true]/cb:text-[#002026]"
+          >
+            <CheckIcon className="size-3.5 stroke-[2.5]" />
+          </span>
+        ) : (
+          <Checkbox.Control className="border-muted/60 bg-transparent data-[selected=true]:border-accent data-[selected=true]:bg-accent before:hidden">
+            <Checkbox.Indicator />
+          </Checkbox.Control>
+        )}
       </Checkbox.Content>
     </Checkbox>
   );
@@ -480,6 +578,9 @@ function SelectionCheckbox({ file, isVisible }: { file: FileEntry; isVisible: bo
 function GridFile({
   file,
   selectable,
+  inSelectionMode,
+  compactMenu,
+  onEnterSelection,
   showCheckbox,
   location,
   onOpenContainingFolder,
@@ -488,6 +589,9 @@ function GridFile({
 }: {
   file: FileEntry;
   selectable: boolean;
+  inSelectionMode: boolean;
+  compactMenu: boolean;
+  onEnterSelection?: () => void;
   showCheckbox: boolean;
   location?: string;
   onOpenContainingFolder?: () => void;
@@ -502,11 +606,23 @@ function GridFile({
   return (
     <>
       {selectable ? (
-        <div className="absolute start-3 top-3 z-10">
-          <SelectionCheckbox file={file} isVisible={showCheckbox} />
+        <div
+          className={
+            compactMenu
+              ? inSelectionMode
+                ? "absolute end-2.5 top-2.5 z-10 sm:hidden"
+                : "hidden"
+              : "absolute start-3 top-3 z-10"
+          }
+        >
+          <SelectionCheckbox
+            file={file}
+            isVisible={showCheckbox || inSelectionMode}
+            circle={compactMenu}
+          />
         </div>
       ) : null}
-      {rowActions ? (
+      {rowActions && !(compactMenu && inSelectionMode) ? (
         <fieldset
           aria-label={t("drive.rowActions", { name: file.name })}
           className={[
@@ -516,7 +632,13 @@ function GridFile({
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
         >
-          <FileItemActionsMenu file={file} onOpen={onOpen} rowActions={rowActions} />
+          <FileItemActionsMenu
+            file={file}
+            onOpen={onOpen}
+            rowActions={rowActions}
+            compactMenu={compactMenu}
+            onSelect={onEnterSelection}
+          />
         </fieldset>
       ) : null}
       <div
@@ -562,6 +684,9 @@ function GridFile({
 function ListFile({
   file,
   selectable,
+  inSelectionMode,
+  compactMenu,
+  onEnterSelection,
   showCheckbox,
   location,
   onOpenContainingFolder,
@@ -570,6 +695,9 @@ function ListFile({
 }: {
   file: FileEntry;
   selectable: boolean;
+  inSelectionMode: boolean;
+  compactMenu: boolean;
+  onEnterSelection?: () => void;
   showCheckbox: boolean;
   location?: string;
   onOpenContainingFolder?: () => void;
@@ -591,7 +719,7 @@ function ListFile({
     <>
       <div className="flex min-w-0 items-center gap-3.5 sm:gap-3">
         {selectable ? (
-          <div className={showCheckbox ? "shrink-0" : "hidden shrink-0 sm:block"}>
+          <div className="hidden shrink-0 sm:block">
             <SelectionCheckbox file={file} isVisible={showCheckbox} />
           </div>
         ) : null}
@@ -695,8 +823,25 @@ function ListFile({
                 </Button>
               ) : null}
             </div>
-            <FileItemActionsMenu file={file} onOpen={onOpen} rowActions={rowActions} />
+            {selectable && inSelectionMode ? (
+              <div className="flex items-center justify-center sm:hidden">
+                <SelectionCheckbox file={file} isVisible circle />
+              </div>
+            ) : null}
+            <div className={inSelectionMode ? "hidden sm:block" : undefined}>
+              <FileItemActionsMenu
+                file={file}
+                onOpen={onOpen}
+                rowActions={rowActions}
+                compactMenu={compactMenu}
+                onSelect={onEnterSelection}
+              />
+            </div>
           </>
+        ) : selectable && inSelectionMode ? (
+          <div className="flex items-center justify-center sm:hidden">
+            <SelectionCheckbox file={file} isVisible circle />
+          </div>
         ) : null}
       </fieldset>
     </>
@@ -707,12 +852,223 @@ function FileItemActionsMenu({
   file,
   onOpen,
   rowActions,
+  compactMenu = false,
+  onSelect,
 }: {
   file: FileEntry;
   onOpen: () => void;
   rowActions: FileRowActionHandlers;
+  compactMenu?: boolean;
+  onSelect?: () => void;
 }) {
   const { t } = useAppLocale();
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSheetOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetOpen]);
+
+  if (compactMenu) {
+    return (
+      <>
+        <Button
+          isIconOnly
+          size="sm"
+          variant="ghost"
+          className="size-8 rounded-full text-muted hover:bg-[#e1e5ea]/80 hover:text-foreground dark:hover:bg-[#333538]"
+          aria-label={t("drive.rowActions", { name: file.name })}
+          onPress={() => setSheetOpen(true)}
+        >
+          <MoreIcon className="size-4" />
+        </Button>
+        {sheetOpen
+          ? createPortal(
+              <div
+                className="fixed inset-0 z-[90] flex flex-col justify-end"
+                role="dialog"
+                aria-modal="true"
+                aria-label={file.name}
+              >
+                <div
+                  aria-hidden="true"
+                  className="fixed inset-0 bg-black/55"
+                  onClick={() => setSheetOpen(false)}
+                />
+                <div className="relative z-10 max-h-[82dvh] w-full overflow-y-auto rounded-t-[28px] bg-[#f8fafd] px-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 shadow-2xl dark:bg-[#192223]">
+                  <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-muted/40" />
+                  <div className="mb-1 flex items-center gap-3.5 border-b border-border/50 px-4 pb-3">
+                    {file.kind === "folder" ? (
+                      <FolderIcon className="size-6 shrink-0 text-[#5f6368] dark:text-[#b4c5c8]" />
+                    ) : (
+                      <FileTypeIcon file={file} className="size-6 shrink-0" />
+                    )}
+                    <p className="min-w-0 flex-1 truncate text-base font-medium text-foreground">
+                      {file.name}
+                    </p>
+                  </div>
+                  <div className="flex flex-col py-1">
+                    {onSelect ? (
+                      <Button
+                        variant="ghost"
+                        className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
+                        onPress={() => {
+                          setSheetOpen(false);
+                          onSelect();
+                        }}
+                      >
+                        <CheckIcon className="size-5 shrink-0 text-muted" />
+                        {t("drive.actionSelect")}
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="ghost"
+                      className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
+                      onPress={() => {
+                        setSheetOpen(false);
+                        onOpen();
+                      }}
+                    >
+                      <FolderIcon className="size-5 shrink-0 text-muted" />
+                      {t("drive.actionOpen")}
+                    </Button>
+                    {rowActions.onShare ? (
+                      <Button
+                        variant="ghost"
+                        className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
+                        onPress={() => {
+                          setSheetOpen(false);
+                          rowActions.onShare?.(file);
+                        }}
+                      >
+                        <LinkIcon className="size-5 shrink-0 text-muted" />
+                        {t("drive.actionShare")}
+                      </Button>
+                    ) : null}
+                    {file.kind === "file" && rowActions.onCopyLink ? (
+                      <Button
+                        variant="ghost"
+                        className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
+                        onPress={() => {
+                          setSheetOpen(false);
+                          rowActions.onCopyLink?.(file);
+                        }}
+                      >
+                        <CopyLinkIcon className="size-5 shrink-0 text-muted" />
+                        {t("drive.actionCopyLink")}
+                      </Button>
+                    ) : null}
+                    {rowActions.onBookmark ? (
+                      <Button
+                        variant="ghost"
+                        className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
+                        onPress={() => {
+                          setSheetOpen(false);
+                          rowActions.onBookmark?.(file);
+                        }}
+                      >
+                        <BookmarkIcon className="size-5 shrink-0 text-muted" />
+                        {rowActions.isBookmarked
+                          ? t("drive.actionBookmarkRemove")
+                          : t("drive.actionBookmarkAdd")}
+                      </Button>
+                    ) : null}
+                    <Separator className="my-1.5" />
+                    {rowActions.onRename ? (
+                      <Button
+                        variant="ghost"
+                        className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
+                        onPress={() => {
+                          setSheetOpen(false);
+                          rowActions.onRename?.(file);
+                        }}
+                      >
+                        <PencilIcon className="size-5 shrink-0 text-muted" />
+                        {t("drive.actionRename")}
+                      </Button>
+                    ) : null}
+                    {file.kind === "file" && rowActions.onDownload ? (
+                      <Button
+                        variant="ghost"
+                        className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
+                        onPress={() => {
+                          setSheetOpen(false);
+                          rowActions.onDownload?.(file);
+                        }}
+                      >
+                        <DownloadIcon className="size-5 shrink-0 text-muted" />
+                        {t("drive.actionDownload")}
+                      </Button>
+                    ) : null}
+                    {file.kind === "file" && rowActions.onVersions ? (
+                      <Button
+                        variant="ghost"
+                        className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
+                        onPress={() => {
+                          setSheetOpen(false);
+                          rowActions.onVersions?.(file);
+                        }}
+                      >
+                        <ClockIcon className="size-5 shrink-0 text-muted" />
+                        {t("versions.action")}
+                      </Button>
+                    ) : null}
+                    {rowActions.onMove ? (
+                      <Button
+                        variant="ghost"
+                        className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
+                        onPress={() => {
+                          setSheetOpen(false);
+                          rowActions.onMove?.(file);
+                        }}
+                      >
+                        <MoveIcon className="size-5 shrink-0 text-muted" />
+                        {t("drive.actionMove")}
+                      </Button>
+                    ) : null}
+                    {rowActions.onCopy ? (
+                      <Button
+                        variant="ghost"
+                        className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-foreground"
+                        onPress={() => {
+                          setSheetOpen(false);
+                          rowActions.onCopy?.(file);
+                        }}
+                      >
+                        <CopyIcon className="size-5 shrink-0 text-muted" />
+                        {t("drive.actionCopy")}
+                      </Button>
+                    ) : null}
+                    {rowActions.onTrash ? (
+                      <>
+                        <Separator className="my-1.5" />
+                        <Button
+                          variant="ghost"
+                          className="h-12 w-full justify-start gap-4 rounded-xl px-4 text-[15px] font-normal text-danger"
+                          onPress={() => {
+                            setSheetOpen(false);
+                            rowActions.onTrash?.(file);
+                          }}
+                        >
+                          <TrashIcon className="size-5 shrink-0 text-danger" />
+                          {t("drive.actionTrash")}
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
+      </>
+    );
+  }
+
   return (
     <Dropdown>
       <Button
@@ -864,17 +1220,15 @@ function FileBrowserBreadcrumb({
         aria-label={rootLabel}
         className={
           parts.length === 0
-            ? "h-9 w-auto max-w-none shrink-0 gap-2.5 overflow-visible rounded-full px-2.5 text-lg font-normal text-foreground @lg/file-browser:text-[22px]"
-            : "h-8 max-w-9 shrink-0 gap-2 overflow-hidden rounded-full px-2.5 text-muted hover:text-foreground @lg/file-browser:max-w-48"
+            ? "inline-flex! h-9! w-auto! max-w-none! shrink-0! justify-start! gap-2.5! overflow-visible! rounded-full! px-3! text-lg font-normal text-foreground @lg/file-browser:text-[22px]"
+            : "hidden h-8 max-w-9 shrink-0 gap-2 overflow-hidden rounded-full px-2.5 text-muted hover:text-foreground sm:inline-flex @lg/file-browser:max-w-48"
         }
         onPress={() => onNavigatePath("/")}
       >
         <FolderIcon className="size-4 shrink-0" />
         <span
           className={
-            parts.length === 0
-              ? "whitespace-nowrap"
-              : "hidden truncate @lg/file-browser:inline"
+            parts.length === 0 ? "whitespace-nowrap" : "hidden truncate @lg/file-browser:inline"
           }
         >
           {rootLabel}
@@ -891,7 +1245,13 @@ function FileBrowserBreadcrumb({
             : "hidden @4xl/file-browser:flex";
         return (
           <span key={currentPath} className={`${visibility} min-w-0 items-center gap-1`}>
-            <ChevronRightIcon className="size-4 shrink-0 text-muted/60" />
+            <ChevronRightIcon
+              className={
+                index === 0
+                  ? "hidden size-4 shrink-0 text-muted/60 sm:block"
+                  : "size-4 shrink-0 text-muted/60"
+              }
+            />
             {isCurrent ? (
               <span
                 aria-current="page"

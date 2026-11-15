@@ -411,7 +411,7 @@ function PhotosWorkspacePage() {
       </div>
 
       {monthJumps.length > 1 && !(mode === "albums" && !selectedAlbumId) ? (
-        <div
+        <nav
           aria-label={t("photos.jumpTo")}
           className="flex items-center gap-1.5 overflow-x-auto pb-1"
         >
@@ -428,7 +428,7 @@ function PhotosWorkspacePage() {
               {monthLabel}
             </Button>
           ))}
-        </div>
+        </nav>
       ) : null}
 
       {mode === "timeline" && !trimmedSearch && highlightCards.length > 0 ? (

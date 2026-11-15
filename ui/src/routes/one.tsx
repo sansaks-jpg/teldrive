@@ -91,7 +91,7 @@ function OneConsolePage() {
   useEffect(() => {
     if (sessionQuery.isSuccess && me && !isAdmin) {
       void navigate({
-        to: "/files",
+        to: "/drive/files",
         search: { path: "/", query: "", view: "list" },
         replace: true,
       });
@@ -637,7 +637,7 @@ function OneWorkspaceDashboard({
     await logout.mutateAsync({});
     await clearDocumentCache().catch(() => {});
     queryClient.clear();
-    await navigate({ to: "/login", search: { redirect: "/files" }, replace: true });
+    await navigate({ to: "/login", search: { redirect: "/drive/files" }, replace: true });
   };
 
   const overview = overviewQuery.data;
@@ -752,7 +752,7 @@ function OneWorkspaceDashboard({
 
           <div className="flex flex-wrap items-center gap-2">
             <LinkButton
-              to="/files"
+              to="/drive/files"
               search={{ path: "/", query: "", view: "list" }}
               variant="secondary"
               size="sm"

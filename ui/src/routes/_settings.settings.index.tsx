@@ -46,7 +46,7 @@ function AccountSettings() {
       await logout.mutateAsync({});
       await clearDocumentCache().catch(() => {});
       getQueryClient().clear();
-      await navigate({ to: "/login", search: { redirect: "/files" }, replace: true });
+      await navigate({ to: "/login", search: { redirect: "/drive/files" }, replace: true });
     } catch (error) {
       toast.error(t("account.logoutFailed"), { description: userMessage(error) });
     }

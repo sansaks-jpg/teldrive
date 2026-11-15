@@ -89,17 +89,20 @@ import { getQueryClient } from "../lib/queryClient";
 const DESKTOP_BREAKPOINT = 1024;
 
 type AppRoutePath =
-  | "/files"
-  | "/shared"
-  | "/shared-with-me"
-  | "/trash"
+  | "/drive/files"
+  | "/drive/shared"
+  | "/drive/shared-with-me"
+  | "/drive/trash"
+  | "/drive/storage"
+  | "/drive/tasks"
+  | "/drive/settings"
   | "/photos"
-  | "/storage"
+  | "/photos/settings"
   | "/one"
   | "/admin"
-  | "/tasks"
   | "/settings"
-  | "/docs";
+  | "/docs"
+  | "/docs/settings";
 
 type AppNavItem = {
   key: string;
@@ -118,40 +121,40 @@ const MOBILE_DRIVE_NAV: AppNavItem[] = [
     labelKey: "drive.home",
     icon: HouseIcon,
     activeIcon: HouseFillIcon,
-    to: "/files",
+    to: "/drive/files",
     search: { recent: true },
-    isActive: (pathname, search) => pathname.startsWith("/files") && search.recent === true,
+    isActive: (pathname, search) => pathname.startsWith("/drive/files") && search.recent === true,
   },
   {
     key: "mobile-bookmarks",
     labelKey: "nav.bookmarks",
     icon: StarIcon,
     activeIcon: StarFillIcon,
-    to: "/files",
+    to: "/drive/files",
     search: { bookmarked: true },
     isActive: (pathname, search) =>
-      pathname.startsWith("/files") && search.bookmarked === true && search.recent !== true,
+      pathname.startsWith("/drive/files") && search.bookmarked === true && search.recent !== true,
   },
   {
     key: "mobile-shared",
     labelKey: "nav.shared",
     icon: PersonsIcon,
     activeIcon: PersonsIcon,
-    to: "/shared-with-me",
+    to: "/drive/shared-with-me",
     isActive: (pathname) =>
-      pathname.startsWith("/shared-with-me") ||
-      pathname === "/shared" ||
-      pathname.startsWith("/shared/"),
+      pathname.startsWith("/drive/shared-with-me") ||
+      pathname === "/drive/shared" ||
+      pathname.startsWith("/drive/shared/"),
   },
   {
     key: "mobile-files",
     labelKey: "nav.files",
     icon: FolderIcon,
     activeIcon: FolderFillIcon,
-    to: "/files",
+    to: "/drive/files",
     search: { path: "/", query: "", view: "list" },
     isActive: (pathname, search) =>
-      normalizeAppPath(pathname).startsWith("/files") &&
+      normalizeAppPath(pathname).startsWith("/drive/files") &&
       search.recent !== true &&
       search.bookmarked !== true,
   },
@@ -162,10 +165,10 @@ const DRIVE_NAV: AppNavItem[] = [
     key: "files",
     labelKey: "nav.files",
     icon: FolderIcon,
-    to: "/files",
+    to: "/drive/files",
     search: { path: "/", query: "", view: "list" },
     isActive: (pathname, search) =>
-      normalizeAppPath(pathname).startsWith("/files") &&
+      normalizeAppPath(pathname).startsWith("/drive/files") &&
       search.recent !== true &&
       search.bookmarked !== true,
   },
@@ -173,19 +176,19 @@ const DRIVE_NAV: AppNavItem[] = [
     key: "recent",
     labelKey: "nav.recent",
     icon: TasksIcon,
-    to: "/files",
+    to: "/drive/files",
     search: { recent: true },
     isActive: (pathname, search) =>
-      normalizeAppPath(pathname).startsWith("/files") && search.recent === true,
+      normalizeAppPath(pathname).startsWith("/drive/files") && search.recent === true,
   },
   {
     key: "bookmarks",
     labelKey: "nav.bookmarks",
     icon: BookmarkIcon,
-    to: "/files",
+    to: "/drive/files",
     search: { bookmarked: true },
     isActive: (pathname, search) =>
-      normalizeAppPath(pathname).startsWith("/files") &&
+      normalizeAppPath(pathname).startsWith("/drive/files") &&
       search.bookmarked === true &&
       search.recent !== true,
   },
@@ -193,32 +196,39 @@ const DRIVE_NAV: AppNavItem[] = [
     key: "sharedWithMe",
     labelKey: "nav.sharedWithMe",
     icon: FolderPlusIcon,
-    to: "/shared-with-me",
-    isActive: (pathname) => normalizeAppPath(pathname).startsWith("/shared-with-me"),
+    to: "/drive/shared-with-me",
+    isActive: (pathname) => normalizeAppPath(pathname).startsWith("/drive/shared-with-me"),
   },
   {
     key: "shared",
     labelKey: "nav.shared",
     icon: ShieldIcon,
-    to: "/shared",
+    to: "/drive/shared",
     isActive: (pathname) => {
       const p = normalizeAppPath(pathname);
-      return p === "/shared" || p.startsWith("/shared/");
+      return p === "/drive/shared" || p.startsWith("/drive/shared/");
     },
   },
   {
     key: "trash",
     labelKey: "nav.trash",
     icon: TrashIcon,
-    to: "/trash",
-    isActive: (pathname) => normalizeAppPath(pathname).startsWith("/trash"),
+    to: "/drive/trash",
+    isActive: (pathname) => normalizeAppPath(pathname).startsWith("/drive/trash"),
   },
   {
     key: "storage",
     labelKey: "nav.storage",
     icon: StorageIcon,
-    to: "/storage",
-    isActive: (pathname) => normalizeAppPath(pathname) === "/storage",
+    to: "/drive/storage",
+    isActive: (pathname) => normalizeAppPath(pathname) === "/drive/storage",
+  },
+  {
+    key: "drive-settings",
+    labelKey: "title.settings",
+    icon: SettingsIcon,
+    to: "/drive/settings",
+    isActive: (pathname) => normalizeAppPath(pathname).startsWith("/drive/settings"),
   },
 ];
 
@@ -272,6 +282,13 @@ const PHOTOS_NAV: AppNavItem[] = [
     search: { mode: "recent" },
     isActive: (pathname, search) => pathname.startsWith("/photos") && search.mode === "recent",
   },
+  {
+    key: "photos-settings",
+    labelKey: "title.settings",
+    icon: SettingsIcon,
+    to: "/photos/settings",
+    isActive: (pathname) => normalizeAppPath(pathname).startsWith("/photos/settings"),
+  },
 ];
 
 const ONE_NAV: AppNavItem[] = [];
@@ -282,13 +299,22 @@ const DOCS_NAV: AppNavItem[] = [
     labelKey: "nav.docs",
     icon: FileTextIcon,
     to: "/docs",
-    isActive: (pathname) => pathname.startsWith("/docs"),
+    isActive: (pathname) =>
+      normalizeAppPath(pathname) === "/docs" ||
+      (pathname.startsWith("/docs") && !pathname.startsWith("/docs/settings")),
+  },
+  {
+    key: "docs-settings",
+    labelKey: "title.settings",
+    icon: SettingsIcon,
+    to: "/docs/settings",
+    isActive: (pathname) => normalizeAppPath(pathname).startsWith("/docs/settings"),
   },
   {
     key: "back-drive",
     labelKey: "apps.openDrive",
     icon: FolderIcon,
-    to: "/files",
+    to: "/drive/files",
     search: { path: "/", query: "", view: "list" },
     isActive: () => false,
   },
@@ -402,7 +428,7 @@ function Sidebar({
       await clearDocumentCache().catch(() => {});
       getQueryClient().clear();
       onNavigate?.();
-      await navigate({ to: "/login", search: { redirect: "/files" }, replace: true });
+      await navigate({ to: "/login", search: { redirect: "/drive/files" }, replace: true });
     } catch (error) {
       toast.error(t("account.logoutFailed"), { description: userMessage(error) });
     }
@@ -410,8 +436,8 @@ function Sidebar({
 
   const triggerDriveAction = async (action: WorkspaceAction) => {
     onNavigate?.();
-    if (!pathname.startsWith("/files")) {
-      await navigate({ to: "/files", search: { path: "/", query: "", view: "list" } });
+    if (!pathname.startsWith("/drive/files")) {
+      await navigate({ to: "/drive/files", search: { path: "/", query: "", view: "list" } });
       window.setTimeout(() => dispatchWorkspaceAction(action), 80);
       return;
     }
@@ -574,7 +600,7 @@ function Sidebar({
         {visibleNav.map(renderItem)}
         {(!collapsed || mobile) && storageStats && activeApp === "drive" ? (
           <Link
-            to="/storage"
+            to="/drive/storage"
             onClick={() => onNavigate?.()}
             className="block px-3 pb-2 pt-1.5 text-left transition-opacity hover:opacity-85"
           >
@@ -598,13 +624,20 @@ function Sidebar({
         ) : null}
         {mobile ? (
           <Link
-            to="/settings"
+            to={
+              activeApp === "photos"
+                ? "/photos/settings"
+                : activeApp === "docs"
+                  ? "/docs/settings"
+                  : "/drive/settings"
+            }
             activeOptions={{ includeSearch: false }}
             preload="intent"
             className={cn(
               buttonVariants({ variant: "ghost" }),
               "h-10 w-full justify-start rounded-full px-3 text-sm font-medium",
-              normalizeAppPath(pathname).startsWith("/settings")
+              normalizeAppPath(pathname).endsWith("/settings") ||
+                normalizeAppPath(pathname).startsWith("/settings")
                 ? "bg-accent/10 bg-[#c2e7ff]! font-semibold text-[#001d35]! dark:bg-[#004a77]! dark:text-[#c2e7ff]!"
                 : "text-[#444746] hover:bg-[#e1e5ea]/70 hover:text-foreground dark:text-[#c4c7c5] dark:hover:bg-[#333538]/70",
             )}
@@ -868,7 +901,7 @@ function TopBar({
                   });
                 } else if (pathname === "/search") {
                   void navigate({
-                    to: "/files",
+                    to: "/drive/files",
                     search: { path: "/", query: "", view: "list" },
                     replace: true,
                   });
@@ -1230,14 +1263,21 @@ function AppSwitcher() {
   const activeApp = getWorkspaceApp(pathname);
   const [open, setOpen] = useState(false);
 
-  const go = (path: "/files" | "/photos" | "/storage" | "/docs" | "/settings") => {
+  const go = (path: "/drive/files" | "/photos" | "/drive/storage" | "/docs" | "/drive/settings") => {
     setOpen(false);
-    if (path === "/files") {
-      void navigate({ to: "/files", search: { path: "/", query: "", view: "list" } });
+    if (path === "/drive/files") {
+      void navigate({ to: "/drive/files", search: { path: "/", query: "", view: "list" } });
     } else {
       void navigate({ to: path });
     }
   };
+
+  const settingsTarget =
+    activeApp === "photos"
+      ? "/photos/settings"
+      : activeApp === "docs"
+        ? "/docs/settings"
+        : "/drive/settings";
 
   return (
     <Dropdown isOpen={open} onOpenChange={setOpen}>
@@ -1258,7 +1298,7 @@ function AppSwitcher() {
         <div className="grid grid-cols-3 gap-2">
           <Button
             variant="ghost"
-            onPress={() => go("/files")}
+            onPress={() => go("/drive/files")}
             className={cn(
               "h-auto flex-col items-center gap-2 rounded-2xl p-3 text-center",
               activeApp === "drive" ? "bg-accent/10 text-foreground" : "hover:bg-surface-secondary",
@@ -1309,7 +1349,7 @@ function AppSwitcher() {
             size="sm"
             variant="ghost"
             className="h-8 rounded-full px-3 text-xs"
-            onPress={() => go("/storage")}
+            onPress={() => go("/drive/storage")}
           >
             <StorageIcon className="size-3.5" />
             {t("nav.storage")}
@@ -1318,7 +1358,10 @@ function AppSwitcher() {
             size="sm"
             variant="ghost"
             className="h-8 rounded-full px-3 text-xs"
-            onPress={() => go("/settings")}
+            onPress={() => {
+              setOpen(false);
+              void navigate({ to: settingsTarget });
+            }}
           >
             <SettingsIcon className="size-3.5" />
             {t("title.settings")}
@@ -1339,12 +1382,12 @@ function MobileDriveSubTabs() {
   const mobileSelection = useMobileSelectionStore((state) => state.selection);
 
   if (mobileSelection && mobileSelection.count > 0) return null;
-  if (activeApp !== "drive" || pathname.startsWith("/trash") || pathname.startsWith("/search")) {
+  if (activeApp !== "drive" || pathname.startsWith("/drive/trash") || pathname.startsWith("/search")) {
     return null;
   }
 
   const inSharedRootMode =
-    (pathname.startsWith("/shared-with-me") || pathname === "/shared") &&
+    (pathname.startsWith("/drive/shared-with-me") || pathname === "/drive/shared") &&
     !(typeof routeSearch.parentId === "string" && routeSearch.parentId.length > 0);
 
   if (!inSharedRootMode) {
@@ -1361,14 +1404,14 @@ function MobileDriveSubTabs() {
     {
       key: "shared-with-me",
       label: t("nav.sharedWithMe"),
-      to: "/shared-with-me",
-      active: pathname.startsWith("/shared-with-me"),
+      to: "/drive/shared-with-me",
+      active: pathname.startsWith("/drive/shared-with-me"),
     },
     {
       key: "shared-by-me",
       label: t("nav.shared"),
-      to: "/shared",
-      active: pathname === "/shared",
+      to: "/drive/shared",
+      active: pathname === "/drive/shared",
     },
   ];
 
@@ -1485,7 +1528,7 @@ function MobileFloatingActionButton() {
 
   if (mobileSelection && mobileSelection.count > 0) return null;
 
-  if (pathname === "/files" && routeSearch.bookmarked !== true) {
+  if (pathname === "/drive/files" && routeSearch.bookmarked !== true) {
     return (
       <>
         {speedDialOpen ? (

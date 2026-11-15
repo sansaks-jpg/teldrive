@@ -623,7 +623,7 @@ export function FileManagerPage({
       const location = paneLocation(pane);
       if (searchMode || search.bookmarked) {
         void navigateTo({
-          to: "/files",
+          to: "/drive/files",
           search: {
             path: joinPath(file.parentPath ?? "/", file.name),
             parentId: file.id,
@@ -1173,7 +1173,7 @@ export function FileManagerPage({
           searchMode || search.bookmarked || search.recent
             ? (file) => {
                 void navigateTo({
-                  to: "/files",
+                  to: "/drive/files",
                   search: {
                     path: file.parentPath ?? "/",
                     parentId: file.parentId,

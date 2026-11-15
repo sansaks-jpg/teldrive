@@ -41,7 +41,7 @@ function parseMode(raw: unknown): PhotosMode {
     : "timeline";
 }
 
-export const Route = createFileRoute("/photos")({
+export const Route = createFileRoute("/photos/")({
   validateSearch: (
     search: Record<string, unknown>,
   ): { mode?: PhotosMode; albumId?: string; q?: string } => ({
@@ -548,7 +548,7 @@ function PhotosWorkspacePage() {
                   {t("photos.uploadPhotos")}
                 </Button>
                 <LinkButton
-                  to="/files"
+                  to="/drive/files"
                   search={{ path: "/", query: "", view: "list" }}
                   variant="secondary"
                   size="sm"

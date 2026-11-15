@@ -19,7 +19,7 @@ export const Route = createFileRoute("/login")({
       search.redirect.startsWith("/") &&
       !search.redirect.startsWith("//")
         ? search.redirect
-        : "/files",
+        : "/drive/files",
   }),
   component: LoginPage,
 });

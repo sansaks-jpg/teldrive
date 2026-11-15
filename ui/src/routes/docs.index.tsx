@@ -16,7 +16,7 @@ import PlusIcon from "~icons/gravity-ui/plus";
 import FileExcelIcon from "~icons/icon-park-outline/file-excel";
 import FileTextIcon from "~icons/icon-park-outline/file-text";
 
-export const Route = createFileRoute("/docs")({
+export const Route = createFileRoute("/docs/")({
   component: DocsWorkspacePage,
 });
 

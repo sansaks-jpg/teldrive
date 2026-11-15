@@ -45,6 +45,7 @@ export function getWorkspaceApp(pathname: string): WorkspaceAppId {
   ) {
     return "one";
   }
+  if (normalized === "/drive" || normalized.startsWith("/drive/")) return "drive";
   return "drive";
 }
 

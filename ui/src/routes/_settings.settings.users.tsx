@@ -6,7 +6,7 @@ export const Route = createFileRoute("/_settings/settings/users")({
     const user = await context.queryClient.ensureQueryData(currentUserQueryOptions());
     if (!user.capabilities.includes("system.manageUsers")) {
       throw redirect({
-        to: "/files",
+        to: "/drive/files",
         search: { path: "/", query: "", view: "list" },
         replace: true,
       });

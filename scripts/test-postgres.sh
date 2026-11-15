@@ -7,7 +7,11 @@ user="teldrive"
 password="teldrive"
 database="teldrive_test"
 
-if command -v podman >/dev/null 2>&1; then
+if [[ -n "${TELDRIVE_CONTAINER_RUNTIME:-}" ]]; then
+  runtime="$TELDRIVE_CONTAINER_RUNTIME"
+elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  runtime=docker
+elif command -v podman >/dev/null 2>&1; then
   runtime=podman
 elif command -v docker >/dev/null 2>&1; then
   runtime=docker

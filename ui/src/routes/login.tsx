@@ -72,11 +72,21 @@ function LoginPage() {
   const submitPhone = async () => {
     try {
       if (step === "phone") {
-        const normalizedPhone = phone.replace(/[\s().-]/g, "");
+        let normalizedPhone = phone.replace(/[\s().-]/g, "");
+        if (/^[1-9][0-9]{7,14}$/.test(normalizedPhone)) {
+          normalizedPhone = `+${normalizedPhone}`;
+        }
+        if (!/^\+[1-9][0-9]{7,14}$/.test(normalizedPhone)) {
+          toast.error(t("login.signInFailed"), {
+            description: t("login.phoneInvalid"),
+          });
+          return;
+        }
         const result = (await startPhone.mutateAsync({
           params: { header: { "Idempotency-Key": newIdempotencyKey() } },
           body: { phoneNumber: normalizedPhone },
         })) as Flow;
+        setPhone(normalizedPhone);
         setFlowId(result.flowId);
         setStep(result.passwordRequired ? "password" : "code");
         return;

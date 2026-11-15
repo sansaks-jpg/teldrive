@@ -97,9 +97,10 @@ export function FileTypeIcon({ file, className }: { file: FileTypeLike; classNam
   const name = file.name.toLowerCase();
   const mime = (file.mimeType || "").toLowerCase();
   const extension = extensionOf(file.name);
+  const base = className ?? "";
 
   if (mime === "application/pdf" || name.endsWith(".pdf"))
-    return <FilePdfIcon className={className} />;
+    return <FilePdfIcon className={`${base} text-[#ea4335] dark:text-[#f28b82]`} />;
   if (
     mime.includes("epub") ||
     mime.includes("mobipocket") ||
@@ -107,25 +108,26 @@ export function FileTypeIcon({ file, className }: { file: FileTypeLike; classNam
     mime.includes("comicbook") ||
     endsWithAny(name, ebookExtensions)
   )
-    return <BookIcon className={className} />;
+    return <BookIcon className={`${base} text-[#f29900] dark:text-[#fdd663]`} />;
   if (mime.startsWith("image/") || endsWithAny(name, imageExtensions))
-    return <PictureIcon className={className} />;
+    return <PictureIcon className={`${base} text-[#d93025] dark:text-[#f28b82]`} />;
   if (mime.startsWith("video/") || endsWithAny(name, videoExtensions))
-    return <VideoFileIcon className={className} />;
+    return <VideoFileIcon className={`${base} text-[#ea4335] dark:text-[#f28b82]`} />;
   if (mime.startsWith("audio/") || endsWithAny(name, audioExtensions))
-    return <AudioFileIcon className={className} />;
-  if (endsWithAny(name, archiveExtensions)) return <FileZipIcon className={className} />;
+    return <AudioFileIcon className={`${base} text-[#9334e6] dark:text-[#c58af9]`} />;
+  if (endsWithAny(name, archiveExtensions))
+    return <FileZipIcon className={`${base} text-[#5f6368] dark:text-[#9aa0a6]`} />;
   if (
     mime.includes("wordprocessing") ||
     mime.includes("msword") ||
     mime.includes("wordprocessingml") ||
     endsWithAny(name, wordExtensions)
   )
-    return <FileWordIcon className={className} />;
+    return <FileWordIcon className={`${base} text-[#1a73e8] dark:text-[#8ab4f8]`} />;
   if (mime.includes("spreadsheet") || mime === "text/csv" || endsWithAny(name, sheetExtensions))
-    return <FileExcelIcon className={className} />;
+    return <FileExcelIcon className={`${base} text-[#188038] dark:text-[#81c995]`} />;
   if (mime.includes("presentation") || endsWithAny(name, slideExtensions))
-    return <FilePptIcon className={className} />;
+    return <FilePptIcon className={`${base} text-[#f29900] dark:text-[#fdd663]`} />;
   if (
     codeExtensions.has(extension) ||
     mime.includes("json") ||
@@ -134,8 +136,8 @@ export function FileTypeIcon({ file, className }: { file: FileTypeLike; classNam
     mime.includes("xml") ||
     mime.includes("yaml")
   )
-    return <FileCodeIcon className={className} />;
+    return <FileCodeIcon className={`${base} text-[#00897b] dark:text-[#4db6ac]`} />;
   if (mime.startsWith("text/") || endsWithAny(name, textExtensions))
-    return <FileTextIcon className={className} />;
-  return <FileIcon className={className} />;
+    return <FileTextIcon className={`${base} text-[#1a73e8] dark:text-[#8ab4f8]`} />;
+  return <FileIcon className={base} />;
 }

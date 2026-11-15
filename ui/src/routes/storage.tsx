@@ -6,6 +6,11 @@ import CleanupIcon from "~icons/gravity-ui/trash-bin";
 import { $api } from "@/api/client";
 import { queryClient } from "@/api/query-client";
 import type { components } from "@/api/schema";
+import {
+  GoogleOneBrandIcon,
+  GoogleOneSegmentedBar,
+  type StorageSegment,
+} from "@/components/google-workspace";
 import { LinkButton } from "@/components/link-button";
 import { Page, PageHeader } from "@/components/page";
 import { useAppLocale } from "@/lib/locale";
@@ -85,12 +90,89 @@ function StoragePage() {
   const configuredChannels = data.channels.length;
   const selectedChannels = data.channels.filter((channel) => channel.selected).length;
   const totalChannelParts = data.channels.reduce((total, channel) => total + channel.partCount, 0);
+  const categoryMap = new Map(data.categories.map((entry) => [entry.category, entry.totalSize]));
+  const otherSize =
+    (categoryMap.get("archive") ?? 0) +
+    (categoryMap.get("audio") ?? 0) +
+    (categoryMap.get("other") ?? 0);
+  const segments: StorageSegment[] = [
+    {
+      id: "video",
+      label: categoryLabel(t, "video"),
+      bytes: categoryMap.get("video") ?? 0,
+      colorClass: "bg-[#ea4335]",
+      dotClass: "bg-[#ea4335]",
+    },
+    {
+      id: "image",
+      label: categoryLabel(t, "image"),
+      bytes: categoryMap.get("image") ?? 0,
+      colorClass: "bg-[#fbbc04]",
+      dotClass: "bg-[#fbbc04]",
+    },
+    {
+      id: "document",
+      label: categoryLabel(t, "document"),
+      bytes: categoryMap.get("document") ?? 0,
+      colorClass: "bg-[#1a73e8]",
+      dotClass: "bg-[#1a73e8]",
+    },
+    {
+      id: "other",
+      label: categoryLabel(t, "other"),
+      bytes: otherSize,
+      colorClass: "bg-[#34a853]",
+      dotClass: "bg-[#34a853]",
+    },
+    {
+      id: "trash",
+      label: t("storage.trash"),
+      bytes: summary.trashBytes,
+      colorClass: "bg-muted/50",
+      dotClass: "bg-muted/50",
+    },
+  ];
+  const combinedPoolBytes = summary.logicalBytes + summary.trashBytes;
 
   return (
     <Page>
       <PageHeader title={t("storage.title")} description={t("storage.desc")} />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <Card className="gap-5 rounded-3xl border border-border/50 bg-surface-secondary/35 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-surface shadow-xs ring-1 ring-border/40">
+              <GoogleOneBrandIcon className="size-7" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+                {t("one.heroTitle")}
+              </p>
+              <p className="text-lg font-semibold tabular-nums tracking-tight sm:text-xl">
+                {t("one.heroUsed", {
+                  bytes: formatBytes(summary.logicalBytes),
+                  files: formatCount.format(summary.activeFiles),
+                })}
+              </p>
+            </div>
+          </div>
+          {data.cleanup.totalReclaimableBytes > 0 ? (
+            <LinkButton to="/trash" size="sm" variant="secondary" className="rounded-full px-4">
+              <CleanupIcon className="size-4" />
+              {t("one.trashReclaim", {
+                bytes: formatBytes(data.cleanup.totalReclaimableBytes),
+              })}
+            </LinkButton>
+          ) : null}
+        </div>
+        <GoogleOneSegmentedBar
+          segments={segments}
+          totalBytes={combinedPoolBytes}
+          formatBytes={formatBytes}
+        />
+      </Card>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard
           label={t("storage.total")}
           value={formatBytes(summary.logicalBytes)}

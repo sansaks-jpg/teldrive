@@ -6,6 +6,11 @@ import { toast } from "sonner";
 import { $api } from "@/api/client";
 import { userMessage } from "@/api/errors";
 import { currentUserQueryOptions } from "@/auth/queries";
+import {
+  GoogleOneBrandIcon,
+  GoogleOneSegmentedBar,
+  type StorageSegment,
+} from "@/components/google-workspace";
 import { LinkButton } from "@/components/link-button";
 import { SettingsRow, SettingsSection } from "@/components/settings-layout";
 import { useFormatBytes } from "@/lib/format";
@@ -103,32 +108,98 @@ function AdminConsole() {
   };
 
   const overview = overviewQuery.data;
+  const segments: StorageSegment[] = overview
+    ? [
+        {
+          id: "active",
+          label: t("admin.metricStorage"),
+          bytes: overview.totalActiveBytes,
+          colorClass: "bg-[#1a73e8]",
+          dotClass: "bg-[#1a73e8]",
+        },
+        {
+          id: "trash",
+          label: t("storage.trash"),
+          bytes: overview.totalTrashBytes,
+          colorClass: "bg-[#ea4335]",
+          dotClass: "bg-[#ea4335]",
+        },
+      ]
+    : [];
+  const totalPoolBytes = overview ? overview.totalActiveBytes + overview.totalTrashBytes : 0;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 pb-16 sm:p-4 sm:pb-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("admin.title")}</h1>
-          <p className="text-sm text-muted">{t("admin.subtitle")}</p>
+        <div className="flex items-center gap-3.5">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-surface-secondary shadow-xs ring-1 ring-border/40">
+            <GoogleOneBrandIcon className="size-6.5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t("admin.title")}</h1>
+            <p className="text-xs text-muted sm:text-sm">{t("admin.subtitle")}</p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <LinkButton to="/tasks" search={{ status: "running", query: "" }} variant="secondary">
+          <LinkButton to="/storage" variant="secondary" size="sm" className="rounded-full px-4">
+            {t("nav.storage")}
+          </LinkButton>
+          <LinkButton
+            to="/tasks"
+            search={{ status: "running", query: "" }}
+            variant="secondary"
+            size="sm"
+            className="rounded-full px-4"
+          >
             {t("nav.tasks")}
           </LinkButton>
-          <LinkButton to="/settings" variant="secondary">
+          <LinkButton to="/settings" variant="secondary" size="sm" className="rounded-full px-4">
             {t("title.settings")}
           </LinkButton>
-          <Button variant="primary" onPress={() => void refreshAll()}>
+          <Button
+            variant="primary"
+            size="sm"
+            className="rounded-full px-4"
+            onPress={() => void refreshAll()}
+          >
             <RefreshIcon className="size-4" />
             {t("users.refresh")}
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-4">
+      {overview ? (
+        <Card className="gap-4 rounded-3xl border border-border/50 bg-surface-secondary/35 p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+                {t("one.heroTitle")}
+              </p>
+              <p className="text-lg font-semibold tabular-nums tracking-tight sm:text-xl">
+                {t("one.heroUsed", {
+                  bytes: formatBytes(overview.totalActiveBytes),
+                  files: overview.totalActiveFiles,
+                })}
+              </p>
+            </div>
+            {overview.totalTrashBytes > 0 ? (
+              <LinkButton to="/trash" size="sm" variant="secondary" className="rounded-full px-4">
+                {t("one.trashReclaim", { bytes: formatBytes(overview.totalTrashBytes) })}
+              </LinkButton>
+            ) : null}
+          </div>
+          <GoogleOneSegmentedBar
+            segments={segments}
+            totalBytes={totalPoolBytes}
+            formatBytes={formatBytes}
+          />
+        </Card>
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <Card className="rounded-2xl border border-border/50 bg-surface-secondary/25 p-4">
           <p className="text-xs font-medium text-muted">{t("admin.metricUsers")}</p>
-          <p className="mt-1 text-2xl font-semibold">
+          <p className="mt-1 text-2xl font-semibold tabular-nums">
             {overview ? overview.totalUsers : "—"}
           </p>
           <p className="mt-1 text-xs text-muted">
@@ -137,9 +208,9 @@ function AdminConsole() {
               : ""}
           </p>
         </Card>
-        <Card className="p-4">
+        <Card className="rounded-2xl border border-border/50 bg-surface-secondary/25 p-4">
           <p className="text-xs font-medium text-muted">{t("admin.metricStorage")}</p>
-          <p className="mt-1 text-2xl font-semibold">
+          <p className="mt-1 text-2xl font-semibold tabular-nums">
             {overview ? formatBytes(overview.totalActiveBytes) : "—"}
           </p>
           <p className="mt-1 text-xs text-muted">
@@ -148,18 +219,18 @@ function AdminConsole() {
               : ""}
           </p>
         </Card>
-        <Card className="p-4">
+        <Card className="rounded-2xl border border-border/50 bg-surface-secondary/25 p-4">
           <p className="text-xs font-medium text-muted">{t("admin.metricChannels")}</p>
-          <p className="mt-1 text-2xl font-semibold">
+          <p className="mt-1 text-2xl font-semibold tabular-nums">
             {overview ? `${overview.healthyChannels}/${overview.totalChannels}` : "—"}
           </p>
           <p className="mt-1 text-xs text-muted">
             {overview ? t("admin.metricBotsCount", { count: overview.totalBots }) : ""}
           </p>
         </Card>
-        <Card className="p-4">
+        <Card className="rounded-2xl border border-border/50 bg-surface-secondary/25 p-4">
           <p className="text-xs font-medium text-muted">{t("admin.metricShares")}</p>
-          <p className="mt-1 text-2xl font-semibold">
+          <p className="mt-1 text-2xl font-semibold tabular-nums">
             {overview ? overview.activeShares : "—"}
           </p>
           <p className="mt-1 text-xs text-muted">
@@ -168,7 +239,7 @@ function AdminConsole() {
         </Card>
       </div>
 
-      <SettingsSection title={t("users.users")} description={t("admin.usersDesc")}>
+      <SettingsSection title={t("one.familyTitle")} description={t("admin.usersDesc")}>
         <div className="border-b border-border p-4">
           <TextField value={search} onChange={setSearch} className="max-w-md">
             <Label>{t("users.search")}</Label>
@@ -192,13 +263,26 @@ function AdminConsole() {
               (user.storageQuotaBytes !== undefined
                 ? String(Math.round((user.storageQuotaBytes / (1024 * 1024 * 1024)) * 100) / 100)
                 : "");
+            const quotaPct =
+              user.storageQuotaBytes && user.storageQuotaBytes > 0
+                ? Math.min(100, Math.round((user.storageUsedBytes / user.storageQuotaBytes) * 100))
+                : 0;
             return (
               <SettingsRow
                 key={user.userId}
                 label={displayName}
                 description={`${user.username ? `@${user.username} · ` : ""}${formatBytes(user.storageUsedBytes)} ${user.storageQuotaBytes !== undefined ? `/ ${formatBytes(user.storageQuotaBytes)}` : `· ${t("admin.quotaUnlimited")}`}`}
               >
-                <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex flex-col gap-2 sm:items-end">
+                  {user.storageQuotaBytes !== undefined ? (
+                    <div className="h-1.5 w-44 max-w-full overflow-hidden rounded-full bg-default/40">
+                      <div
+                        className={`h-full rounded-full transition-[width] ${quotaPct >= 90 ? "bg-danger" : "bg-accent"}`}
+                        style={{ width: `${Math.max(4, quotaPct)}%` }}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
                   <Chip
                     variant="tertiary"
                     color={owner ? "accent" : user.role === "admin" ? "warning" : "default"}
@@ -278,6 +362,7 @@ function AdminConsole() {
                       </Button>
                     </>
                   ) : null}
+                  </div>
                 </div>
               </SettingsRow>
             );

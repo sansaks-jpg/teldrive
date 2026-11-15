@@ -292,8 +292,10 @@ function FileCollection({
             className={(state) =>
               grid
                 ? [
-                    "group relative flex min-w-0 cursor-default flex-col rounded-md border border-transparent p-2 outline-none",
-                    state.isSelected ? "border-accent/40 bg-accent/10" : "hover:bg-default/20",
+                    "group relative flex min-w-0 cursor-default flex-col rounded-2xl border border-transparent bg-[#f0f4f9]/70 p-2.5 outline-none transition-colors dark:bg-[#282a2c]/60",
+                    state.isSelected
+                      ? "border-accent/50 bg-[#c2e7ff]/45 dark:bg-[#004a77]/45"
+                      : "hover:bg-[#e1e5ea]/80 dark:hover:bg-[#333537]",
 
                     dimmedIds?.has(file.id) && "opacity-45",
                     state.isFocusVisible && "ring-2 ring-inset ring-accent",
@@ -417,12 +419,12 @@ function GridFile({
         </div>
       ) : null}
       <div
-        className="flex aspect-[16/11] w-full shrink-0 items-center justify-center rounded-md bg-default/25"
+        className="flex aspect-[16/11] w-full shrink-0 items-center justify-center rounded-xl bg-surface shadow-xs"
         aria-hidden="true"
         data-testid="file-grid-preview"
       >
         {file.kind === "folder" ? (
-          <FolderIcon className="size-12 text-accent" />
+          <FolderIcon className="size-12 text-[#5f6368] dark:text-[#c4c7c5]" />
         ) : (
           <FileTypeIcon file={file} className="size-12 text-muted" />
         )}
@@ -471,19 +473,27 @@ function ListFile({
 }) {
   const { t } = useAppLocale();
   const formatBytes = useFormatBytes();
+  const formatDate = useDateOnlyFormatter();
   const formatDateTime = useDateTimeFormatter();
+  const sizeText =
+    file.kind === "folder"
+      ? file.size != null
+        ? formatBytes(file.size)
+        : t("browser.folderKind")
+      : formatBytes(file.size ?? 0);
+  const modifiedDate = new Date(file.modTime);
   return (
     <>
       <div className="flex min-w-0 items-center gap-3">
         {selectable ? <SelectionCheckbox file={file} isVisible={showCheckbox} /> : null}
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-default/30">
           {file.kind === "folder" ? (
-            <FolderIcon className="size-4" />
+            <FolderIcon className="size-4.5 text-[#5f6368] dark:text-[#c4c7c5]" />
           ) : (
-            <FileTypeIcon file={file} className="size-4" />
+            <FileTypeIcon file={file} className="size-4.5" />
           )}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <span
             className="block truncate text-sm font-medium group-hover:text-accent"
             title={file.name}
@@ -493,17 +503,14 @@ function ListFile({
           {location ? (
             <LocationButton location={location} onPress={onOpenContainingFolder} />
           ) : null}
+          <span className="mt-0.5 block truncate text-[11px] text-muted sm:hidden">
+            {sizeText} · {formatDate.format(modifiedDate)}
+          </span>
         </div>
       </div>
-      <span className="hidden text-xs text-muted sm:block">
-        {file.kind === "folder"
-          ? file.size != null
-            ? formatBytes(file.size)
-            : t("browser.folderKind")
-          : formatBytes(file.size ?? 0)}
-      </span>
+      <span className="hidden text-xs text-muted sm:block">{sizeText}</span>
       <time className="hidden min-w-0 text-xs text-muted lg:block" dateTime={file.modTime}>
-        {formatDateTime.format(new Date(file.modTime))}
+        {formatDateTime.format(modifiedDate)}
       </time>
     </>
   );

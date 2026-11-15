@@ -4,50 +4,98 @@ import {
   Chip,
   Dropdown,
   Input,
-  InputGroup,
   Label,
   Spinner,
   TextField,
 } from "@heroui/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { FileTrigger } from "react-aria-components";
 import { toast } from "sonner";
 import { $api } from "@/api/client";
 import { userMessage } from "@/api/errors";
 import type { FileEntry } from "@/api/types";
 import { AppDialog } from "@/components/dialogs/app-dialog";
 import { FilePreviewDialog } from "@/components/file-preview-dialog";
+import { subscribeWorkspaceAction } from "@/components/google-workspace";
 import { LinkButton } from "@/components/link-button";
 import { fileContentUrl } from "@/features/files/download";
+import { useUploadStore } from "@/features/uploads/store";
 import { useFormatBytes } from "@/lib/format";
 import { useAppLocale } from "@/lib/locale";
 import { getQueryClient } from "@/lib/queryClient";
+import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
 import FolderPlusIcon from "~icons/gravity-ui/folder-plus";
 import HeartIcon from "~icons/gravity-ui/heart";
-import SearchIcon from "~icons/gravity-ui/magnifier";
 import PlayIcon from "~icons/gravity-ui/play";
 import PlusIcon from "~icons/gravity-ui/plus";
 import TrashIcon from "~icons/gravity-ui/trash-bin";
 import PictureIcon from "~icons/icon-park-outline/picture-one";
 import VideoFileIcon from "~icons/icon-park-outline/video-file";
 
+type PhotosMode = "timeline" | "favorites" | "videos" | "screenshots" | "recent" | "albums";
+
+const VALID_MODES = new Set<PhotosMode>([
+  "timeline",
+  "favorites",
+  "videos",
+  "screenshots",
+  "recent",
+  "albums",
+]);
+
+function parseMode(raw: unknown): PhotosMode {
+  return typeof raw === "string" && VALID_MODES.has(raw as PhotosMode)
+    ? (raw as PhotosMode)
+    : "timeline";
+}
+
 export const Route = createFileRoute("/photos")({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { mode?: PhotosMode; albumId?: string; q?: string } => ({
+    mode: typeof search.mode === "string" ? parseMode(search.mode) : undefined,
+    albumId: typeof search.albumId === "string" && search.albumId ? search.albumId : undefined,
+    q: typeof search.q === "string" ? search.q : undefined,
+  }),
   component: PhotosWorkspacePage,
 });
-
-type PhotosMode = "timeline" | "favorites" | "videos" | "screenshots" | "recent" | "albums";
 
 function PhotosWorkspacePage() {
   const { t, locale } = useAppLocale();
   const formatBytes = useFormatBytes();
   const queryClient = getQueryClient();
-  const [mode, setMode] = useState<PhotosMode>("timeline");
-  const [selectedAlbumId, setSelectedAlbumId] = useState<string>();
-  const [searchQuery, setSearchQuery] = useState("");
+  const enqueue = useUploadStore((state) => state.enqueue);
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+
+  const mode = search.mode ?? "timeline";
+  const selectedAlbumId = search.albumId;
+  const trimmedSearch = (search.q ?? "").trim().toLowerCase();
+
   const [previewFile, setPreviewFile] = useState<FileEntry>();
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
   const [albumName, setAlbumName] = useState("");
   const [albumDesc, setAlbumDesc] = useState("");
+  const uploadPhotosTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    return subscribeWorkspaceAction((action) => {
+      if (action === "photos:new-album") setAlbumDialogOpen(true);
+      if (action === "photos:upload") uploadPhotosTriggerRef.current?.click();
+    });
+  }, []);
+
+  const setMode = (nextMode: PhotosMode, nextAlbumId?: string) => {
+    void navigate({
+      search: {
+        mode: nextMode,
+        albumId: nextAlbumId,
+        q: search.q,
+      },
+      replace: true,
+    });
+  };
 
   const activeAlbumId = mode === "albums" ? selectedAlbumId : undefined;
 
@@ -77,7 +125,19 @@ function PhotosWorkspacePage() {
   const dateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(locale, {
-        dateStyle: "long",
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    [locale],
+  );
+
+  const monthFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        month: "short",
+        year: "numeric",
       }),
     [locale],
   );
@@ -91,7 +151,6 @@ function PhotosWorkspacePage() {
 
   const items = timelineQuery.data ?? [];
   const albums = albumsQuery.data ?? [];
-  const trimmedSearch = searchQuery.trim().toLowerCase();
 
   const filteredItems = useMemo(() => {
     const result = items.filter((item) => {
@@ -163,10 +222,7 @@ function PhotosWorkspacePage() {
           ? favoriteItem.file
           : firstImage?.file,
         icon: "heart",
-        onPress: () => {
-          setMode("favorites");
-          setSelectedAlbumId(undefined);
-        },
+        onPress: () => setMode("favorites"),
       });
     }
     if (videoItem) {
@@ -175,10 +231,7 @@ function PhotosWorkspacePage() {
         title: t("photos.memoryVideos"),
         coverFile: firstImage?.file,
         icon: "video",
-        onPress: () => {
-          setMode("videos");
-          setSelectedAlbumId(undefined);
-        },
+        onPress: () => setMode("videos"),
       });
     }
     if (albums.length > 0) {
@@ -187,29 +240,45 @@ function PhotosWorkspacePage() {
         title: t("photos.memoryAlbums"),
         coverFile: firstImage?.file,
         icon: "album",
-        onPress: () => {
-          setMode("albums");
-          setSelectedAlbumId(undefined);
-        },
+        onPress: () => setMode("albums"),
       });
     }
     return cards;
   }, [albums.length, items, t]);
 
   const groupedByDate = useMemo(() => {
-    const groups = new Map<string, typeof filteredItems>();
+    const groups = new Map<
+      string,
+      { monthKey: string; sectionId: string; items: typeof filteredItems }
+    >();
     for (const item of filteredItems) {
       const rawDate = item.takenAt ?? item.file.modTime ?? item.file.createdAt;
-      const dayLabel = dateFormatter.format(new Date(rawDate));
+      const dateObj = new Date(rawDate);
+      const dayLabel = dateFormatter.format(dateObj);
+      const monthKey = monthFormatter.format(dateObj);
       const existing = groups.get(dayLabel);
       if (existing) {
-        existing.push(item);
+        existing.items.push(item);
       } else {
-        groups.set(dayLabel, [item]);
+        groups.set(dayLabel, {
+          monthKey,
+          sectionId: `photo-day-${groups.size}`,
+          items: [item],
+        });
       }
     }
     return Array.from(groups.entries());
-  }, [filteredItems, dateFormatter]);
+  }, [filteredItems, dateFormatter, monthFormatter]);
+
+  const monthJumps = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const [, group] of groupedByDate) {
+      if (!seen.has(group.monthKey)) {
+        seen.set(group.monthKey, group.sectionId);
+      }
+    }
+    return Array.from(seen.entries());
+  }, [groupedByDate]);
 
   const handleToggleFavorite = async (fileId: string, current: boolean) => {
     try {
@@ -236,8 +305,7 @@ function PhotosWorkspacePage() {
       setAlbumName("");
       setAlbumDesc("");
       setAlbumDialogOpen(false);
-      setMode("albums");
-      setSelectedAlbumId(created.id);
+      setMode("albums", created.id);
       await refreshPhotos();
       toast.success(t("photos.albumCreated"));
     } catch (error) {
@@ -248,7 +316,7 @@ function PhotosWorkspacePage() {
   const handleDeleteAlbum = async (albumId: string) => {
     try {
       await deleteAlbum.mutateAsync({ params: { path: { albumId } } });
-      if (selectedAlbumId === albumId) setSelectedAlbumId(undefined);
+      if (selectedAlbumId === albumId) setMode("albums", undefined);
       await refreshPhotos();
       toast.success(t("photos.albumDeleted"));
     } catch (error) {
@@ -283,41 +351,53 @@ function PhotosWorkspacePage() {
 
   const selectedAlbum = albums.find((a) => a.id === selectedAlbumId);
 
-  const collectionModes: {
-    id: PhotosMode;
-    label: string;
-    icon: typeof PictureIcon;
-  }[] = [
-    { id: "timeline", label: t("photos.tabTimeline"), icon: PictureIcon },
-    { id: "favorites", label: t("photos.tabFavorites"), icon: HeartIcon },
-    { id: "albums", label: `${t("photos.tabAlbums")} (${albums.length})`, icon: FolderPlusIcon },
-    { id: "videos", label: t("photos.tabVideos"), icon: VideoFileIcon },
-    { id: "screenshots", label: t("photos.modeScreenshots"), icon: PictureIcon },
-    { id: "recent", label: t("photos.modeRecent"), icon: SearchIcon },
-  ];
+  const activeTitle =
+    mode === "albums" && selectedAlbum
+      ? selectedAlbum.name
+      : mode === "favorites"
+        ? t("photos.tabFavorites")
+        : mode === "albums"
+          ? t("photos.tabAlbums")
+          : mode === "videos"
+            ? t("photos.tabVideos")
+            : mode === "screenshots"
+              ? t("photos.modeScreenshots")
+              : mode === "recent"
+                ? t("photos.modeRecent")
+                : t("apps.photos");
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-2 sm:p-4">
+    <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-5 pb-16 sm:pb-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("apps.photos")}</h1>
-          <p className="text-sm text-muted">{t("photos.subtitle")}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{activeTitle}</h1>
+            <p className="text-xs text-muted sm:text-sm">{t("photos.subtitle")}</p>
+          </div>
+          {mode !== "albums" || selectedAlbum ? (
+            <Chip size="sm" variant="soft" className="hidden sm:inline-flex">
+              {t("photos.itemCount", { count: filteredItems.length })}
+            </Chip>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <InputGroup
-            className="w-full rounded-full bg-surface-secondary px-1 sm:w-64"
-            variant="secondary"
+          <FileTrigger
+            acceptedFileTypes={["image/*", "video/*"]}
+            allowsMultiple
+            onSelect={(list) => {
+              if (list?.length) enqueue(Array.from(list), undefined, "/");
+            }}
           >
-            <InputGroup.Prefix>
-              <SearchIcon className="size-4 text-muted" />
-            </InputGroup.Prefix>
-            <InputGroup.Input
-              aria-label={t("photos.searchPlaceholder")}
-              placeholder={t("photos.searchPlaceholder")}
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
-          </InputGroup>
+            <Button
+              ref={uploadPhotosTriggerRef}
+              variant="secondary"
+              size="sm"
+              className="rounded-full px-4"
+            >
+              <UploadIcon className="size-4" />
+              {t("photos.uploadPhotos")}
+            </Button>
+          </FileTrigger>
           <Button
             variant="primary"
             size="sm"
@@ -330,364 +410,304 @@ function PhotosWorkspacePage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 lg:hidden">
-        {collectionModes.map((entry) => (
-          <Button
-            key={entry.id}
-            variant={mode === entry.id ? "primary" : "secondary"}
-            size="sm"
-            className="rounded-full"
-            onPress={() => {
-              setMode(entry.id);
-              setSelectedAlbumId(undefined);
-            }}
-          >
-            {entry.label}
-          </Button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
-        <div className="hidden flex-col gap-1 lg:flex">
-          {collectionModes.slice(0, 2).map((entry) => {
-            const Icon = entry.icon;
-            const active = mode === entry.id;
-            return (
-              <Button
-                key={entry.id}
-                variant={active ? "secondary" : "ghost"}
-                className={
-                  active
-                    ? "h-10 w-full justify-start gap-3 rounded-full bg-accent/15 px-3.5 text-sm font-medium text-accent"
-                    : "h-10 w-full justify-start gap-3 rounded-full px-3.5 text-sm font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
-                }
-                onPress={() => {
-                  setMode(entry.id);
-                  setSelectedAlbumId(undefined);
-                }}
-              >
-                <Icon className="size-4 shrink-0" />
-                <span className="truncate">{entry.label}</span>
-              </Button>
-            );
-          })}
-          <p className="px-3.5 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-muted">
-            {t("photos.collectionsTitle")}
-          </p>
-          {collectionModes.slice(2).map((entry) => {
-            const Icon = entry.icon;
-            const active = mode === entry.id && !selectedAlbumId;
-            return (
-              <Button
-                key={entry.id}
-                variant={active ? "secondary" : "ghost"}
-                className={
-                  active
-                    ? "h-10 w-full justify-start gap-3 rounded-full bg-accent/15 px-3.5 text-sm font-medium text-accent"
-                    : "h-10 w-full justify-start gap-3 rounded-full px-3.5 text-sm font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
-                }
-                onPress={() => {
-                  setMode(entry.id);
-                  setSelectedAlbumId(undefined);
-                }}
-              >
-                <Icon className="size-4 shrink-0" />
-                <span className="truncate">{entry.label}</span>
-              </Button>
-            );
-          })}
-          {albums.length > 0 ? (
-            <div className="mt-2 space-y-1 border-t border-border/40 pt-2">
-              {albums.slice(0, 6).map((album) => {
-                const active = mode === "albums" && selectedAlbumId === album.id;
-                return (
-                  <Button
-                    key={album.id}
-                    variant={active ? "secondary" : "ghost"}
-                    size="sm"
-                    className={
-                      active
-                        ? "h-9 w-full justify-between rounded-full bg-accent/15 px-3.5 text-xs font-medium text-accent"
-                        : "h-9 w-full justify-between rounded-full px-3.5 text-xs text-muted hover:bg-surface-secondary hover:text-foreground"
-                    }
-                    onPress={() => {
-                      setMode("albums");
-                      setSelectedAlbumId(album.id);
-                    }}
-                  >
-                    <span className="truncate">{album.name}</span>
-                    <span className="shrink-0 text-[11px] opacity-75">{album.itemCount}</span>
-                  </Button>
-                );
-              })}
-            </div>
-          ) : null}
+      {monthJumps.length > 1 && !(mode === "albums" && !selectedAlbumId) ? (
+        <div
+          aria-label={t("photos.jumpTo")}
+          className="flex items-center gap-1.5 overflow-x-auto pb-1"
+        >
+          {monthJumps.slice(0, 12).map(([monthLabel, sectionId]) => (
+            <Button
+              key={sectionId}
+              size="sm"
+              variant="secondary"
+              className="h-7 shrink-0 rounded-full bg-surface-secondary/70 px-3 text-xs font-medium text-muted hover:text-foreground"
+              onPress={() => {
+                document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              {monthLabel}
+            </Button>
+          ))}
         </div>
+      ) : null}
 
-        <div className="min-w-0 space-y-6 rounded-3xl border border-border/50 bg-surface p-4 shadow-sm sm:p-6">
-          {mode === "timeline" && !trimmedSearch && highlightCards.length > 0 ? (
-            <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-foreground">{t("photos.memoriesTitle")}</h2>
-              <div className="flex gap-3 overflow-x-auto pb-1">
-                {highlightCards.map((card) => (
-                  <Button
-                    key={card.id}
-                    variant="ghost"
-                    onPress={card.onPress}
-                    className="group relative h-48 w-64 shrink-0 overflow-hidden rounded-3xl border border-border/60 bg-surface-secondary p-0 sm:h-52 sm:w-72"
-                  >
-                    {card.coverFile ? (
-                      <img
-                        src={fileContentUrl(card.coverFile)}
-                        alt={card.title}
-                        loading="lazy"
-                        className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
+      {mode === "timeline" && !trimmedSearch && highlightCards.length > 0 ? (
+        <section className="space-y-2.5">
+          <h2 className="text-sm font-semibold text-foreground">{t("photos.memoriesTitle")}</h2>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {highlightCards.map((card) => (
+              <Button
+                key={card.id}
+                variant="ghost"
+                onPress={card.onPress}
+                className="group relative h-44 w-36 shrink-0 overflow-hidden rounded-3xl border border-border/50 bg-surface-secondary p-0 sm:h-52 sm:w-44"
+              >
+                {card.coverFile ? (
+                  <img
+                    src={fileContentUrl(card.coverFile)}
+                    alt={card.title}
+                    loading="lazy"
+                    className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex size-full items-center justify-center bg-surface-secondary">
+                    {card.icon === "video" ? (
+                      <VideoFileIcon className="size-10 text-muted" />
                     ) : (
-                      <div className="flex size-full items-center justify-center bg-surface-secondary">
-                        {card.icon === "video" ? (
-                          <VideoFileIcon className="size-10 text-muted" />
-                        ) : (
-                          <PictureIcon className="size-10 text-muted" />
-                        )}
-                      </div>
+                      <PictureIcon className="size-10 text-muted" />
                     )}
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-                    <span className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-left text-sm font-semibold leading-snug text-white">
-                      {card.title}
-                    </span>
-                  </Button>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          {mode === "albums" && !selectedAlbumId ? (
-            albumsQuery.isPending ? (
-              <div className="flex justify-center py-12">
-                <Spinner />
-              </div>
-            ) : filteredAlbums.length === 0 ? (
-              <Card className="p-8 text-center">
-                <p className="text-sm text-muted">{t("photos.albumsEmpty")}</p>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredAlbums.map((album) => (
-                  <Card
-                    key={album.id}
-                    className="flex flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-surface-secondary/30 p-4"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <h2 className="truncate text-base font-semibold">{album.name}</h2>
-                        <Chip size="sm" variant="soft">
-                          {t("photos.itemCount", { count: album.itemCount })}
-                        </Chip>
-                      </div>
-                      {album.description ? (
-                        <p className="mt-1 line-clamp-2 text-xs text-muted">{album.description}</p>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center justify-between gap-2 pt-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="rounded-full"
-                        onPress={() => setSelectedAlbumId(album.id)}
-                      >
-                        {t("photos.openAlbum")}
-                      </Button>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="ghost"
-                        aria-label={t("photos.deleteAlbum")}
-                        onPress={() => void handleDeleteAlbum(album.id)}
-                      >
-                        <TrashIcon className="size-4 text-danger" />
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )
-          ) : (
-            <>
-              {mode === "albums" && selectedAlbum ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface-secondary/40 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-semibold">{selectedAlbum.name}</p>
-                    {selectedAlbum.description ? (
-                      <p className="text-xs text-muted">{selectedAlbum.description}</p>
-                    ) : null}
                   </div>
+                )}
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 p-3.5 text-left text-xs font-semibold leading-snug text-white sm:text-sm">
+                  {card.title}
+                </span>
+              </Button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {mode === "albums" && !selectedAlbumId ? (
+        albumsQuery.isPending ? (
+          <div className="flex justify-center py-12">
+            <Spinner />
+          </div>
+        ) : filteredAlbums.length === 0 ? (
+          <Card className="rounded-3xl p-8 text-center">
+            <p className="text-sm text-muted">{t("photos.albumsEmpty")}</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredAlbums.map((album) => (
+              <Card
+                key={album.id}
+                className="flex flex-col justify-between gap-3 rounded-3xl border border-border/50 bg-surface-secondary/40 p-5"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="truncate text-base font-semibold">{album.name}</h2>
+                    <Chip size="sm" variant="soft">
+                      {t("photos.itemCount", { count: album.itemCount })}
+                    </Chip>
+                  </div>
+                  {album.description ? (
+                    <p className="mt-1.5 line-clamp-2 text-xs text-muted">{album.description}</p>
+                  ) : null}
+                </div>
+                <div className="flex items-center justify-between gap-2 pt-2">
                   <Button
                     size="sm"
                     variant="secondary"
                     className="rounded-full"
-                    onPress={() => setSelectedAlbumId(undefined)}
+                    onPress={() => setMode("albums", album.id)}
                   >
-                    {t("photos.allAlbums")}
+                    {t("photos.openAlbum")}
+                  </Button>
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t("photos.deleteAlbum")}
+                    onPress={() => void handleDeleteAlbum(album.id)}
+                  >
+                    <TrashIcon className="size-4 text-danger" />
                   </Button>
                 </div>
-              ) : null}
+              </Card>
+            ))}
+          </div>
+        )
+      ) : (
+        <>
+          {mode === "albums" && selectedAlbum ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold">{selectedAlbum.name}</p>
+                {selectedAlbum.description ? (
+                  <p className="text-xs text-muted">{selectedAlbum.description}</p>
+                ) : null}
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="rounded-full"
+                onPress={() => setMode("albums", undefined)}
+              >
+                {t("photos.allAlbums")}
+              </Button>
+            </div>
+          ) : null}
 
-              {timelineQuery.isPending ? (
-                <div className="flex justify-center py-12">
-                  <Spinner />
-                </div>
-              ) : groupedByDate.length === 0 ? (
-                <Card className="flex flex-col items-center gap-3 p-8 text-center">
-                  <p className="text-sm text-muted">{t("photos.empty")}</p>
-                  <LinkButton
-                    to="/files"
-                    search={{ path: "/", query: "", view: "list" }}
-                    variant="primary"
-                    size="sm"
-                  >
-                    {t("apps.openDrive")}
-                  </LinkButton>
-                </Card>
-              ) : (
-                <div className="space-y-6">
-                  {groupedByDate.map(([dayLabel, dayItems]) => {
-                    const cameras = Array.from(
-                      new Set(
-                        dayItems
-                          .map((entry) => entry.cameraModel ?? entry.cameraMake)
-                          .filter((val): val is string => Boolean(val)),
-                      ),
-                    );
-                    return (
-                      <section key={dayLabel} className="space-y-2.5">
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <h2 className="text-sm font-semibold text-foreground">{dayLabel}</h2>
-                          {cameras.length > 0 ? (
-                            <span className="text-xs text-muted">{cameras.slice(0, 2).join(" • ")}</span>
-                          ) : null}
-                        </div>
-                        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-                          {dayItems.map((item) => {
-                            const isImage = item.file.mimeType?.startsWith("image/");
-                            return (
-                              <div
-                                key={item.file.id}
-                                className="group relative aspect-[4/3] overflow-hidden rounded-xl bg-surface-secondary"
-                              >
-                                <Button
-                                  variant="ghost"
-                                  aria-label={item.file.name}
-                                  className="block size-full rounded-none p-0"
-                                  onPress={() => setPreviewFile(item.file)}
-                                >
-                                  {isImage ? (
-                                    <img
-                                      src={fileContentUrl(item.file)}
-                                      alt={item.file.name}
-                                      loading="lazy"
-                                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                    />
-                                  ) : (
-                                    <div className="flex size-full flex-col items-center justify-center gap-2 bg-surface-secondary/80 p-3">
-                                      <VideoFileIcon className="size-8 text-muted" />
-                                      <span className="line-clamp-2 text-center text-xs font-medium text-foreground">
-                                        {item.file.name}
-                                      </span>
-                                    </div>
-                                  )}
-                                </Button>
-                          {!isImage ? (
-                            <span className="pointer-events-none absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
-                              <PlayIcon className="size-3" />
-                              Video
-                            </span>
-                          ) : null}
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2 pr-16 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                            <p className="truncate text-xs font-medium text-white">
-                              {item.file.name}
-                            </p>
-                            {item.file.size !== undefined ? (
-                              <p className="text-[11px] text-white/75">
-                                {formatBytes(item.file.size)}
-                              </p>
-                            ) : null}
-                          </div>
+          {timelineQuery.isPending ? (
+            <div className="flex justify-center py-12">
+              <Spinner />
+            </div>
+          ) : groupedByDate.length === 0 ? (
+            <Card className="flex flex-col items-center gap-3 rounded-3xl p-8 text-center">
+              <p className="text-sm text-muted">{t("photos.empty")}</p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="rounded-full"
+                  onPress={() => uploadPhotosTriggerRef.current?.click()}
+                >
+                  <UploadIcon className="size-4" />
+                  {t("photos.uploadPhotos")}
+                </Button>
+                <LinkButton
+                  to="/files"
+                  search={{ path: "/", query: "", view: "list" }}
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full"
+                >
+                  {t("apps.openDrive")}
+                </LinkButton>
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {groupedByDate.map(([dayLabel, group]) => {
+                const cameras = Array.from(
+                  new Set(
+                    group.items
+                      .map((entry) => entry.cameraModel ?? entry.cameraMake)
+                      .filter((val): val is string => Boolean(val)),
+                  ),
+                );
+                return (
+                  <section id={group.sectionId} key={dayLabel} className="space-y-2">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2 px-0.5">
+                      <h2 className="text-sm font-semibold text-foreground">{dayLabel}</h2>
+                      {cameras.length > 0 ? (
+                        <span className="text-xs text-muted">{cameras.slice(0, 2).join(" · ")}</span>
+                      ) : null}
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 sm:grid-cols-4 sm:gap-1.5 md:grid-cols-5 lg:grid-cols-6">
+                      {group.items.map((item) => {
+                        const isImage = item.file.mimeType?.startsWith("image/");
+                        return (
                           <div
-                            className={`absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 transition-opacity duration-200 ${
-                              item.favorite
-                                ? "opacity-100"
-                                : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100"
-                            }`}
+                            key={item.file.id}
+                            className="group relative aspect-square overflow-hidden rounded-lg bg-surface-secondary sm:rounded-xl"
                           >
                             <Button
-                              isIconOnly
-                              size="sm"
-                              variant="secondary"
-                              className="size-7 min-w-7 rounded-full bg-black/65 text-white backdrop-blur-sm hover:bg-black/85"
-                              aria-label={t("photos.toggleFavorite")}
-                              onPress={() =>
-                                void handleToggleFavorite(item.file.id, item.favorite)
-                              }
+                              variant="ghost"
+                              aria-label={item.file.name}
+                              className="block size-full rounded-none p-0"
+                              onPress={() => setPreviewFile(item.file)}
                             >
-                              <HeartIcon
-                                className={`size-3.5 ${item.favorite ? "text-danger" : "text-white"}`}
-                              />
+                              {isImage ? (
+                                <img
+                                  src={fileContentUrl(item.file)}
+                                  alt={item.file.name}
+                                  loading="lazy"
+                                  className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                />
+                              ) : (
+                                <div className="flex size-full flex-col items-center justify-center gap-1.5 bg-surface-secondary/80 p-2">
+                                  <VideoFileIcon className="size-7 text-muted" />
+                                  <span className="line-clamp-2 text-center text-[11px] font-medium text-foreground">
+                                    {item.file.name}
+                                  </span>
+                                </div>
+                              )}
                             </Button>
-                            {activeAlbumId ? (
+                            {!isImage ? (
+                              <span className="pointer-events-none absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+                                <PlayIcon className="size-2.5" />
+                                Video
+                              </span>
+                            ) : null}
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2 pr-14 opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:block">
+                              <p className="truncate text-xs font-medium text-white">
+                                {item.file.name}
+                              </p>
+                              {item.file.size !== undefined ? (
+                                <p className="text-[11px] text-white/75">
+                                  {formatBytes(item.file.size)}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div
+                              className={`absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 transition-opacity duration-200 ${
+                                item.favorite
+                                  ? "opacity-100"
+                                  : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100"
+                              }`}
+                            >
                               <Button
                                 isIconOnly
                                 size="sm"
                                 variant="secondary"
                                 className="size-7 min-w-7 rounded-full bg-black/65 text-white backdrop-blur-sm hover:bg-black/85"
-                                aria-label={t("photos.removeFromAlbum")}
+                                aria-label={t("photos.toggleFavorite")}
                                 onPress={() =>
-                                  void handleRemoveFromAlbum(activeAlbumId, item.file.id)
+                                  void handleToggleFavorite(item.file.id, item.favorite)
                                 }
                               >
-                                <TrashIcon className="size-3.5 text-white" />
+                                <HeartIcon
+                                  className={`size-3.5 ${item.favorite ? "text-danger" : "text-white"}`}
+                                />
                               </Button>
-                            ) : albums.length > 0 ? (
-                              <Dropdown>
+                              {activeAlbumId ? (
                                 <Button
                                   isIconOnly
                                   size="sm"
                                   variant="secondary"
                                   className="size-7 min-w-7 rounded-full bg-black/65 text-white backdrop-blur-sm hover:bg-black/85"
-                                  aria-label={t("photos.addToAlbum")}
+                                  aria-label={t("photos.removeFromAlbum")}
+                                  onPress={() =>
+                                    void handleRemoveFromAlbum(activeAlbumId, item.file.id)
+                                  }
                                 >
-                                  <FolderPlusIcon className="size-3.5 text-white" />
+                                  <TrashIcon className="size-3.5 text-white" />
                                 </Button>
-                                <Dropdown.Popover className="min-w-44">
-                                  <Dropdown.Menu
+                              ) : albums.length > 0 ? (
+                                <Dropdown>
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    variant="secondary"
+                                    className="size-7 min-w-7 rounded-full bg-black/65 text-white backdrop-blur-sm hover:bg-black/85"
                                     aria-label={t("photos.addToAlbum")}
-                                    onAction={(key) =>
-                                      void handleAddToAlbum(String(key), item.file.id)
-                                    }
                                   >
-                                    {albums.map((album) => (
-                                      <Dropdown.Item key={album.id} id={album.id} textValue={album.name}>
-                                        <Label>{album.name}</Label>
-                                      </Dropdown.Item>
-                                    ))}
-                                  </Dropdown.Menu>
-                                </Dropdown.Popover>
-                              </Dropdown>
-                            ) : null}
+                                    <FolderPlusIcon className="size-3.5 text-white" />
+                                  </Button>
+                                  <Dropdown.Popover className="min-w-44">
+                                    <Dropdown.Menu
+                                      aria-label={t("photos.addToAlbum")}
+                                      onAction={(key) =>
+                                        void handleAddToAlbum(String(key), item.file.id)
+                                      }
+                                    >
+                                      {albums.map((album) => (
+                                        <Dropdown.Item
+                                          key={album.id}
+                                          id={album.id}
+                                          textValue={album.name}
+                                        >
+                                          <Label>{album.name}</Label>
+                                        </Dropdown.Item>
+                                      ))}
+                                    </Dropdown.Menu>
+                                  </Dropdown.Popover>
+                                </Dropdown>
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-                    );
-                  })}
-                </div>
-              )}
-            </>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
           )}
-        </div>
-      </div>
+        </>
+      )}
 
       <AppDialog
         open={albumDialogOpen}

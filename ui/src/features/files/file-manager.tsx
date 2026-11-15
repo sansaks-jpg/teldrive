@@ -11,6 +11,7 @@ import { currentUserQueryOptions } from "@/auth/queries";
 import { BackgroundUploadDialog } from "@/components/background-upload-dialog";
 import { AppDialog } from "@/components/dialogs/app-dialog";
 import { isPreviewable } from "@/components/file-preview-dialog";
+import { subscribeWorkspaceAction } from "@/components/google-workspace";
 import { Page, PageContent } from "@/components/page";
 import { useUploadStore } from "@/features/uploads/store";
 import PasteIcon from "~icons/gravity-ui/arrow-right-to-square";
@@ -212,6 +213,29 @@ export function FileManagerPage({
       if (activePane === "secondary") setActivePane("primary");
     }
   }, [activePane, search.split]);
+
+  useEffect(() => {
+    if (searchMode) return;
+    return subscribeWorkspaceAction((action) => {
+      const pane = activePaneRef.current;
+      if (action === "drive:new-folder") {
+        setActivePane(pane);
+        setFolderDialogOpen(true);
+      } else if (action === "drive:upload-files") {
+        const ref =
+          pane === "secondary" && search.split
+            ? secondaryUploadFilesTriggerRef
+            : primaryUploadFilesTriggerRef;
+        ref.current?.click();
+      } else if (action === "drive:upload-folder") {
+        const ref =
+          pane === "secondary" && search.split
+            ? secondaryUploadFolderTriggerRef
+            : primaryUploadFolderTriggerRef;
+        ref.current?.click();
+      }
+    });
+  }, [search.split, searchMode]);
 
   const primarySelectedIds = selectionIds(primarySelectedKeys, primaryFiles);
   const secondarySelectedIds = selectionIds(secondarySelectedKeys, secondaryFiles);
@@ -974,14 +998,14 @@ export function FileManagerPage({
             </div>
           )}
           {!searchMode && (
-            <div className="mb-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
+            <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
               <Button
                 size="sm"
-                variant={!search.recent && !search.bookmarked ? "secondary" : "ghost"}
+                variant="ghost"
                 className={
                   !search.recent && !search.bookmarked
-                    ? "h-8 shrink-0 rounded-lg bg-accent/15 px-3 text-xs font-medium text-accent"
-                    : "h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                    ? "h-8 shrink-0 rounded-lg bg-[#c2e7ff] px-3.5 text-xs font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
+                    : "h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
                 }
                 onPress={() =>
                   onLocationChange({
@@ -998,11 +1022,11 @@ export function FileManagerPage({
               </Button>
               <Button
                 size="sm"
-                variant={search.recent ? "secondary" : "ghost"}
+                variant="ghost"
                 className={
                   search.recent
-                    ? "h-8 shrink-0 rounded-lg bg-accent/15 px-3 text-xs font-medium text-accent"
-                    : "h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                    ? "h-8 shrink-0 rounded-lg bg-[#c2e7ff] px-3.5 text-xs font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
+                    : "h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
                 }
                 onPress={() =>
                   onLocationChange({
@@ -1019,11 +1043,11 @@ export function FileManagerPage({
               </Button>
               <Button
                 size="sm"
-                variant={search.bookmarked && !search.recent ? "secondary" : "ghost"}
+                variant="ghost"
                 className={
                   search.bookmarked && !search.recent
-                    ? "h-8 shrink-0 rounded-lg bg-accent/15 px-3 text-xs font-medium text-accent"
-                    : "h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                    ? "h-8 shrink-0 rounded-lg bg-[#c2e7ff] px-3.5 text-xs font-medium text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
+                    : "h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
                 }
                 onPress={() =>
                   onLocationChange({
@@ -1041,7 +1065,7 @@ export function FileManagerPage({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                className="h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
                 onPress={() =>
                   void navigateTo({
                     to: "/shared-with-me",
@@ -1054,7 +1078,7 @@ export function FileManagerPage({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                className="h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
                 onPress={() =>
                   void navigateTo({
                     to: "/search",
@@ -1067,7 +1091,7 @@ export function FileManagerPage({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                className="h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
                 onPress={() =>
                   void navigateTo({
                     to: "/search",
@@ -1080,10 +1104,15 @@ export function FileManagerPage({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 shrink-0 rounded-lg px-3 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
-                onPress={() => void navigateTo({ to: "/docs" })}
+                className="h-8 shrink-0 rounded-lg border border-border/70 px-3.5 text-xs font-medium text-muted hover:bg-surface-secondary hover:text-foreground"
+                onPress={() =>
+                  void navigateTo({
+                    to: "/search",
+                    search: { kind: "folder" },
+                  })
+                }
               >
-                {t("apps.docs")}
+                {t("drive.filterFolders")}
               </Button>
             </div>
           )}

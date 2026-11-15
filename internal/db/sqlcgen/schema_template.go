@@ -32,11 +32,6 @@ func ConfigureSchema(schema string) error {
 	return nil
 }
 
-// QualifiedName returns a safely quoted object name in the configured schema.
-func QualifiedName(name string) string {
-	return pgx.Identifier{configuredSchema.Load().(string), name}.Sanitize()
-}
-
 func wrapDBTX(db DBTX) DBTX {
 	if _, ok := db.(*schemaDBTX); ok {
 		return db

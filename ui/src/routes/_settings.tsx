@@ -5,9 +5,11 @@ import { useState } from "react";
 import MenuIcon from "~icons/gravity-ui/bars";
 import PaletteIcon from "~icons/gravity-ui/palette";
 import BookIcon from "~icons/gravity-ui/book-open";
+import KeyIcon from "~icons/gravity-ui/key";
 import PlayIcon from "~icons/gravity-ui/play";
 import PersonIcon from "~icons/gravity-ui/person";
 import SessionsIcon from "~icons/gravity-ui/list-ul";
+import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
 import CloseIcon from "~icons/gravity-ui/xmark";
 import { currentUserQueryOptions } from "@/auth/queries";
 import { normalizeAppPath } from "@/components/google-workspace";
@@ -22,8 +24,13 @@ const SETTINGS_GROUPS = [
     ],
   },
   {
+    key: "security",
+    items: [{ key: "apiKeys", path: "/settings/api-keys", icon: KeyIcon }],
+  },
+  {
     key: "preferences",
     items: [
+      { key: "uploads", path: "/settings/uploads", icon: UploadIcon },
       { key: "appearance", path: "/settings/appearance", icon: PaletteIcon },
       { key: "reader", path: "/settings/reader", icon: BookIcon },
       { key: "player", path: "/settings/player", icon: PlayIcon },

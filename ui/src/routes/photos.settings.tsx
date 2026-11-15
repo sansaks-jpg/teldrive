@@ -1,44 +1,15 @@
 import { Button, Switch } from "@heroui/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { toast } from "sonner";
 import { LinkButton } from "@/components/link-button";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "@/components/settings-layout";
+import { usePhotosSettings } from "@/lib/app-settings";
 import { useAppLocale } from "@/lib/locale";
 import { useTheme } from "@/lib/theme";
 import StorageIcon from "~icons/gravity-ui/database";
 import MoonIcon from "~icons/gravity-ui/moon";
 import PersonIcon from "~icons/gravity-ui/person";
 import SunIcon from "~icons/gravity-ui/sun";
-
-const PHOTOS_SETTINGS_KEY = "teldrive:photos-settings:v1";
-
-type PhotosSettingsState = {
-  backupQuality: "original" | "storage_saver";
-  showVideosInTimeline: boolean;
-  showScreenshots: boolean;
-  memoriesBanner: boolean;
-  shareLocationMetadata: boolean;
-  browserNotifications: boolean;
-};
-
-const DEFAULT_PHOTOS_SETTINGS: PhotosSettingsState = {
-  backupQuality: "original",
-  showVideosInTimeline: true,
-  showScreenshots: true,
-  memoriesBanner: true,
-  shareLocationMetadata: false,
-  browserNotifications: false,
-};
-
-function loadPhotosSettings(): PhotosSettingsState {
-  try {
-    const raw = localStorage.getItem(PHOTOS_SETTINGS_KEY);
-    if (!raw) return DEFAULT_PHOTOS_SETTINGS;
-    return { ...DEFAULT_PHOTOS_SETTINGS, ...(JSON.parse(raw) as Partial<PhotosSettingsState>) };
-  } catch {
-    return DEFAULT_PHOTOS_SETTINGS;
-  }
-}
 
 export const Route = createFileRoute("/photos/settings")({
   component: PhotosSettingsPage,
@@ -47,25 +18,34 @@ export const Route = createFileRoute("/photos/settings")({
 function PhotosSettingsPage() {
   const { t } = useAppLocale();
   const { theme, setTheme } = useTheme();
-  const [settings, setSettings] = useState<PhotosSettingsState>(loadPhotosSettings);
+  const [settings, update] = usePhotosSettings();
+  const notificationsSupported = typeof window !== "undefined" && "Notification" in window;
 
-  const update = (patch: Partial<PhotosSettingsState>) => {
-    setSettings((prev) => {
-      const next = { ...prev, ...patch };
-      try {
-        localStorage.setItem(PHOTOS_SETTINGS_KEY, JSON.stringify(next));
-      } catch {
-        // Ignore storage quota errors.
-      }
-      return next;
-    });
+  const setBrowserNotifications = async (selected: boolean) => {
+    if (!selected) {
+      update({ browserNotifications: false });
+      return;
+    }
+    if (!notificationsSupported) return;
+    const permission =
+      Notification.permission === "default"
+        ? await Notification.requestPermission()
+        : Notification.permission;
+    if (permission !== "granted") {
+      toast.error("Browser notifications are blocked", {
+        description: "Allow notifications for this site in your browser settings, then try again.",
+      });
+      update({ browserNotifications: false });
+      return;
+    }
+    update({ browserNotifications: true });
   };
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 pb-8">
       <SettingsPageHeader
         title="Photos Settings"
-        description="Manage backup quality, timeline display, sharing privacy, and appearance for Teldrive Photos."
+        description="Manage timeline display, notifications, and appearance for Teldrive Photos."
         actions={
           <div className="flex flex-wrap gap-2">
             <LinkButton to="/photos" size="sm" variant="secondary">
@@ -78,36 +58,6 @@ function PhotosSettingsPage() {
           </div>
         }
       />
-
-      <SettingsSection
-        title="Backup & Upload Quality"
-        description="Choose how photos and videos uploaded through Photos are stored."
-      >
-        <SettingsRow
-          label="Original quality"
-          description="Store photos and videos without changing resolution or quality."
-        >
-          <Button
-            size="sm"
-            variant={settings.backupQuality === "original" ? "primary" : "secondary"}
-            onPress={() => update({ backupQuality: "original" })}
-          >
-            {settings.backupQuality === "original" ? "Selected" : "Select"}
-          </Button>
-        </SettingsRow>
-        <SettingsRow
-          label="Storage saver"
-          description="Prefer compact uploads when client-side optimization is available."
-        >
-          <Button
-            size="sm"
-            variant={settings.backupQuality === "storage_saver" ? "primary" : "secondary"}
-            onPress={() => update({ backupQuality: "storage_saver" })}
-          >
-            {settings.backupQuality === "storage_saver" ? "Selected" : "Select"}
-          </Button>
-        </SettingsRow>
-      </SettingsSection>
 
       <SettingsSection
         title="Appearance & Timeline"
@@ -173,26 +123,21 @@ function PhotosSettingsPage() {
       </SettingsSection>
 
       <SettingsSection
-        title="Sharing, Privacy & Storage"
-        description="Control shared metadata, notifications, and storage quota."
+        title="Notifications & Storage"
+        description="Upload notifications and storage quota."
       >
         <SettingsRow
-          label="Include location metadata when sharing"
-          description="Allow EXIF location details to remain visible on shared photo links."
-        >
-          <Switch
-            isSelected={settings.shareLocationMetadata}
-            onChange={(selected) => update({ shareLocationMetadata: selected })}
-          />
-        </SettingsRow>
-
-        <SettingsRow
           label="Browser notifications"
-          description="Receive desktop notifications when photo uploads or imports finish."
+          description={
+            notificationsSupported
+              ? "Get a desktop notification on this computer when uploads finish."
+              : "This browser does not support desktop notifications."
+          }
         >
           <Switch
+            isDisabled={!notificationsSupported}
             isSelected={settings.browserNotifications}
-            onChange={(selected) => update({ browserNotifications: selected })}
+            onChange={(selected) => void setBrowserNotifications(selected)}
           />
         </SettingsRow>
 

@@ -13,6 +13,7 @@ import { LinkButton } from "@/components/link-button";
 import { fileContentUrl } from "@/features/files/download";
 import { useUploadStore } from "@/features/uploads/store";
 import { useFormatBytes } from "@/lib/format";
+import { isScreenshotName, usePhotosSettings } from "@/lib/app-settings";
 import { useAppLocale } from "@/lib/locale";
 import { getQueryClient } from "@/lib/queryClient";
 import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
@@ -64,20 +65,7 @@ function PhotosWorkspacePage() {
   const selectedAlbumId = search.albumId;
   const trimmedSearch = (search.q ?? "").trim().toLowerCase();
 
-  const photoSettings = useMemo(() => {
-    try {
-      const raw = localStorage.getItem("teldrive:photos-settings:v1");
-      if (!raw) return { showVideosInTimeline: true, showScreenshots: true, memoriesBanner: true };
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      return {
-        showVideosInTimeline: parsed.showVideosInTimeline !== false,
-        showScreenshots: parsed.showScreenshots !== false,
-        memoriesBanner: parsed.memoriesBanner !== false,
-      };
-    } catch {
-      return { showVideosInTimeline: true, showScreenshots: true, memoriesBanner: true };
-    }
-  }, []);
+  const [photoSettings] = usePhotosSettings();
 
   const [previewFile, setPreviewFile] = useState<FileEntry>();
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
@@ -164,27 +152,15 @@ function PhotosWorkspacePage() {
         if (!photoSettings.showVideosInTimeline && item.file.mimeType?.startsWith("video/")) {
           return false;
         }
-        if (!photoSettings.showScreenshots) {
-          const lower = item.file.name.toLowerCase();
-          if (lower.includes("screen") || lower.includes("shot")) {
-            return false;
-          }
+        if (!photoSettings.showScreenshots && isScreenshotName(item.file.name)) {
+          return false;
         }
       }
       if (mode === "videos" && !item.file.mimeType?.startsWith("video/")) {
         return false;
       }
-      if (mode === "screenshots") {
-        const lower = item.file.name.toLowerCase();
-        if (
-          !(
-            lower.includes("screen") ||
-            lower.includes("shot") ||
-            item.file.mimeType === "image/png"
-          )
-        ) {
-          return false;
-        }
+      if (mode === "screenshots" && !isScreenshotName(item.file.name)) {
+        return false;
       }
       if (!trimmedSearch) return true;
       const haystack = [item.file.name, item.cameraMake ?? "", item.cameraModel ?? ""]
@@ -198,7 +174,13 @@ function PhotosWorkspacePage() {
       );
     }
     return result;
-  }, [items, mode, photoSettings.showScreenshots, photoSettings.showVideosInTimeline, trimmedSearch]);
+  }, [
+    items,
+    mode,
+    photoSettings.showScreenshots,
+    photoSettings.showVideosInTimeline,
+    trimmedSearch,
+  ]);
 
   const filteredAlbums = useMemo(() => {
     if (!trimmedSearch) return albums;

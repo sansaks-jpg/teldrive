@@ -42,11 +42,6 @@ func NewMemoryCache(size int) *MemoryCache {
 	return &MemoryCache{cache: c, prefix: "teldrive:"}
 }
 
-// NewCache is compatibility helper from v1.8.3. Now only memory is supported.
-func NewCache(_ context.Context, maxSize int) Cacher {
-	return NewMemoryCache(maxSize)
-}
-
 func (m *MemoryCache) Get(_ context.Context, key string, value any) error {
 	key = m.prefix + key
 	data, ok := m.cache.Get(key)

@@ -1,38 +1,14 @@
 import { Button, Switch } from "@heroui/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 import { LinkButton } from "@/components/link-button";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "@/components/settings-layout";
+import { useDocsSettings } from "@/lib/app-settings";
 import { useAppLocale } from "@/lib/locale";
 import { useTheme } from "@/lib/theme";
 import BookIcon from "~icons/gravity-ui/book-open";
 import MoonIcon from "~icons/gravity-ui/moon";
 import PersonIcon from "~icons/gravity-ui/person";
 import SunIcon from "~icons/gravity-ui/sun";
-
-const DOCS_SETTINGS_KEY = "teldrive:docs-settings:v1";
-
-type DocsSettingsState = {
-  paginatedLayout: boolean;
-  showWordCount: boolean;
-  autoSaveDrafts: boolean;
-};
-
-const DEFAULT_DOCS_SETTINGS: DocsSettingsState = {
-  paginatedLayout: true,
-  showWordCount: true,
-  autoSaveDrafts: true,
-};
-
-function loadDocsSettings(): DocsSettingsState {
-  try {
-    const raw = localStorage.getItem(DOCS_SETTINGS_KEY);
-    if (!raw) return DEFAULT_DOCS_SETTINGS;
-    return { ...DEFAULT_DOCS_SETTINGS, ...(JSON.parse(raw) as Partial<DocsSettingsState>) };
-  } catch {
-    return DEFAULT_DOCS_SETTINGS;
-  }
-}
 
 export const Route = createFileRoute("/docs/settings")({
   component: DocsSettingsPage,
@@ -41,19 +17,7 @@ export const Route = createFileRoute("/docs/settings")({
 function DocsSettingsPage() {
   const { t } = useAppLocale();
   const { theme, setTheme } = useTheme();
-  const [settings, setSettings] = useState<DocsSettingsState>(loadDocsSettings);
-
-  const update = (patch: Partial<DocsSettingsState>) => {
-    setSettings((prev) => {
-      const next = { ...prev, ...patch };
-      try {
-        localStorage.setItem(DOCS_SETTINGS_KEY, JSON.stringify(next));
-      } catch {
-        // Ignore storage quota errors.
-      }
-      return next;
-    });
-  };
+  const [settings, update] = useDocsSettings();
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 pb-8">
@@ -99,7 +63,7 @@ function DocsSettingsPage() {
 
         <SettingsRow
           label="Auto-save drafts"
-          description="Automatically preserve local edits before syncing to Drive."
+          description="Keep unsaved edits in this browser and restore them if you leave before saving."
         >
           <Switch
             isSelected={settings.autoSaveDrafts}

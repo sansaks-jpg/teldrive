@@ -298,29 +298,6 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (a *App) Handler() http.Handler {
-	if a == nil || a.http == nil {
-		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, "application is not configured", http.StatusServiceUnavailable)
-		})
-	}
-	return a.http.Handler
-}
-
-func (a *App) Pool() *pgxpool.Pool {
-	if a == nil {
-		return nil
-	}
-	return a.pool
-}
-
-func (a *App) Cache() cache.Cacher {
-	if a == nil {
-		return nil
-	}
-	return a.globalCache
-}
-
 // Run binds the configured address and owns the full server lifecycle until the
 // context is cancelled or the HTTP server fails. It never searches for another
 // port, which prevents production deployments from silently becoming unreachable.

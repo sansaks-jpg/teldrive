@@ -970,13 +970,3 @@ func messageDocument(msg *tg.Message) (*tg.Document, bool) {
 	document, ok := media.Document.(*tg.Document)
 	return document, ok
 }
-
-type cancelReadCloser struct {
-	io.ReadCloser
-	cancel context.CancelFunc
-}
-
-func (r *cancelReadCloser) Close() error {
-	r.cancel()
-	return r.ReadCloser.Close()
-}

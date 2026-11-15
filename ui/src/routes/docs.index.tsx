@@ -1,12 +1,13 @@
 import { Button, Card, Chip, Input, Label, Spinner, TextArea, TextField } from "@heroui/react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { $api } from "@/api/client";
 import { userMessage } from "@/api/errors";
 import { AppDialog } from "@/components/dialogs/app-dialog";
 import { useFormatBytes } from "@/lib/format";
+import { useDocsSettings } from "@/lib/app-settings";
 import { useAppLocale } from "@/lib/locale";
 import { getQueryClient } from "@/lib/queryClient";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -17,8 +18,42 @@ import FileExcelIcon from "~icons/icon-park-outline/file-excel";
 import FileTextIcon from "~icons/icon-park-outline/file-text";
 
 export const Route = createFileRoute("/docs/")({
+  validateSearch: (search: Record<string, unknown>): { q?: string } => ({
+    q: typeof search.q === "string" && search.q.trim() ? search.q.slice(0, 512) : undefined,
+  }),
   component: DocsWorkspacePage,
 });
+
+const DRAFT_KEY_PREFIX = "teldrive:docs-draft:";
+
+type DocDraft = { name: string; content: string };
+
+function readDraft(fileId: string): DocDraft | undefined {
+  try {
+    const raw = localStorage.getItem(`${DRAFT_KEY_PREFIX}${fileId}`);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as Partial<DocDraft>;
+    return typeof parsed.content === "string" && typeof parsed.name === "string"
+      ? { name: parsed.name, content: parsed.content }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeDraft(fileId: string, draft: DocDraft | undefined) {
+  try {
+    if (draft) localStorage.setItem(`${DRAFT_KEY_PREFIX}${fileId}`, JSON.stringify(draft));
+    else localStorage.removeItem(`${DRAFT_KEY_PREFIX}${fileId}`);
+  } catch {
+    // Storage can be unavailable or full; drafts are best effort.
+  }
+}
+
+function countWords(text: string) {
+  const words = text.trim().match(/\S+/g);
+  return { words: words?.length ?? 0, characters: text.length };
+}
 
 type DocFilter = "all" | "doc" | "sheet";
 
@@ -160,13 +195,24 @@ function DocsWorkspacePage() {
   const queryClient = getQueryClient();
 
   const [filter, setFilter] = useState<DocFilter>("all");
-  const [search, setSearch] = useState("");
+  const routeSearch = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const [docsSettings] = useDocsSettings();
+  const [search, setSearchText] = useState(routeSearch.q ?? "");
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
+
+  // Keep the in-page field and the top-bar search (which writes ?q=) in sync.
+  useEffect(() => setSearchText(routeSearch.q ?? ""), [routeSearch.q]);
+  const setSearch = (value: string) => {
+    setSearchText(value);
+    void navigate({ search: { q: value.trim() || undefined }, replace: true });
+  };
 
   const [createDialogType, setCreateDialogType] = useState<"doc" | "sheet">();
   const [newTitle, setNewTitle] = useState("");
 
   const [activeDocId, setActiveDocId] = useState<string>();
+  const loadedDocIdRef = useRef<string | undefined>(undefined);
   const [editorTitle, setEditorTitle] = useState("");
   const [editorContent, setEditorContent] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
@@ -199,15 +245,56 @@ function DocsWorkspacePage() {
   const updateDoc = $api.useMutation("put", "/v1/docs/{fileId}");
   const createSnapshot = $api.useMutation("post", "/v1/files/{fileId}/versions");
 
+  const flushDraft = () => {
+    const doc = detailQuery.data;
+    if (!doc || !docsSettings.autoSaveDrafts || doc.fileId !== activeDocId) return;
+    const content = doc.docType === "sheet" ? JSON.stringify({ cells: sheetCells }) : editorContent;
+    const name = editorTitle.trim() || doc.name;
+    const dirty =
+      name !== doc.name ||
+      (doc.docType === "sheet"
+        ? content !== JSON.stringify({ cells: parseSheetContent(doc.content) })
+        : content !== doc.content);
+    writeDraft(doc.fileId, dirty ? { name, content } : undefined);
+  };
+
   useEffect(() => {
     const doc = detailQuery.data;
-    if (!doc) return;
-    setEditorTitle(doc.name);
-    setEditorContent(doc.content);
-    if (doc.docType === "sheet") {
-      setSheetCells(parseSheetContent(doc.content));
-    }
-  }, [detailQuery.data]);
+    if (!doc || doc.fileId !== activeDocId || loadedDocIdRef.current === doc.fileId) return;
+    loadedDocIdRef.current = doc.fileId;
+    const draft = docsSettings.autoSaveDrafts ? readDraft(doc.fileId) : undefined;
+    const restore = draft && (draft.content !== doc.content || draft.name !== doc.name);
+    const content = restore ? draft.content : doc.content;
+    setEditorTitle(restore ? draft.name : doc.name);
+    setEditorContent(content);
+    setSheetCells(doc.docType === "sheet" ? parseSheetContent(content) : {});
+    if (restore) toast.info("Restored unsaved changes from this browser.");
+    else if (draft) writeDraft(doc.fileId, undefined);
+  }, [activeDocId, detailQuery.data, docsSettings.autoSaveDrafts]);
+
+  useEffect(() => {
+    const doc = detailQuery.data;
+    if (!doc || !docsSettings.autoSaveDrafts || doc.fileId !== activeDocId) return;
+    const timer = window.setTimeout(() => {
+      const content =
+        doc.docType === "sheet" ? JSON.stringify({ cells: sheetCells }) : editorContent;
+      const name = editorTitle.trim() || doc.name;
+      const dirty =
+        name !== doc.name ||
+        (doc.docType === "sheet"
+          ? content !== JSON.stringify({ cells: parseSheetContent(doc.content) })
+          : content !== doc.content);
+      writeDraft(doc.fileId, dirty ? { name, content } : undefined);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [
+    activeDocId,
+    detailQuery.data,
+    docsSettings.autoSaveDrafts,
+    editorContent,
+    editorTitle,
+    sheetCells,
+  ]);
 
   const dateTimeFormatter = useMemo(
     () =>
@@ -243,6 +330,7 @@ function DocsWorkspacePage() {
       });
       setCreateDialogType(undefined);
       setNewTitle("");
+      loadedDocIdRef.current = created.fileId;
       setActiveDocId(created.fileId);
       setEditorTitle(created.name);
       setEditorContent(created.content);
@@ -266,6 +354,7 @@ function DocsWorkspacePage() {
       const created = await createDoc.mutateAsync({
         body: { name, docType, content: initialContent },
       });
+      loadedDocIdRef.current = created.fileId;
       setActiveDocId(created.fileId);
       setEditorTitle(created.name);
       setEditorContent(created.content);
@@ -277,8 +366,8 @@ function DocsWorkspacePage() {
     }
   };
 
-  const handleSave = async () => {
-    if (!activeDocId || !detailQuery.data) return;
+  const handleSave = async (): Promise<boolean> => {
+    if (!activeDocId || !detailQuery.data) return false;
     const payloadContent =
       detailQuery.data.docType === "sheet" ? JSON.stringify({ cells: sheetCells }) : editorContent;
     try {
@@ -289,17 +378,21 @@ function DocsWorkspacePage() {
           content: payloadContent,
         },
       });
+      writeDraft(activeDocId, undefined);
       await refreshDocs();
       toast.success(t("docs.saved"));
+      return true;
     } catch (error) {
       toast.error(t("docs.saveFailed"), { description: userMessage(error) });
+      return false;
     }
   };
 
   const handleSaveSnapshot = async () => {
     if (!activeDocId) return;
     try {
-      await handleSave();
+      // handleSave reports its own error; never snapshot a stale server copy.
+      if (!(await handleSave())) return;
       await createSnapshot.mutateAsync({ params: { path: { fileId: activeDocId } } });
       toast.success(t("versions.snapshotCreated"));
     } catch (error) {
@@ -338,6 +431,8 @@ function DocsWorkspacePage() {
               size="sm"
               variant="secondary"
               onPress={() => {
+                flushDraft();
+                loadedDocIdRef.current = undefined;
                 setActiveDocId(undefined);
                 setPreviewMode(false);
               }}
@@ -412,7 +507,13 @@ function DocsWorkspacePage() {
                 Code
               </Button>
             </div>
-            <Card className="mx-auto w-full max-w-4xl rounded-2xl border border-border/70 bg-surface p-6 shadow-sm sm:p-10">
+            <Card
+              className={
+                docsSettings.paginatedLayout
+                  ? "mx-auto w-full max-w-[816px] min-h-[1056px] rounded-sm border border-border/70 bg-surface p-6 shadow-md sm:px-[72px] sm:py-16"
+                  : "mx-auto w-full max-w-none rounded-2xl border border-border/70 bg-surface p-6 shadow-sm sm:p-10"
+              }
+            >
               {previewMode ? (
                 <div className="min-h-[30rem] space-y-2 whitespace-pre-wrap text-sm leading-relaxed">
                   {editorContent.split("\n").map((line, index) => {
@@ -444,6 +545,17 @@ function DocsWorkspacePage() {
                 />
               )}
             </Card>
+            {docsSettings.showWordCount ? (
+              <p
+                className="mx-auto w-full max-w-4xl text-right text-xs text-muted"
+                aria-live="polite"
+              >
+                {(() => {
+                  const { words, characters } = countWords(editorContent);
+                  return `${words.toLocaleString(locale)} words · ${characters.toLocaleString(locale)} characters`;
+                })()}
+              </p>
+            ) : null}
           </div>
         ) : (
           <Card className="space-y-3 rounded-2xl border border-border/60 bg-surface p-4 shadow-sm">
@@ -751,7 +863,17 @@ function DocsWorkspacePage() {
           </>
         }
       >
-        <TextField value={newTitle} onChange={setNewTitle} autoFocus>
+        <TextField
+          value={newTitle}
+          onChange={setNewTitle}
+          autoFocus
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && newTitle.trim() && !createDoc.isPending) {
+              event.preventDefault();
+              void handleCreate();
+            }
+          }}
+        >
           <Label>{t("docs.docTitle")}</Label>
           <Input placeholder={createDialogType === "sheet" ? "Budget 2026" : "Meeting Notes"} />
         </TextField>

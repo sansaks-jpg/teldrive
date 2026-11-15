@@ -1,8 +1,4 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { $api, fetchClient } from "./client";
-
-export const taskApi = $api;
-export { fetchClient };
 
 export async function invalidateTaskQueries(queryClient: QueryClient, taskID?: string) {
   const invalidations = [

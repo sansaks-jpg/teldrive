@@ -154,9 +154,7 @@ function DriveSettingsPage() {
         >
           <Switch
             isSelected={encryptionEnabled}
-            onChange={(selected) =>
-              updatePreferences.mutate({ uploads: { encryption: selected } })
-            }
+            onChange={(selected) => updatePreferences.mutate({ uploads: { encryption: selected } })}
           />
         </SettingsRow>
 
@@ -185,10 +183,7 @@ function DriveSettingsPage() {
           </LinkButton>
         </SettingsRow>
 
-        <SettingsRow
-          label="Document & ebook reader"
-          description="PDF and EPUB reader defaults."
-        >
+        <SettingsRow label="Document & ebook reader" description="PDF and EPUB reader defaults.">
           <LinkButton to="/settings/reader" size="sm" variant="secondary">
             <BookIcon className="size-4" />
             Reader Settings

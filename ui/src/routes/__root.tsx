@@ -2,7 +2,6 @@ import {
   RouterProvider as AriaRouterProvider,
   Avatar,
   Button,
-  Chip,
   cn,
   Dropdown,
   Input,
@@ -36,6 +35,7 @@ import {
 } from "@/components/google-workspace";
 import { clearDocumentCache } from "@/features/files/document-cache";
 import { useMobileSelectionStore } from "@/features/files/mobile-selection-store";
+import { useUploadNotifications } from "@/features/uploads/notifications";
 import { useFormatBytes } from "@/lib/format";
 import { useAppLocale } from "@/lib/locale";
 import { useTheme } from "@/lib/theme";
@@ -383,9 +383,11 @@ function Sidebar({
   const capabilities = user?.capabilities ?? [];
   const canLocalImport = capabilities.includes("system.localImport");
   const visibleNav = getNavForApp(activeApp, capabilities).filter((item) => {
-    if (!mobile || activeApp !== "drive") return true;
-    // Bottom bar handles Home (recent), Bookmarks, Shared, and Files on mobile Drive.
-    return item.key === "trash" || item.key === "storage";
+    if (!mobile) return true;
+    // Bottom bar handles Home (recent), Bookmarks, Shared, and Files on mobile Drive;
+    // the mobile drawer footer renders the per-app Settings link for every app.
+    if (activeApp === "drive") return item.key === "trash" || item.key === "storage";
+    return item.key !== "photos-settings" && item.key !== "docs-settings";
   });
 
   const storageQuery = $api.useQuery(
@@ -758,6 +760,8 @@ function TopBar({
   });
   const locationKey = useLocation({ select: (location) => location.href });
   const activeApp = getWorkspaceApp(pathname);
+  const isPhotosIndex = normalizeAppPath(pathname) === "/photos";
+  const isDocsIndex = normalizeAppPath(pathname) === "/docs";
   const appMeta = getAppMeta(activeApp, t);
   const mobileSelection = useMobileSelectionStore((state) => state.selection);
 
@@ -768,7 +772,18 @@ function TopBar({
     if (activeApp === "photos" && !composingSearch.current) {
       searchTimer.current = window.setTimeout(() => {
         searchTimer.current = undefined;
-        void navigate({ to: "/photos", search: { ...routeSearch, q } as never, replace: true });
+        void navigate({
+          to: "/photos",
+          search: { ...(isPhotosIndex ? routeSearch : {}), q } as never,
+          replace: true,
+        });
+      }, 220);
+      return;
+    }
+    if (activeApp === "docs" && !composingSearch.current) {
+      searchTimer.current = window.setTimeout(() => {
+        searchTimer.current = undefined;
+        void navigate({ to: "/docs", search: { q } as never, replace: true });
       }, 220);
       return;
     }
@@ -780,12 +795,12 @@ function TopBar({
   };
 
   useEffect(() => {
-    if (pathname === "/search" || pathname.startsWith("/photos")) {
+    if (pathname === "/search" || isPhotosIndex || isDocsIndex) {
       setSearchText(typeof routeSearch.q === "string" ? routeSearch.q : "");
     } else {
       setSearchText("");
     }
-  }, [pathname, routeSearch]);
+  }, [isDocsIndex, isPhotosIndex, pathname, routeSearch]);
 
   useEffect(
     () => () => {
@@ -821,14 +836,22 @@ function TopBar({
           searchTimer.current = undefined;
           const q = searchText.trim() || undefined;
           if (activeApp === "photos") {
-            void navigate({ to: "/photos", search: { ...routeSearch, q } as never, replace: true });
+            void navigate({
+              to: "/photos",
+              search: { ...(isPhotosIndex ? routeSearch : {}), q } as never,
+              replace: true,
+            });
+            return;
+          }
+          if (activeApp === "docs") {
+            void navigate({ to: "/docs", search: { q } as never, replace: true });
             return;
           }
           void navigate({
             to: "/search",
             search: {
               ...(pathname === "/search" ? routeSearch : {}),
-              ...(pathname === "/files"
+              ...(normalizeAppPath(pathname) === "/drive/files"
                 ? {
                     parentId:
                       typeof routeSearch.parentId === "string" ? routeSearch.parentId : undefined,
@@ -898,12 +921,14 @@ function TopBar({
               onPress={() => {
                 setSearchText("");
                 if (searchTimer.current) window.clearTimeout(searchTimer.current);
-                if (activeApp === "photos") {
+                if (isPhotosIndex) {
                   void navigate({
                     to: "/photos",
                     search: { ...routeSearch, q: undefined } as never,
                     replace: true,
                   });
+                } else if (isDocsIndex) {
+                  void navigate({ to: "/docs", search: { q: undefined } as never, replace: true });
                 } else if (pathname === "/search") {
                   void navigate({
                     to: "/drive/files",
@@ -1279,7 +1304,9 @@ function AppSwitcher() {
   const activeApp = getWorkspaceApp(pathname);
   const [open, setOpen] = useState(false);
 
-  const go = (path: "/drive/files" | "/photos" | "/drive/storage" | "/docs" | "/drive/settings") => {
+  const go = (
+    path: "/drive/files" | "/photos" | "/drive/storage" | "/docs" | "/drive/settings",
+  ) => {
     setOpen(false);
     if (path === "/drive/files") {
       void navigate({ to: "/drive/files", search: { path: "/", query: "", view: "list" } });
@@ -1351,12 +1378,7 @@ function AppSwitcher() {
             <div className="flex size-11 items-center justify-center rounded-2xl bg-surface-secondary">
               <GoogleDocsBrandIcon className="size-6.5" />
             </div>
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-xs font-semibold">{t("apps.docs")}</span>
-              <Chip size="sm" variant="soft" className="h-4 px-1.5 text-[9px]">
-                {t("apps.soonBadge")}
-              </Chip>
-            </div>
+            <span className="text-xs font-semibold">{t("apps.docs")}</span>
           </Button>
         </div>
         <Separator className="my-2.5 opacity-60" />
@@ -1398,7 +1420,11 @@ function MobileDriveSubTabs() {
   const mobileSelection = useMobileSelectionStore((state) => state.selection);
 
   if (mobileSelection && mobileSelection.count > 0) return null;
-  if (activeApp !== "drive" || pathname.startsWith("/drive/trash") || pathname.startsWith("/search")) {
+  if (
+    activeApp !== "drive" ||
+    pathname.startsWith("/drive/trash") ||
+    pathname.startsWith("/search")
+  ) {
     return null;
   }
 
@@ -1544,7 +1570,7 @@ function MobileFloatingActionButton() {
 
   if (mobileSelection && mobileSelection.count > 0) return null;
 
-  if (pathname === "/drive/files" && routeSearch.bookmarked !== true) {
+  if (normalizeAppPath(pathname) === "/drive/files" && routeSearch.bookmarked !== true) {
     return (
       <>
         {speedDialOpen ? (
@@ -1626,7 +1652,8 @@ function MobileFloatingActionButton() {
     );
   }
 
-  if (pathname.startsWith("/photos")) {
+  // Photos actions are handled by the /photos page; settings has no listener mounted.
+  if (normalizeAppPath(pathname) === "/photos") {
     return (
       <div className="fixed bottom-20 right-4 z-30 lg:hidden">
         <Dropdown>
@@ -1667,6 +1694,7 @@ function MobileFloatingActionButton() {
 function Layout() {
   const navigate = useNavigate();
   const { t } = useAppLocale();
+  useUploadNotifications();
   const pathname = useLocation({ select: (location) => location.pathname });
   const [collapsed, setCollapsed] = useState(false);
   const [desktop, setDesktop] = useState(() =>

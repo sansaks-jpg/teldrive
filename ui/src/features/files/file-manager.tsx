@@ -346,11 +346,16 @@ export function FileManagerPage({
     setSecondarySelectedKeys(new Set());
     navigate({
       search: {
+        ...search,
         path: primaryLocation.path,
         parentId: primaryLocation.parentId,
         query: primaryLocation.query,
         view: primaryLocation.view,
         split: false,
+        secondaryPath: undefined,
+        secondaryParentId: undefined,
+        secondaryQuery: undefined,
+        secondaryView: undefined,
       },
     });
   };
@@ -719,10 +724,6 @@ export function FileManagerPage({
       );
     if (search.recent) return undefined;
     const location = paneLocation(pane);
-    const uploadFilesTriggerRef =
-      pane === "secondary" ? secondaryUploadFilesTriggerRef : primaryUploadFilesTriggerRef;
-    const uploadFolderTriggerRef =
-      pane === "secondary" ? secondaryUploadFolderTriggerRef : primaryUploadFolderTriggerRef;
     return (
       <>
         <div className={location.view === "list" ? "sm:hidden" : undefined}>
@@ -750,27 +751,36 @@ export function FileManagerPage({
             <SplitIcon className="size-4" />
           </Button>
         ) : null}
-
-        <span className="hidden" aria-hidden="true">
-          <FileTrigger
-            allowsMultiple
-            onSelect={(list) => {
-              if (list?.length) enqueue(Array.from(list), location.parentId, location.path);
-            }}
-          >
-            <Button ref={uploadFilesTriggerRef}>{t("files.chooseUpload")}</Button>
-          </FileTrigger>
-          <FileTrigger
-            acceptDirectory
-            allowsMultiple
-            onSelect={(list) => {
-              if (list?.length) enqueue(Array.from(list), location.parentId, location.path);
-            }}
-          >
-            <Button ref={uploadFolderTriggerRef}>{t("files.chooseFolder")}</Button>
-          </FileTrigger>
-        </span>
       </>
+    );
+  };
+
+  const renderUploadTriggers = (pane: PaneId) => {
+    const location = paneLocation(pane);
+    const uploadFilesTriggerRef =
+      pane === "secondary" ? secondaryUploadFilesTriggerRef : primaryUploadFilesTriggerRef;
+    const uploadFolderTriggerRef =
+      pane === "secondary" ? secondaryUploadFolderTriggerRef : primaryUploadFolderTriggerRef;
+    return (
+      <span key={pane} className="hidden" aria-hidden="true">
+        <FileTrigger
+          allowsMultiple
+          onSelect={(list) => {
+            if (list?.length) enqueue(Array.from(list), location.parentId, location.path);
+          }}
+        >
+          <Button ref={uploadFilesTriggerRef}>{t("files.chooseUpload")}</Button>
+        </FileTrigger>
+        <FileTrigger
+          acceptDirectory
+          allowsMultiple
+          onSelect={(list) => {
+            if (list?.length) enqueue(Array.from(list), location.parentId, location.path);
+          }}
+        >
+          <Button ref={uploadFolderTriggerRef}>{t("files.chooseFolder")}</Button>
+        </FileTrigger>
+      </span>
     );
   };
 
@@ -1259,6 +1269,8 @@ export function FileManagerPage({
             {renderPane("primary")}
             {search.split ? renderPane("secondary") : null}
           </div>
+          {!searchMode ? renderUploadTriggers("primary") : null}
+          {!searchMode && search.split ? renderUploadTriggers("secondary") : null}
         </div>
       </PageContent>
 

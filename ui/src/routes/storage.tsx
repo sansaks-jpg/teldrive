@@ -1,14 +1,11 @@
 import { Button, Card, Dropdown, Label, Spinner, Typography } from "@heroui/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import ArrowDownIcon from "~icons/gravity-ui/arrow-down";
-import ArrowUpIcon from "~icons/gravity-ui/arrow-up";
-import ChevronDownIcon from "~icons/gravity-ui/chevron-down";
-import CloseIcon from "~icons/gravity-ui/xmark";
 import { $api } from "@/api/client";
 import { queryClient } from "@/api/query-client";
 import type { components } from "@/api/schema";
 import type { FileCategory, FileEntry } from "@/api/types";
+import { useCurrentUser } from "@/auth/use-current-user";
 import { FilePreviewDialog, isPreviewable } from "@/components/file-preview-dialog";
 import { GoogleOneSegmentedBar, type StorageSegment } from "@/components/google-workspace";
 import { LinkButton } from "@/components/link-button";
@@ -17,8 +14,11 @@ import { startFileDownload } from "@/features/files/download";
 import { FileTypeIcon } from "@/features/files/file-type-icon";
 import { useInfiniteFilePages } from "@/features/files/queries";
 import { useDateOnlyFormatter, useFormatBytes } from "@/lib/format";
-import { useCurrentUser } from "@/auth/use-current-user";
 import { useAppLocale } from "@/lib/locale";
+import ArrowDownIcon from "~icons/gravity-ui/arrow-down";
+import ArrowUpIcon from "~icons/gravity-ui/arrow-up";
+import ChevronDownIcon from "~icons/gravity-ui/chevron-down";
+import CloseIcon from "~icons/gravity-ui/xmark";
 
 type StorageActivity = components["schemas"]["StorageActivity"];
 type StorageGrowthPoint = components["schemas"]["StorageGrowthPoint"];
@@ -399,10 +399,11 @@ function StoragePage() {
       {/* Files taking up space table */}
       <div className="min-w-0">
         <div className="grid grid-cols-[minmax(0,1fr)_9.5rem] items-center border-b border-border/60 px-3 py-2 text-xs font-medium text-muted">
-          <button
-            type="button"
-            onClick={() => toggleSort("name")}
-            className="flex w-fit items-center gap-1.5 rounded px-1 py-0.5 text-left transition-colors hover:bg-default/40 hover:text-foreground"
+          <Button
+            size="sm"
+            variant="ghost"
+            onPress={() => toggleSort("name")}
+            className="h-auto w-fit min-w-0 justify-start gap-1.5 rounded px-1 py-0.5 text-xs font-medium text-muted hover:bg-default/40 hover:text-foreground"
           >
             <span>{t("manager.sortName")}</span>
             {sortBy === "name" ? (
@@ -414,11 +415,12 @@ function StoragePage() {
                 )}
               </span>
             ) : null}
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleSort("size")}
-            className="ml-auto flex w-fit items-center gap-1.5 rounded px-1 py-0.5 text-right transition-colors hover:bg-default/40 hover:text-foreground"
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onPress={() => toggleSort("size")}
+            className="ml-auto h-auto w-fit min-w-0 justify-end gap-1.5 rounded px-1 py-0.5 text-xs font-medium text-muted hover:bg-default/40 hover:text-foreground"
           >
             <span>{t("storage.columnUsed")}</span>
             {sortBy === "size" ? (
@@ -430,7 +432,7 @@ function StoragePage() {
                 )}
               </span>
             ) : null}
-          </button>
+          </Button>
         </div>
 
         {filesQuery.isPending ? (
@@ -457,17 +459,17 @@ function StoragePage() {
         ) : (
           <div>
             {files.map((file) => (
-              <button
+              <Button
                 key={file.id}
-                type="button"
-                onClick={() => {
+                variant="ghost"
+                onPress={() => {
                   if (isPreviewable(file)) {
                     setPreviewFile(file);
                   } else {
                     startFileDownload(file);
                   }
                 }}
-                className="grid h-11 w-full grid-cols-[minmax(0,1fr)_9.5rem] items-center border-b border-border/40 px-3 text-left transition-colors hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]/70"
+                className="grid h-11 w-full grid-cols-[minmax(0,1fr)_9.5rem] items-center rounded-none border-b border-border/40 px-3 text-left transition-colors hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]/70"
               >
                 <div className="flex min-w-0 items-center gap-3 pr-3">
                   <FileTypeIcon file={file} className="size-4.5 shrink-0" />
@@ -476,7 +478,7 @@ function StoragePage() {
                 <span className="text-right text-xs tabular-nums text-muted">
                   {formatBytes(file.size ?? 0)}
                 </span>
-              </button>
+              </Button>
             ))}
             {filesQuery.hasNextPage ? (
               <div className="flex justify-center pt-4">

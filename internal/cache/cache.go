@@ -100,12 +100,6 @@ func Fetch[T any](ctx context.Context, c Cacher, key string, expiration time.Dur
 	return value, nil
 }
 
-func FetchArg[T any, A any](ctx context.Context, c Cacher, key string, expiration time.Duration, fn func(a A) (T, error), a A) (T, error) {
-	return Fetch(ctx, c, key, expiration, func() (T, error) {
-		return fn(a)
-	})
-}
-
 // Key builds a colon-joined cache key from arbitrary args, sorted for maps.
 func Key(args ...any) string {
 	parts := make([]string, len(args))

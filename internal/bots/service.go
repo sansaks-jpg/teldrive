@@ -33,10 +33,6 @@ type Verifier interface {
 	Verify(context.Context, string) (Identity, error)
 }
 
-type Provisioner interface {
-	ProvisionBot(context.Context, int64, Identity) error
-}
-
 type ListInput struct {
 	UserID         int64
 	AfterCreatedAt *time.Time
@@ -233,17 +229,6 @@ func (s *Service) MarkProvisionFailure(ctx context.Context, userID, botID int64,
 		LastError: dbtypes.OptionalText(&message), UserID: userID, BotID: botID,
 	})
 	return err
-}
-
-func (s *Service) HasExistingChannels(ctx context.Context, userID int64) (bool, error) {
-	if userID <= 0 {
-		return false, ErrInvalidInput
-	}
-	rows, err := s.queries.ListChannels(ctx, sqlcgen.ListChannelsParams{UserID: userID, PageSize: 1})
-	if err != nil {
-		return false, fmt.Errorf("list channels for bot provisioning: %w", err)
-	}
-	return len(rows) > 0, nil
 }
 
 func (s *Service) List(ctx context.Context, in ListInput) ([]*sqlcgen.Bot, error) {

@@ -3,11 +3,12 @@ title: First login and verification
 description: Verify login, persistence, uploads, and downloads before production use.
 ---
 
-## 1. Sign in
+## 1. Bootstrap and sign in
 
-Open the UI and complete Telegram login.
+- **First-time setup:** Open `/one` in the web UI to bootstrap the owner Workspace account (email and password) and connect the centralized Telegram pool.
+- **Regular sign-in:** Open `/login` and sign in with your Workspace email and password.
 
-Keep `security.data-key` stable; it encrypts the stored Telegram session.
+Keep `security.data-key` stable; it encrypts the centralized Telegram session (`workspace_telegram`) and bot tokens.
 
 ## 2. Test storage
 

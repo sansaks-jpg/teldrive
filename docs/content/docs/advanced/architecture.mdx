@@ -23,14 +23,16 @@ Recovery requires PostgreSQL plus the matching encryption keys.
 
 ## Telegram
 
-With `telegram.backend=remote`, Telegram stores file payloads. Teldrive manages parts and exposes normal files/folders through its API.
+With `telegram.backend=remote`, Telegram stores file payloads. Teldrive uses a centralized Telegram pool (`workspace_telegram` plus optional bot rotation) managed by admins in the **One Admin Console** (`/one`), and exposes normal files and folders through its API. Set `telegram.websocket=true` to use MTProto over WebSocket (`wss://`) instead of raw TCP.
 
-## Authentication
+## Authentication & UI isolation
 
 ```text
-Browser ⇄ Teldrive ⇄ Telegram
+Browser ⇄ Teldrive (Workspace auth + Drive UI / One Admin Console) ⇄ Telegram pool
 ```
 
+- **Workspace accounts:** Users sign in with email and password at `/login`. Admins bootstrap the instance, manage users/quotas, connect the centralized Telegram pool, configure bots/channels, and inspect jobs/audit logs in `/one`.
+- **Drive UI:** End-user file management (`/files`, `/storage`, `/photos`, `/shared`, `/trash`, `/tasks`, `/settings/*`) is isolated from the One Admin Console.
 - `security.signing-key`: signs Teldrive tokens.
 - `security.data-key`: encrypts stored Telegram credentials.
 

@@ -201,6 +201,8 @@ Defaults are runtime values, not production recommendations.
 
 <ConfigOption name={"telegram.upload-threads"} flag={"--telegram-upload-threads"} env={"TELDRIVE_TELEGRAM_UPLOAD_THREADS"} defaultValue={"8"} description={"Concurrent Telegram upload workers"} />
 
+<ConfigOption name={"telegram.websocket"} flag={"--telegram-websocket"} env={"TELDRIVE_TELEGRAM_WEBSOCKET"} defaultValue={"false"} description={"Use Telegram MTProto over WebSocket (wss://) instead of raw TCP"} />
+
 ## Uploads
 
 <ConfigOption name={"uploads.encryption-required"} flag={"--uploads-encryption-required"} env={"TELDRIVE_UPLOADS_ENCRYPTION_REQUIRED"} defaultValue={"false"} description={"Require encryption for all new uploads and background imports, regardless of client preferences; requires an active encryption key"} />

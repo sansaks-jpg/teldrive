@@ -1,5 +1,7 @@
 # Repository Guide
 
+When a repository's documentation and its existing code disagree, follow the conventions used in the existing code, and in your final reply point out each inconsistency you found between the documentation and the code.
+
 ## Required Environment
 
 - Run every project command through `direnv exec . <command>` from the repository root. Do not assume the tool runner inherits an interactive shell's direnv environment. This applies to builds, tests, generators, formatters, package installation, and development servers.
@@ -45,10 +47,12 @@ All commands below require the `direnv exec .` prefix described above.
 ## Architecture
 
 - `cmd/teldrive` is the CLI entrypoint; `internal/app/app.go` is the composition root and owns migrations, services, HTTP routing, workers, and shutdown order.
-- `internal/api` adapts the ogen contract; domain behavior belongs in packages such as `catalog`, `uploads`, `transfer`, `fileops`, and `shares`, not generated handlers.
-- `internal/telegramstore` is the external storage boundary. Production uses gotd; integration and UI tests can use the filesystem backend.
-- `db/migrations` includes application schema; startup also runs River/RiverPro migrations before opening the long-lived pool.
+- `internal/api` adapts the ogen contract; domain behavior belongs in packages such as `authn`, `botgateway`, `bots`, `catalog`, `channels`, `uploads`, `transfer`, `fileops`, and `shares`, not generated handlers.
+- `internal/authn` handles Workspace accounts (email/password authentication, cookie sessions, API keys) and first-run bootstrap (`/v1/auth/bootstrap-status`).
+- `internal/telegramstore` is the external storage boundary. Production uses gotd (TCP or MTProto over WebSocket when `telegram.websocket` is enabled); integration and UI tests can use the filesystem backend. The centralized Telegram pool (`workspace_telegram` singleton table) and bot rotation are shared across workspace users.
+- `db/migrations` includes application schema (including `000016_workspace_accounts.sql` for workspace accounts and `workspace_telegram`); startup also runs River/RiverPro migrations before opening the long-lived pool.
 - The UI is a Vite/React app in `ui/`; `ui/ui.go` embeds `ui/dist`, so `just build` builds the UI before compiling the server binary.
+- The Drive UI (`/files`, `/storage`, `/photos`, `/shared`, `/shared-with-me`, `/trash`, `/tasks`, `/settings/*`) is isolated from the **One Admin Console** (`/one` with tabs `overview`, `users`, `telegram`, `bots`, `jobs`, `audit`). Legacy `/admin` and `/settings/{bots,channels,periodic-jobs,users}` routes redirect to `/one` for admins or `/files` for non-admins.
 
 ## Generated Changes
 

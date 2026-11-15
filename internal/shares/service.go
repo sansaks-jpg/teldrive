@@ -378,10 +378,6 @@ func (s *Service) resolveFile(ctx context.Context, resolved *Public, fileID uuid
 	return &Public{Share: resolved.Share, File: file}, nil
 }
 
-func (s *Service) ReserveFileDownload(ctx context.Context, token, password string, fileID uuid.UUID) (*Public, error) {
-	return s.ReserveContentDownload(ctx, ContentRequest{Token: token, Password: password, FileID: &fileID})
-}
-
 // ReserveDownload atomically consumes one allowed download before bytes are
 // exposed. A failed stream consumes the reservation, preventing concurrent
 // requests from exceeding max_downloads.

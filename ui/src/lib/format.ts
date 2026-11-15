@@ -71,7 +71,3 @@ export function useDateTimeFormatter(): Intl.DateTimeFormat {
 export function useDateOnlyFormatter(): Intl.DateTimeFormat {
   return useDateFormatter({ year: "numeric", month: "numeric", day: "numeric" });
 }
-
-export function useTimeOnlyFormatter(): Intl.DateTimeFormat {
-  return useDateFormatter({ hour: "numeric", minute: "2-digit", second: "2-digit" });
-}

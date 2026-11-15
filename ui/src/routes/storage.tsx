@@ -585,25 +585,6 @@ function ActivityRow({ activity }: { activity: StorageActivity }) {
   );
 }
 
-function _ProgressTrack({ value, label }: { value: number; label: string }) {
-  const clamped = Math.max(0, Math.min(100, Math.round(value)));
-  return (
-    <div
-      role="progressbar"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={clamped}
-      className="h-2 overflow-hidden rounded-full bg-surface-secondary"
-    >
-      <div
-        className="h-full rounded-full bg-accent transition-all"
-        style={{ width: `${clamped}%` }}
-      />
-    </div>
-  );
-}
-
 function EmptyCopy({ children }: { children: string }) {
   return <p className="px-4 py-8 text-center text-sm text-muted">{children}</p>;
 }

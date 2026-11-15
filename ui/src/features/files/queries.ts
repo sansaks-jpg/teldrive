@@ -96,20 +96,6 @@ export function filePageInit(search: FileRouteSearch, status: FileStatus, cursor
   };
 }
 
-export function filePageQueryOptions(search: FileRouteSearch, status: FileStatus) {
-  return $api.queryOptions("get", "/v1/files", filePageInit(search, status), {
-    staleTime: 15_000,
-    select: validateFileList,
-  });
-}
-
-export function useFilePage(search: FileRouteSearch, status: FileStatus) {
-  return $api.useSuspenseQuery("get", "/v1/files", filePageInit(search, status), {
-    staleTime: 15_000,
-    select: validateFileList,
-  });
-}
-
 export function useInfiniteFilePages(search: FileRouteSearch, status: FileStatus, enabled = true) {
   const queryKey = [
     "get",

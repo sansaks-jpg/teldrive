@@ -230,13 +230,6 @@ func (f *Factory) NewForAccount(storage telegram.SessionStorage, accountID int64
 	return f.newClient(storage, accountID, nil, onConnectionState)
 }
 
-func (f *Factory) NewWithUpdates(storage telegram.SessionStorage, handler telegram.UpdateHandler) (*telegram.Client, error) {
-	if handler == nil {
-		return nil, ErrTelegramConfiguration
-	}
-	return f.newClient(storage, 0, handler, nil)
-}
-
 type dcPoolClient interface {
 	Pool(max int64) (telegram.CloseInvoker, error)
 	DC(ctx context.Context, dc int, max int64) (telegram.CloseInvoker, error)

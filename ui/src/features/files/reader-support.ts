@@ -19,7 +19,3 @@ export function readerKind(file: FileEntry): ReaderKind | undefined {
   }
   return undefined;
 }
-
-export function supportsReader(file: FileEntry) {
-  return readerKind(file) !== undefined;
-}

@@ -240,7 +240,7 @@ const PHOTOS_NAV: AppNavItem[] = [
     to: "/photos",
     search: { mode: "timeline" },
     isActive: (pathname, search) =>
-      pathname.startsWith("/photos") && (!search.mode || search.mode === "timeline"),
+      normalizeAppPath(pathname) === "/photos" && (!search.mode || search.mode === "timeline"),
   },
   {
     key: "photos-favorites",
@@ -248,7 +248,8 @@ const PHOTOS_NAV: AppNavItem[] = [
     icon: HeartIcon,
     to: "/photos",
     search: { mode: "favorites" },
-    isActive: (pathname, search) => pathname.startsWith("/photos") && search.mode === "favorites",
+    isActive: (pathname, search) =>
+      normalizeAppPath(pathname) === "/photos" && search.mode === "favorites",
   },
   {
     key: "photos-albums",
@@ -256,7 +257,8 @@ const PHOTOS_NAV: AppNavItem[] = [
     icon: FolderPlusIcon,
     to: "/photos",
     search: { mode: "albums" },
-    isActive: (pathname, search) => pathname.startsWith("/photos") && search.mode === "albums",
+    isActive: (pathname, search) =>
+      normalizeAppPath(pathname) === "/photos" && search.mode === "albums",
   },
   {
     key: "photos-videos",
@@ -264,7 +266,8 @@ const PHOTOS_NAV: AppNavItem[] = [
     icon: VideoFileIcon,
     to: "/photos",
     search: { mode: "videos" },
-    isActive: (pathname, search) => pathname.startsWith("/photos") && search.mode === "videos",
+    isActive: (pathname, search) =>
+      normalizeAppPath(pathname) === "/photos" && search.mode === "videos",
   },
   {
     key: "photos-screenshots",
@@ -272,7 +275,8 @@ const PHOTOS_NAV: AppNavItem[] = [
     icon: PictureIcon,
     to: "/photos",
     search: { mode: "screenshots" },
-    isActive: (pathname, search) => pathname.startsWith("/photos") && search.mode === "screenshots",
+    isActive: (pathname, search) =>
+      normalizeAppPath(pathname) === "/photos" && search.mode === "screenshots",
   },
   {
     key: "photos-recent",
@@ -280,7 +284,8 @@ const PHOTOS_NAV: AppNavItem[] = [
     icon: TasksIcon,
     to: "/photos",
     search: { mode: "recent" },
-    isActive: (pathname, search) => pathname.startsWith("/photos") && search.mode === "recent",
+    isActive: (pathname, search) =>
+      normalizeAppPath(pathname) === "/photos" && search.mode === "recent",
   },
   {
     key: "photos-settings",
@@ -446,7 +451,7 @@ function Sidebar({
 
   const triggerPhotosAction = async (action: WorkspaceAction) => {
     onNavigate?.();
-    if (!pathname.startsWith("/photos")) {
+    if (normalizeAppPath(pathname) !== "/photos") {
       await navigate({ to: "/photos" });
       window.setTimeout(() => dispatchWorkspaceAction(action), 80);
       return;
@@ -1154,7 +1159,18 @@ function TopBar({
           isIconOnly
           variant="ghost"
           className="size-9 rounded-full text-[#444746] dark:text-[#c4c7c5]"
-          onPress={() => void navigate({ to: "/settings" })}
+          onPress={() =>
+            void navigate({
+              to:
+                activeApp === "photos"
+                  ? "/photos/settings"
+                  : activeApp === "docs"
+                    ? "/docs/settings"
+                    : activeApp === "one"
+                      ? "/one"
+                      : "/drive/settings",
+            })
+          }
           aria-label={t("title.settings")}
         >
           <SettingsIcon className="size-4.5" />
@@ -1203,7 +1219,7 @@ function HeaderAccountAvatar() {
       await logout.mutateAsync({});
       await clearDocumentCache().catch(() => {});
       getQueryClient().clear();
-      await navigate({ to: "/login", search: { redirect: "/files" }, replace: true });
+      await navigate({ to: "/login", search: { redirect: "/drive/files" }, replace: true });
     } catch (error) {
       toast.error(t("account.logoutFailed"), { description: userMessage(error) });
     }

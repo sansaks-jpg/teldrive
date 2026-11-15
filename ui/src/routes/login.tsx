@@ -72,9 +72,10 @@ function LoginPage() {
   const submitPhone = async () => {
     try {
       if (step === "phone") {
+        const normalizedPhone = phone.replace(/[\s().-]/g, "");
         const result = (await startPhone.mutateAsync({
           params: { header: { "Idempotency-Key": newIdempotencyKey() } },
-          body: { phoneNumber: phone.trim() },
+          body: { phoneNumber: normalizedPhone },
         })) as Flow;
         setFlowId(result.flowId);
         setStep(result.passwordRequired ? "password" : "code");

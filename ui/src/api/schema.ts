@@ -2217,6 +2217,12 @@ export interface components {
             /** Format: int64 */
             storageUsedBytes: number;
             /** Format: int64 */
+            activeFiles: number;
+            /** Format: int64 */
+            activeBytes: number;
+            /** Format: int64 */
+            trashBytes: number;
+            /** Format: int64 */
             storageQuotaBytes?: number;
             /** Format: date-time */
             createdAt: string;

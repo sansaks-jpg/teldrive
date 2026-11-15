@@ -1,4 +1,4 @@
-import { Button, Chip, Input, Label, Spinner, TextField } from "@heroui/react";
+import { Button, Input, Label, Spinner, TextField } from "@heroui/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -99,26 +99,9 @@ function AccountSettings() {
       />
       <SettingsSection title={t("account.profile")} description={t("account.profileDesc")}>
         <SettingsRow label={displayName} description={secondaryText}>
-          <div className="flex justify-end">
-            <Chip
-              variant="tertiary"
-              color={
-                user.data.role === "owner"
-                  ? "accent"
-                  : user.data.role === "admin"
-                    ? "warning"
-                    : "default"
-              }
-            >
-              {t(
-                user.data.role === "owner"
-                  ? "account.roleOwner"
-                  : user.data.role === "admin"
-                    ? "account.roleAdmin"
-                    : "account.roleUser",
-              )}
-            </Chip>
-          </div>
+          <p className="text-right text-sm text-muted">
+            {user.data.email || (user.data.username ? `@${user.data.username}` : "—")}
+          </p>
         </SettingsRow>
         <SettingsRow label={t("account.created")} description={t("account.createdDesc")}>
           <p className="text-right text-sm text-muted">
@@ -185,11 +168,6 @@ function AccountSettings() {
             {user.data.storageQuotaBytes != null
               ? `${formatBytes(stats.data.totalBytes)} / ${formatBytes(user.data.storageQuotaBytes)}`
               : formatBytes(stats.data.totalBytes)}
-          </p>
-        </SettingsRow>
-        <SettingsRow label={t("account.openUploads")}>
-          <p className="text-right font-mono text-sm">
-            {formatCount.format(stats.data.openUploads)}
           </p>
         </SettingsRow>
       </SettingsSection>

@@ -7904,6 +7904,9 @@ components:
         - role
         - disabled
         - storageUsedBytes
+        - activeFiles
+        - activeBytes
+        - trashBytes
         - createdAt
         - updatedAt
       properties:
@@ -7925,6 +7928,15 @@ components:
         disabled:
           type: boolean
         storageUsedBytes:
+          type: integer
+          format: int64
+        activeFiles:
+          type: integer
+          format: int64
+        activeBytes:
+          type: integer
+          format: int64
+        trashBytes:
           type: integer
           format: int64
         storageQuotaBytes:

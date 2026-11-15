@@ -486,6 +486,9 @@ type AdminUserSummary struct {
 	Role              UserRole  `json:"role"`
 	Disabled          bool      `json:"disabled"`
 	StorageUsedBytes  int64     `json:"storageUsedBytes"`
+	ActiveFiles       int64     `json:"activeFiles"`
+	ActiveBytes       int64     `json:"activeBytes"`
+	TrashBytes        int64     `json:"trashBytes"`
 	StorageQuotaBytes OptInt64  `json:"storageQuotaBytes"`
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
@@ -534,6 +537,21 @@ func (s *AdminUserSummary) GetDisabled() bool {
 // GetStorageUsedBytes returns the value of StorageUsedBytes.
 func (s *AdminUserSummary) GetStorageUsedBytes() int64 {
 	return s.StorageUsedBytes
+}
+
+// GetActiveFiles returns the value of ActiveFiles.
+func (s *AdminUserSummary) GetActiveFiles() int64 {
+	return s.ActiveFiles
+}
+
+// GetActiveBytes returns the value of ActiveBytes.
+func (s *AdminUserSummary) GetActiveBytes() int64 {
+	return s.ActiveBytes
+}
+
+// GetTrashBytes returns the value of TrashBytes.
+func (s *AdminUserSummary) GetTrashBytes() int64 {
+	return s.TrashBytes
 }
 
 // GetStorageQuotaBytes returns the value of StorageQuotaBytes.
@@ -594,6 +612,21 @@ func (s *AdminUserSummary) SetDisabled(val bool) {
 // SetStorageUsedBytes sets the value of StorageUsedBytes.
 func (s *AdminUserSummary) SetStorageUsedBytes(val int64) {
 	s.StorageUsedBytes = val
+}
+
+// SetActiveFiles sets the value of ActiveFiles.
+func (s *AdminUserSummary) SetActiveFiles(val int64) {
+	s.ActiveFiles = val
+}
+
+// SetActiveBytes sets the value of ActiveBytes.
+func (s *AdminUserSummary) SetActiveBytes(val int64) {
+	s.ActiveBytes = val
+}
+
+// SetTrashBytes sets the value of TrashBytes.
+func (s *AdminUserSummary) SetTrashBytes(val int64) {
+	s.TrashBytes = val
 }
 
 // SetStorageQuotaBytes sets the value of StorageQuotaBytes.

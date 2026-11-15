@@ -37,6 +37,7 @@ const router = createRouter({
   routeTree,
   context: { queryClient },
   defaultPreload: "intent",
+  trailingSlash: "never",
 });
 
 declare module "@tanstack/react-router" {

@@ -4,7 +4,6 @@ import { useState } from "react";
 import ArrowDownIcon from "~icons/gravity-ui/arrow-down";
 import ArrowUpIcon from "~icons/gravity-ui/arrow-up";
 import ChevronDownIcon from "~icons/gravity-ui/chevron-down";
-import CleanupIcon from "~icons/gravity-ui/trash-bin";
 import CloseIcon from "~icons/gravity-ui/xmark";
 import { $api } from "@/api/client";
 import { queryClient } from "@/api/query-client";
@@ -17,7 +16,7 @@ import { Page } from "@/components/page";
 import { startFileDownload } from "@/features/files/download";
 import { FileTypeIcon } from "@/features/files/file-type-icon";
 import { useInfiniteFilePages } from "@/features/files/queries";
-import { useCountFormatter, useDateOnlyFormatter, useFormatBytes } from "@/lib/format";
+import { useDateOnlyFormatter, useFormatBytes } from "@/lib/format";
 import { useCurrentUser } from "@/auth/use-current-user";
 import { useAppLocale } from "@/lib/locale";
 
@@ -90,7 +89,6 @@ function StoragePage() {
   const currentUser = useCurrentUser();
   const { t } = useAppLocale();
   const formatBytes = useFormatBytes();
-  const formatCount = useCountFormatter();
   const [filterType, setFilterType] = useState<"all" | "document" | "media" | "audio" | "archive">(
     "all",
   );
@@ -145,11 +143,11 @@ function StoragePage() {
     (categoryMap.get("other") ?? 0);
   const segments: StorageSegment[] = [
     {
-      id: "video",
-      label: categoryLabel(t, "video"),
-      bytes: categoryMap.get("video") ?? 0,
-      colorClass: "bg-[#ea4335]",
-      dotClass: "bg-[#ea4335]",
+      id: "document",
+      label: categoryLabel(t, "document"),
+      bytes: categoryMap.get("document") ?? 0,
+      colorClass: "bg-[#1a73e8]",
+      dotClass: "bg-[#1a73e8]",
     },
     {
       id: "image",
@@ -159,11 +157,11 @@ function StoragePage() {
       dotClass: "bg-[#fbbc04]",
     },
     {
-      id: "document",
-      label: categoryLabel(t, "document"),
-      bytes: categoryMap.get("document") ?? 0,
-      colorClass: "bg-[#1a73e8]",
-      dotClass: "bg-[#1a73e8]",
+      id: "video",
+      label: categoryLabel(t, "video"),
+      bytes: categoryMap.get("video") ?? 0,
+      colorClass: "bg-[#ea4335]",
+      dotClass: "bg-[#ea4335]",
     },
     {
       id: "other",
@@ -176,8 +174,8 @@ function StoragePage() {
       id: "trash",
       label: t("storage.trash"),
       bytes: summary.trashBytes,
-      colorClass: "bg-muted/50",
-      dotClass: "bg-muted/50",
+      colorClass: "bg-muted/55",
+      dotClass: "bg-muted/55",
     },
   ];
   const combinedPoolBytes = summary.logicalBytes + summary.trashBytes;
@@ -195,11 +193,11 @@ function StoragePage() {
 
   const filterModifiedLabel =
     filterModified === "today"
-      ? "Today"
+      ? t("storage.filterToday")
       : filterModified === "week"
-        ? "Last 7 days"
+        ? t("storage.filterWeek")
         : filterModified === "month"
-          ? "Last 30 days"
+          ? t("storage.filterMonth")
           : t("manager.sortModified");
 
   const toggleSort = (col: "name" | "size") => {
@@ -212,21 +210,19 @@ function StoragePage() {
   };
 
   return (
-    <Page className="gap-5 p-3 sm:p-5">
+    <Page className="gap-5 p-3 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-normal tracking-tight text-foreground sm:text-2xl">
           {t("storage.title")}
         </h1>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            onPress={() => setShowAnalytics((prev) => !prev)}
-            className="h-8 rounded-full px-3 text-xs font-medium text-muted hover:text-foreground"
-          >
-            {showAnalytics ? "Hide analytics" : "Analytics"}
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onPress={() => setShowAnalytics((prev) => !prev)}
+          className="h-8 rounded-full px-3 text-xs font-medium text-muted hover:text-foreground"
+        >
+          {showAnalytics ? t("storage.hideAnalytics") : t("storage.analytics")}
+        </Button>
       </div>
 
       {/* Google Drive-style Filter Chips */}
@@ -275,7 +271,7 @@ function StoragePage() {
               isIconOnly
               size="sm"
               variant="ghost"
-              aria-label="Clear type filter"
+              aria-label={t("storage.clearTypeFilter")}
               onPress={() => setFilterType("all")}
               className="h-8 w-7 rounded-l-none rounded-r-lg border border-[#0b57d0]/40 bg-[#c2e7ff]/60 text-[#001d35] hover:bg-[#c2e7ff] dark:border-[#a8c7fa]/40 dark:bg-[#004a77] dark:text-[#c2e7ff] dark:hover:bg-[#004a77]/80"
             >
@@ -308,14 +304,14 @@ function StoragePage() {
                 <Dropdown.Item id="all" textValue={t("drive.filterAll")}>
                   <Label>{t("drive.filterAll")}</Label>
                 </Dropdown.Item>
-                <Dropdown.Item id="today" textValue="Today">
-                  <Label>Today</Label>
+                <Dropdown.Item id="today" textValue={t("storage.filterToday")}>
+                  <Label>{t("storage.filterToday")}</Label>
                 </Dropdown.Item>
-                <Dropdown.Item id="week" textValue="Last 7 days">
-                  <Label>Last 7 days</Label>
+                <Dropdown.Item id="week" textValue={t("storage.filterWeek")}>
+                  <Label>{t("storage.filterWeek")}</Label>
                 </Dropdown.Item>
-                <Dropdown.Item id="month" textValue="Last 30 days">
-                  <Label>Last 30 days</Label>
+                <Dropdown.Item id="month" textValue={t("storage.filterMonth")}>
+                  <Label>{t("storage.filterMonth")}</Label>
                 </Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown.Popover>
@@ -325,7 +321,7 @@ function StoragePage() {
               isIconOnly
               size="sm"
               variant="ghost"
-              aria-label="Clear modified filter"
+              aria-label={t("storage.clearModifiedFilter")}
               onPress={() => setFilterModified("all")}
               className="h-8 w-7 rounded-l-none rounded-r-lg border border-[#0b57d0]/40 bg-[#c2e7ff]/60 text-[#001d35] hover:bg-[#c2e7ff] dark:border-[#a8c7fa]/40 dark:bg-[#004a77] dark:text-[#c2e7ff] dark:hover:bg-[#004a77]/80"
             >
@@ -336,21 +332,15 @@ function StoragePage() {
       </div>
 
       {/* Google Drive-style Storage Summary */}
-      <div className="grid gap-3.5 py-1">
+      <div className="grid gap-3 py-1">
         <div className="flex flex-wrap items-baseline gap-2">
           <span className="text-3xl font-normal tabular-nums tracking-tight text-foreground sm:text-[32px]">
-            {formatBytes(summary.logicalBytes + summary.trashBytes)}
+            {formatBytes(combinedPoolBytes)}
           </span>
           <span className="text-sm text-muted">
             {quotaBytes != null
-              ? t("storage.usedOfQuota", {
-                  quota: formatBytes(quotaBytes),
-                  files: formatCount.format(summary.activeFiles),
-                })
-              : t("one.heroUsed", {
-                  bytes: "",
-                  files: formatCount.format(summary.activeFiles),
-                }).trim()}
+              ? t("storage.usedOfQuotaClean", { quota: formatBytes(quotaBytes) })
+              : t("storage.usedTotalClean")}
           </span>
         </div>
 
@@ -363,18 +353,20 @@ function StoragePage() {
         />
 
         <div className="flex flex-wrap items-center gap-3 pt-1">
+          <LinkButton
+            to="/trash"
+            size="sm"
+            variant="ghost"
+            className="h-8 rounded-full px-3 text-xs font-medium text-[#0b57d0] hover:bg-[#0b57d0]/10 dark:text-[#a8c7fa] dark:hover:bg-[#a8c7fa]/10"
+          >
+            {t("storage.freeUpSpace")}
+          </LinkButton>
           {data.cleanup.totalReclaimableBytes > 0 ? (
-            <LinkButton
-              to="/trash"
-              size="sm"
-              variant="ghost"
-              className="h-9 rounded-full px-3 text-xs font-medium text-[#0b57d0] hover:bg-[#0b57d0]/10 dark:text-[#a8c7fa] dark:hover:bg-[#a8c7fa]/10"
-            >
-              <CleanupIcon className="size-3.5" />
-              {t("one.trashReclaim", {
+            <span className="text-xs text-muted">
+              {t("storage.reclaimableTrash", {
                 bytes: formatBytes(data.cleanup.totalReclaimableBytes),
               })}
-            </LinkButton>
+            </span>
           ) : null}
         </div>
       </div>
@@ -406,33 +398,37 @@ function StoragePage() {
 
       {/* Files taking up space table */}
       <div className="min-w-0">
-        <div className="grid grid-cols-[minmax(0,1fr)_8rem] items-center border-b border-border/60 px-3 py-2 text-xs font-medium text-muted">
+        <div className="grid grid-cols-[minmax(0,1fr)_9.5rem] items-center border-b border-border/60 px-3 py-2 text-xs font-medium text-muted">
           <button
             type="button"
             onClick={() => toggleSort("name")}
-            className="flex w-fit items-center gap-1 rounded px-1 py-0.5 text-left transition-colors hover:bg-default/40 hover:text-foreground"
+            className="flex w-fit items-center gap-1.5 rounded px-1 py-0.5 text-left transition-colors hover:bg-default/40 hover:text-foreground"
           >
             <span>{t("manager.sortName")}</span>
             {sortBy === "name" ? (
-              sortOrder === "asc" ? (
-                <ArrowUpIcon className="size-3.5 text-foreground" />
-              ) : (
-                <ArrowDownIcon className="size-3.5 text-foreground" />
-              )
+              <span className="inline-flex size-5 items-center justify-center rounded-full bg-[#c2e7ff] text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]">
+                {sortOrder === "asc" ? (
+                  <ArrowUpIcon className="size-3" />
+                ) : (
+                  <ArrowDownIcon className="size-3" />
+                )}
+              </span>
             ) : null}
           </button>
           <button
             type="button"
             onClick={() => toggleSort("size")}
-            className="ml-auto flex w-fit items-center gap-1 rounded px-1 py-0.5 text-right transition-colors hover:bg-default/40 hover:text-foreground"
+            className="ml-auto flex w-fit items-center gap-1.5 rounded px-1 py-0.5 text-right transition-colors hover:bg-default/40 hover:text-foreground"
           >
-            <span>{t("manager.sortSize")}</span>
+            <span>{t("storage.columnUsed")}</span>
             {sortBy === "size" ? (
-              sortOrder === "asc" ? (
-                <ArrowUpIcon className="size-3.5 text-foreground" />
-              ) : (
-                <ArrowDownIcon className="size-3.5 text-foreground" />
-              )
+              <span className="inline-flex size-5 items-center justify-center rounded-full bg-[#c2e7ff] text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]">
+                {sortOrder === "asc" ? (
+                  <ArrowUpIcon className="size-3" />
+                ) : (
+                  <ArrowDownIcon className="size-3" />
+                )}
+              </span>
             ) : null}
           </button>
         </div>
@@ -442,7 +438,22 @@ function StoragePage() {
             <Spinner size="md" />
           </div>
         ) : files.length === 0 ? (
-          <div className="py-14 text-center text-sm text-muted">No files match these filters.</div>
+          <div className="py-14 text-center text-sm text-muted">
+            <p>{t("storage.emptyFiltered")}</p>
+            {filterType !== "all" || filterModified !== "all" ? (
+              <Button
+                size="sm"
+                variant="tertiary"
+                className="mt-3 rounded-full"
+                onPress={() => {
+                  setFilterType("all");
+                  setFilterModified("all");
+                }}
+              >
+                {t("drive.filterAll")}
+              </Button>
+            ) : null}
+          </div>
         ) : (
           <div>
             {files.map((file) => (
@@ -456,11 +467,11 @@ function StoragePage() {
                     startFileDownload(file);
                   }
                 }}
-                className="grid h-11 w-full grid-cols-[minmax(0,1fr)_8rem] items-center border-b border-border/40 px-3 text-left transition-colors hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]/70"
+                className="grid h-11 w-full grid-cols-[minmax(0,1fr)_9.5rem] items-center border-b border-border/40 px-3 text-left transition-colors hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]/70"
               >
                 <div className="flex min-w-0 items-center gap-3 pr-3">
                   <FileTypeIcon file={file} className="size-4.5 shrink-0" />
-                  <span className="truncate text-sm font-medium text-foreground">{file.name}</span>
+                  <span className="truncate text-sm font-normal text-foreground">{file.name}</span>
                 </div>
                 <span className="text-right text-xs tabular-nums text-muted">
                   {formatBytes(file.size ?? 0)}
@@ -475,7 +486,7 @@ function StoragePage() {
                   isDisabled={filesQuery.isFetchingNextPage}
                   onPress={() => void filesQuery.fetchNextPage()}
                 >
-                  {filesQuery.isFetchingNextPage ? "Loading..." : "Load more"}
+                  {filesQuery.isFetchingNextPage ? t("storage.loadingMore") : t("storage.loadMore")}
                 </Button>
               </div>
             ) : null}

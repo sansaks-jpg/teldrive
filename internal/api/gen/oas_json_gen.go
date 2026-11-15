@@ -1902,6 +1902,18 @@ func (s *AdminUserSummary) encodeFields(e *jx.Encoder) {
 		e.Int64(s.StorageUsedBytes)
 	}
 	{
+		e.FieldStart("activeFiles")
+		e.Int64(s.ActiveFiles)
+	}
+	{
+		e.FieldStart("activeBytes")
+		e.Int64(s.ActiveBytes)
+	}
+	{
+		e.FieldStart("trashBytes")
+		e.Int64(s.TrashBytes)
+	}
+	{
 		if s.StorageQuotaBytes.Set {
 			e.FieldStart("storageQuotaBytes")
 			s.StorageQuotaBytes.Encode(e)
@@ -1917,7 +1929,7 @@ func (s *AdminUserSummary) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfAdminUserSummary = [12]string{
+var jsonFieldsNameOfAdminUserSummary = [15]string{
 	0:  "userId",
 	1:  "email",
 	2:  "displayName",
@@ -1927,9 +1939,12 @@ var jsonFieldsNameOfAdminUserSummary = [12]string{
 	6:  "role",
 	7:  "disabled",
 	8:  "storageUsedBytes",
-	9:  "storageQuotaBytes",
-	10: "createdAt",
-	11: "updatedAt",
+	9:  "activeFiles",
+	10: "activeBytes",
+	11: "trashBytes",
+	12: "storageQuotaBytes",
+	13: "createdAt",
+	14: "updatedAt",
 }
 
 // Decode decodes AdminUserSummary from json.
@@ -2041,6 +2056,42 @@ func (s *AdminUserSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"storageUsedBytes\"")
 			}
+		case "activeFiles":
+			requiredBitSet[1] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int64()
+				s.ActiveFiles = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"activeFiles\"")
+			}
+		case "activeBytes":
+			requiredBitSet[1] |= 1 << 2
+			if err := func() error {
+				v, err := d.Int64()
+				s.ActiveBytes = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"activeBytes\"")
+			}
+		case "trashBytes":
+			requiredBitSet[1] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int64()
+				s.TrashBytes = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"trashBytes\"")
+			}
 		case "storageQuotaBytes":
 			if err := func() error {
 				s.StorageQuotaBytes.Reset()
@@ -2052,7 +2103,7 @@ func (s *AdminUserSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"storageQuotaBytes\"")
 			}
 		case "createdAt":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -2064,7 +2115,7 @@ func (s *AdminUserSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"createdAt\"")
 			}
 		case "updatedAt":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.UpdatedAt = v
@@ -2086,7 +2137,7 @@ func (s *AdminUserSummary) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11110001,
-		0b00001101,
+		0b01101111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

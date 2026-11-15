@@ -29,6 +29,7 @@ import {
   GoogleOneBrandIcon,
   GooglePhotosBrandIcon,
   getWorkspaceApp,
+  normalizeAppPath,
   WaffleGridIcon,
   type WorkspaceAction,
   type WorkspaceAppId,
@@ -148,9 +149,11 @@ const MOBILE_DRIVE_NAV: AppNavItem[] = [
     icon: FolderIcon,
     activeIcon: FolderFillIcon,
     to: "/files",
-    search: {},
+    search: { path: "/", query: "", view: "list" },
     isActive: (pathname, search) =>
-      pathname.startsWith("/files") && search.recent !== true && search.bookmarked !== true,
+      normalizeAppPath(pathname).startsWith("/files") &&
+      search.recent !== true &&
+      search.bookmarked !== true,
   },
 ];
 
@@ -160,9 +163,11 @@ const DRIVE_NAV: AppNavItem[] = [
     labelKey: "nav.files",
     icon: FolderIcon,
     to: "/files",
-    search: {},
+    search: { path: "/", query: "", view: "list" },
     isActive: (pathname, search) =>
-      pathname.startsWith("/files") && search.recent !== true && search.bookmarked !== true,
+      normalizeAppPath(pathname).startsWith("/files") &&
+      search.recent !== true &&
+      search.bookmarked !== true,
   },
   {
     key: "recent",
@@ -170,7 +175,8 @@ const DRIVE_NAV: AppNavItem[] = [
     icon: TasksIcon,
     to: "/files",
     search: { recent: true },
-    isActive: (pathname, search) => pathname.startsWith("/files") && search.recent === true,
+    isActive: (pathname, search) =>
+      normalizeAppPath(pathname).startsWith("/files") && search.recent === true,
   },
   {
     key: "bookmarks",
@@ -179,28 +185,40 @@ const DRIVE_NAV: AppNavItem[] = [
     to: "/files",
     search: { bookmarked: true },
     isActive: (pathname, search) =>
-      pathname.startsWith("/files") && search.bookmarked === true && search.recent !== true,
+      normalizeAppPath(pathname).startsWith("/files") &&
+      search.bookmarked === true &&
+      search.recent !== true,
   },
   {
     key: "sharedWithMe",
     labelKey: "nav.sharedWithMe",
     icon: FolderPlusIcon,
     to: "/shared-with-me",
-    isActive: (pathname) => pathname.startsWith("/shared-with-me"),
+    isActive: (pathname) => normalizeAppPath(pathname).startsWith("/shared-with-me"),
   },
   {
     key: "shared",
     labelKey: "nav.shared",
     icon: ShieldIcon,
     to: "/shared",
-    isActive: (pathname) => pathname === "/shared" || pathname.startsWith("/shared/"),
+    isActive: (pathname) => {
+      const p = normalizeAppPath(pathname);
+      return p === "/shared" || p.startsWith("/shared/");
+    },
   },
   {
     key: "trash",
     labelKey: "nav.trash",
     icon: TrashIcon,
     to: "/trash",
-    isActive: (pathname) => pathname.startsWith("/trash"),
+    isActive: (pathname) => normalizeAppPath(pathname).startsWith("/trash"),
+  },
+  {
+    key: "storage",
+    labelKey: "nav.storage",
+    icon: StorageIcon,
+    to: "/storage",
+    isActive: (pathname) => normalizeAppPath(pathname) === "/storage",
   },
 ];
 
@@ -256,39 +274,7 @@ const PHOTOS_NAV: AppNavItem[] = [
   },
 ];
 
-const ONE_NAV: AppNavItem[] = [
-  {
-    key: "storage",
-    labelKey: "nav.storage",
-    icon: StorageIcon,
-    to: "/storage",
-    isActive: (pathname) => pathname.startsWith("/storage"),
-  },
-  {
-    key: "admin",
-    labelKey: "apps.one",
-    icon: ShieldIcon,
-    to: "/one",
-    capability: "system.manageUsers",
-    isActive: (pathname) => pathname.startsWith("/one") || pathname.startsWith("/admin"),
-  },
-  {
-    key: "tasks",
-    labelKey: "nav.tasks",
-    icon: TasksIcon,
-    to: "/tasks",
-    search: { status: "running", query: "" },
-    capability: "system.manageJobs",
-    isActive: (pathname) => pathname.startsWith("/tasks"),
-  },
-  {
-    key: "settings",
-    labelKey: "title.settings",
-    icon: SettingsIcon,
-    to: "/settings",
-    isActive: (pathname) => pathname.startsWith("/settings"),
-  },
-];
+const ONE_NAV: AppNavItem[] = [];
 
 const DOCS_NAV: AppNavItem[] = [
   {
@@ -364,12 +350,11 @@ function Sidebar({
   const ActiveBrandIcon = appMeta.brand;
   const { data: user } = useQuery(currentUserQueryOptions());
   const capabilities = user?.capabilities ?? [];
-  const canManageJobs = capabilities.includes("system.manageJobs");
   const canLocalImport = capabilities.includes("system.localImport");
   const visibleNav = getNavForApp(activeApp, capabilities).filter((item) => {
     if (!mobile || activeApp !== "drive") return true;
     // Bottom bar handles Home (recent), Bookmarks, Shared, and Files on mobile Drive.
-    return item.key === "trash";
+    return item.key === "trash" || item.key === "storage";
   });
 
   const storageQuery = $api.useQuery(
@@ -587,23 +572,28 @@ function Sidebar({
 
       <nav aria-label={t("sidebar.nav")} className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
         {visibleNav.map(renderItem)}
-        {mobile && activeApp === "drive" && canManageJobs ? (
+        {(!collapsed || mobile) && storageStats && activeApp === "drive" ? (
           <Link
-            to="/tasks"
-            search={{ status: "running", query: "" }}
-            activeOptions={{ includeSearch: false }}
-            preload="intent"
-            className={cn(
-              buttonVariants({ variant: "ghost" }),
-              "h-10 w-full justify-start rounded-full px-3 text-sm font-medium",
-              pathname.startsWith("/tasks")
-                ? "bg-accent/10 bg-[#c2e7ff]! font-semibold text-[#001d35]! dark:bg-[#004a77]! dark:text-[#c2e7ff]!"
-                : "text-[#444746] hover:bg-[#e1e5ea]/70 hover:text-foreground dark:text-[#c4c7c5] dark:hover:bg-[#333538]/70",
-            )}
+            to="/storage"
             onClick={() => onNavigate?.()}
+            className="block px-3 pb-2 pt-1.5 text-left transition-opacity hover:opacity-85"
           >
-            <TasksIcon className="size-4 shrink-0" />
-            <span className="ml-3 truncate">{t("nav.tasks")}</span>
+            <div className="h-1 w-full overflow-hidden rounded-full bg-[#e1e5ea] dark:bg-[#333538]">
+              <div
+                className="h-full rounded-full bg-[#0b57d0] transition-[width] dark:bg-[#7cd0e3]"
+                style={{ width: `${storageFillPct}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs tabular-nums text-[#444746] dark:text-[#c4c7c5]">
+              {quotaBytes != null
+                ? t("storage.sidebarQuota", {
+                    used: formatBytes(storageStats.totalBytes),
+                    quota: formatBytes(quotaBytes),
+                  })
+                : t("storage.sidebarUsedOnly", {
+                    used: formatBytes(storageStats.totalBytes),
+                  })}
+            </p>
           </Link>
         ) : null}
         {mobile ? (
@@ -614,7 +604,7 @@ function Sidebar({
             className={cn(
               buttonVariants({ variant: "ghost" }),
               "h-10 w-full justify-start rounded-full px-3 text-sm font-medium",
-              pathname.startsWith("/settings")
+              normalizeAppPath(pathname).startsWith("/settings")
                 ? "bg-accent/10 bg-[#c2e7ff]! font-semibold text-[#001d35]! dark:bg-[#004a77]! dark:text-[#c2e7ff]!"
                 : "text-[#444746] hover:bg-[#e1e5ea]/70 hover:text-foreground dark:text-[#c4c7c5] dark:hover:bg-[#333538]/70",
             )}
@@ -625,32 +615,6 @@ function Sidebar({
           </Link>
         ) : null}
       </nav>
-
-      {(!collapsed || mobile) && storageStats ? (
-        <Link
-          to="/storage"
-          onClick={() => onNavigate?.()}
-          className="mx-3 mb-3 block rounded-2xl border border-border/40 bg-surface/80 p-3 transition-colors hover:bg-surface"
-        >
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <span className="font-medium text-foreground">{t("nav.storage")}</span>
-            <span className="tabular-nums text-muted">
-              {quotaBytes != null
-                ? `${formatBytes(storageStats.totalBytes)} / ${formatBytes(quotaBytes)}`
-                : formatBytes(storageStats.totalBytes)}
-            </span>
-          </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-default/40">
-            <div
-              className="h-full rounded-full bg-accent transition-[width]"
-              style={{ width: `${storageFillPct}%` }}
-            />
-          </div>
-          <p className="mt-1.5 text-[11px] text-muted">
-            {t("admin.metricFilesCount", { count: storageStats.totalFiles })}
-          </p>
-        </Link>
-      ) : null}
 
       <div className="border-t border-border/50 px-3 py-3">
         {!mobile && (
@@ -1264,19 +1228,12 @@ function AppSwitcher() {
   const { t } = useAppLocale();
   const pathname = useLocation({ select: (location) => location.pathname });
   const activeApp = getWorkspaceApp(pathname);
-  const { data: user } = useQuery(currentUserQueryOptions());
-  const isAdmin = Boolean(user?.capabilities.includes("system.manageUsers"));
-  const canManageJobs = Boolean(user?.capabilities.includes("system.manageJobs"));
   const [open, setOpen] = useState(false);
 
-  const go = (
-    path: "/files" | "/photos" | "/one" | "/storage" | "/docs" | "/tasks" | "/settings",
-  ) => {
+  const go = (path: "/files" | "/photos" | "/storage" | "/docs" | "/settings") => {
     setOpen(false);
     if (path === "/files") {
       void navigate({ to: "/files", search: { path: "/", query: "", view: "list" } });
-    } else if (path === "/tasks") {
-      void navigate({ to: "/tasks", search: { status: "running", query: "" } });
     } else {
       void navigate({ to: path });
     }
@@ -1298,7 +1255,7 @@ function AppSwitcher() {
             {t("apps.workspaceSwitch")}
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Button
             variant="ghost"
             onPress={() => go("/files")}
@@ -1327,21 +1284,6 @@ function AppSwitcher() {
             </div>
             <span className="text-xs font-semibold">{t("apps.photos")}</span>
           </Button>
-          {isAdmin ? (
-            <Button
-              variant="ghost"
-              onPress={() => go("/one")}
-              className={cn(
-                "h-auto flex-col items-center gap-2 rounded-2xl p-3 text-center",
-                activeApp === "one" ? "bg-accent/10 text-foreground" : "hover:bg-surface-secondary",
-              )}
-            >
-              <div className="flex size-11 items-center justify-center rounded-2xl bg-surface-secondary">
-                <GoogleOneBrandIcon className="size-6.5" />
-              </div>
-              <span className="text-xs font-semibold">{t("apps.one")}</span>
-            </Button>
-          ) : null}
           <Button
             variant="ghost"
             onPress={() => go("/docs")}
@@ -1353,7 +1295,7 @@ function AppSwitcher() {
             <div className="flex size-11 items-center justify-center rounded-2xl bg-surface-secondary">
               <GoogleDocsBrandIcon className="size-6.5" />
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-col items-center gap-0.5">
               <span className="text-xs font-semibold">{t("apps.docs")}</span>
               <Chip size="sm" variant="soft" className="h-4 px-1.5 text-[9px]">
                 {t("apps.soonBadge")}
@@ -1372,17 +1314,6 @@ function AppSwitcher() {
             <StorageIcon className="size-3.5" />
             {t("nav.storage")}
           </Button>
-          {canManageJobs ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 rounded-full px-3 text-xs"
-              onPress={() => go("/tasks")}
-            >
-              <TasksIcon className="size-3.5" />
-              {t("nav.tasks")}
-            </Button>
-          ) : null}
           <Button
             size="sm"
             variant="ghost"
@@ -1400,27 +1331,23 @@ function AppSwitcher() {
 
 function MobileDriveSubTabs() {
   const { t } = useAppLocale();
-  const pathname = useLocation({ select: (location) => location.pathname });
+  const pathname = useLocation({ select: (location) => normalizeAppPath(location.pathname) });
   const routeSearch = useLocation({
     select: (location) => location.search as Record<string, unknown>,
   });
   const activeApp = getWorkspaceApp(pathname);
   const mobileSelection = useMobileSelectionStore((state) => state.selection);
-  const { data: user } = useQuery(currentUserQueryOptions());
-  const canManageJobs = Boolean(user?.capabilities.includes("system.manageJobs"));
 
   if (mobileSelection && mobileSelection.count > 0) return null;
   if (activeApp !== "drive" || pathname.startsWith("/trash") || pathname.startsWith("/search")) {
     return null;
   }
 
-  const inHomeMode =
-    (pathname.startsWith("/files") && routeSearch.recent === true) || pathname.startsWith("/tasks");
   const inSharedRootMode =
     (pathname.startsWith("/shared-with-me") || pathname === "/shared") &&
     !(typeof routeSearch.parentId === "string" && routeSearch.parentId.length > 0);
 
-  if (!inHomeMode && !inSharedRootMode) {
+  if (!inSharedRootMode) {
     return null;
   }
 
@@ -1430,38 +1357,20 @@ function MobileDriveSubTabs() {
     to: AppRoutePath;
     search?: Record<string, unknown>;
     active: boolean;
-  }> = inHomeMode
-    ? canManageJobs
-      ? [
-          {
-            key: "suggested",
-            label: t("drive.suggested"),
-            to: "/files",
-            search: { recent: true },
-            active: pathname.startsWith("/files") && routeSearch.recent === true,
-          },
-          {
-            key: "activity",
-            label: t("drive.activity"),
-            to: "/tasks",
-            active: pathname.startsWith("/tasks"),
-          },
-        ]
-      : []
-    : [
-        {
-          key: "shared-with-me",
-          label: t("nav.sharedWithMe"),
-          to: "/shared-with-me",
-          active: pathname.startsWith("/shared-with-me"),
-        },
-        {
-          key: "shared-by-me",
-          label: t("nav.shared"),
-          to: "/shared",
-          active: pathname === "/shared",
-        },
-      ];
+  }> = [
+    {
+      key: "shared-with-me",
+      label: t("nav.sharedWithMe"),
+      to: "/shared-with-me",
+      active: pathname.startsWith("/shared-with-me"),
+    },
+    {
+      key: "shared-by-me",
+      label: t("nav.shared"),
+      to: "/shared",
+      active: pathname === "/shared",
+    },
+  ];
 
   if (tabs.length === 0) return null;
 
@@ -1725,7 +1634,13 @@ function Layout() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  if (pathname === "/login" || pathname.startsWith("/one") || pathname.startsWith("/share/"))
+  const normalizedPath = normalizeAppPath(pathname);
+  if (
+    normalizedPath === "/login" ||
+    normalizedPath === "/one" ||
+    normalizedPath.startsWith("/one/") ||
+    normalizedPath.startsWith("/share/")
+  )
     return <Outlet />;
   return (
     <AriaRouterProvider
@@ -1801,10 +1716,12 @@ export type RouterContext = {
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ context, location }) => {
+    const normalizedPath = normalizeAppPath(location.pathname);
     if (
-      location.pathname === "/login" ||
-      location.pathname.startsWith("/one") ||
-      location.pathname.startsWith("/share/")
+      normalizedPath === "/login" ||
+      normalizedPath === "/one" ||
+      normalizedPath.startsWith("/one/") ||
+      normalizedPath.startsWith("/share/")
     )
       return;
     try {

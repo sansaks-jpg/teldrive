@@ -185,6 +185,9 @@ model AdminUserSummary {
   role: UserRole;
   disabled: boolean;
   storageUsedBytes: int64;
+  activeFiles: int64;
+  activeBytes: int64;
+  trashBytes: int64;
   storageQuotaBytes?: int64;
   createdAt: utcDateTime;
   updatedAt: utcDateTime;

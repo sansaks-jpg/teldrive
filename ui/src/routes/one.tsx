@@ -33,8 +33,17 @@ import { getQueryClient } from "@/lib/queryClient";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 type OneTab = "overview" | "users" | "telegram" | "bots" | "jobs" | "audit";
+type UserRoleFilter = "all" | "admin" | "member" | "disabled" | "quota";
+type UserSortKey = "storage" | "files" | "newest" | "name";
 type AdminUserSummary = components["schemas"]["AdminUserSummary"];
 type TgStep = "phone" | "code" | "password";
+
+const USER_BAR_COLORS = [
+  { colorClass: "bg-[#1a73e8]", dotClass: "bg-[#1a73e8]" },
+  { colorClass: "bg-[#34a853]", dotClass: "bg-[#34a853]" },
+  { colorClass: "bg-[#fbbc04]", dotClass: "bg-[#fbbc04]" },
+  { colorClass: "bg-[#ea4335]", dotClass: "bg-[#ea4335]" },
+] as const;
 
 const VALID_TABS: readonly OneTab[] = ["overview", "users", "telegram", "bots", "jobs", "audit"];
 
@@ -390,6 +399,8 @@ function OneWorkspaceDashboard({
   const [bindEmail, setBindEmail] = useState(me.email ?? "");
   const [bindPassword, setBindPassword] = useState("");
   const [userSearch, setUserSearch] = useState("");
+  const [userFilter, setUserFilter] = useState<UserRoleFilter>("all");
+  const [userSort, setUserSort] = useState<UserSortKey>("storage");
   const [actionFilter, setActionFilter] = useState("");
   const [quotaInputs, setQuotaInputs] = useState<Record<number, string>>({});
   const [createOpen, setCreateOpen] = useState(false);
@@ -409,7 +420,6 @@ function OneWorkspaceDashboard({
   const [relinkPassword, setRelinkPassword] = useState("");
   const [relinkFlowId, setRelinkFlowId] = useState<string | null>(null);
 
-  const debouncedSearch = useDebouncedValue(userSearch.trim(), 300);
   const debouncedAction = useDebouncedValue(actionFilter.trim(), 300);
 
   const overviewQuery = $api.useQuery("get", "/v1/admin/overview", {}, { staleTime: 10_000 });
@@ -417,7 +427,7 @@ function OneWorkspaceDashboard({
   const usersQuery = $api.useQuery(
     "get",
     "/v1/admin/users",
-    { params: { query: { search: debouncedSearch || undefined } } },
+    {},
     { staleTime: 10_000, placeholderData: keepPreviousData },
   );
   const auditQuery = $api.useQuery(
@@ -654,6 +664,70 @@ function OneWorkspaceDashboard({
   const relinkBusy =
     relinkStart.isPending || relinkVerifyCode.isPending || relinkVerifyPassword.isPending;
 
+  const allUsers = usersQuery.data ?? [];
+  const activeUsersCount = allUsers.filter((entry) => !entry.disabled).length;
+  const disabledUsersCount = allUsers.filter((entry) => entry.disabled).length;
+  const quotaLimitedCount = allUsers.filter((entry) => (entry.storageQuotaBytes ?? 0) > 0).length;
+  const totalUserUsedBytes = allUsers.reduce((sum, entry) => sum + entry.storageUsedBytes, 0);
+
+  const usersSortedByStorage = useMemo(
+    () =>
+      [...allUsers].sort((a, b) => b.storageUsedBytes - a.storageUsedBytes || a.userId - b.userId),
+    [allUsers],
+  );
+
+  const userAllocationSegments: StorageSegment[] = useMemo(() => {
+    const consumers = usersSortedByStorage.filter((entry) => entry.storageUsedBytes > 0);
+    const top: StorageSegment[] = consumers.slice(0, USER_BAR_COLORS.length).map((entry, idx) => ({
+      id: `user-${entry.userId}`,
+      label: entry.displayName || entry.email || entry.username || `User #${entry.userId}`,
+      bytes: entry.storageUsedBytes,
+      colorClass: USER_BAR_COLORS[idx].colorClass,
+      dotClass: USER_BAR_COLORS[idx].dotClass,
+    }));
+    const remainderBytes = consumers
+      .slice(USER_BAR_COLORS.length)
+      .reduce((sum, entry) => sum + entry.storageUsedBytes, 0);
+    if (remainderBytes > 0) {
+      top.push({
+        id: "users-other",
+        label: t("storage.cat.other"),
+        bytes: remainderBytes,
+        colorClass: "bg-muted/60",
+        dotClass: "bg-muted/60",
+      });
+    }
+    return top;
+  }, [t, usersSortedByStorage]);
+
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    const list = allUsers.filter((entry) => {
+      if (userFilter === "admin" && entry.role !== "owner" && entry.role !== "admin") return false;
+      if (userFilter === "member" && entry.role !== "user") return false;
+      if (userFilter === "disabled" && !entry.disabled) return false;
+      if (userFilter === "quota" && !(entry.storageQuotaBytes && entry.storageQuotaBytes > 0))
+        return false;
+      if (!q) return true;
+      return (
+        String(entry.userId).includes(q) ||
+        (entry.displayName ?? "").toLowerCase().includes(q) ||
+        (entry.email ?? "").toLowerCase().includes(q) ||
+        (entry.username ?? "").toLowerCase().includes(q)
+      );
+    });
+    return list.sort((a, b) => {
+      if (userSort === "storage")
+        return b.storageUsedBytes - a.storageUsedBytes || a.userId - b.userId;
+      if (userSort === "files") return b.activeFiles - a.activeFiles || a.userId - b.userId;
+      if (userSort === "newest")
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      const nameA = (a.displayName || a.email || a.username || `User ${a.userId}`).toLowerCase();
+      const nameB = (b.displayName || b.email || b.username || `User ${b.userId}`).toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [allUsers, userFilter, userSearch, userSort]);
+
   return (
     <div className="min-h-dvh bg-[#f8fafd] px-4 py-6 dark:bg-[#131314] sm:px-6 lg:px-10">
       <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -790,7 +864,7 @@ function OneWorkspaceDashboard({
                 <Card className="rounded-2xl border border-border/50 bg-surface p-4">
                   <p className="text-xs font-medium text-muted">{t("admin.metricUsers")}</p>
                   <p className="mt-1 text-2xl font-semibold tabular-nums">
-                    {overview ? overview.totalUsers : "—"}
+                    {overview ? overview.totalUsers : allUsers.length || "—"}
                   </p>
                   <p className="mt-1 text-xs text-muted">
                     {overview
@@ -832,10 +906,174 @@ function OneWorkspaceDashboard({
                   </p>
                 </Card>
               </div>
+
+              {/* Per-user Storage Allocation Overview */}
+              <Card className="gap-4 rounded-3xl border border-border/50 bg-surface p-5 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">
+                      {t("one.usersOverviewTitle")}
+                    </h2>
+                    <p className="text-xs text-muted sm:text-sm">{t("one.usersOverviewDesc")}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="rounded-full"
+                    onPress={() => onTabChange("users")}
+                  >
+                    {t("one.manageUsers")}
+                  </Button>
+                </div>
+
+                {userAllocationSegments.length > 0 ? (
+                  <GoogleOneSegmentedBar
+                    segments={userAllocationSegments}
+                    totalBytes={Math.max(1, totalUserUsedBytes)}
+                    formatBytes={formatBytes}
+                  />
+                ) : null}
+
+                <div className="divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/50">
+                  {usersQuery.isPending ? (
+                    <div className="flex justify-center p-6">
+                      <Spinner />
+                    </div>
+                  ) : usersSortedByStorage.length === 0 ? (
+                    <p className="p-6 text-sm text-muted">{t("users.empty")}</p>
+                  ) : (
+                    usersSortedByStorage.slice(0, 12).map((entry) => {
+                      const nameLabel =
+                        entry.displayName ||
+                        entry.email ||
+                        entry.username ||
+                        `User #${entry.userId}`;
+                      const usedPct =
+                        entry.storageQuotaBytes && entry.storageQuotaBytes > 0
+                          ? Math.min(
+                              100,
+                              Math.round((entry.storageUsedBytes / entry.storageQuotaBytes) * 100),
+                            )
+                          : null;
+                      return (
+                        <div
+                          key={entry.userId}
+                          className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="truncate text-sm font-medium text-foreground">
+                                {nameLabel}
+                              </span>
+                              <Chip
+                                size="sm"
+                                variant="tertiary"
+                                color={
+                                  entry.role === "owner"
+                                    ? "accent"
+                                    : entry.role === "admin"
+                                      ? "warning"
+                                      : "default"
+                                }
+                              >
+                                {entry.role}
+                              </Chip>
+                              {entry.disabled ? (
+                                <Chip size="sm" variant="tertiary" color="danger">
+                                  {t("users.disabled")}
+                                </Chip>
+                              ) : null}
+                            </div>
+                            <p className="mt-0.5 truncate text-xs text-muted">
+                              {[
+                                entry.email,
+                                entry.username ? `@${entry.username}` : null,
+                                `#${entry.userId}`,
+                                t("admin.metricFilesCount", { count: entry.activeFiles }),
+                                entry.trashBytes > 0
+                                  ? t("admin.metricTrashBytes", {
+                                      bytes: formatBytes(entry.trashBytes),
+                                    })
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" • ")}
+                            </p>
+                          </div>
+
+                          <div className="min-w-44 space-y-1 text-left sm:text-right">
+                            <p className="text-xs font-medium tabular-nums text-foreground">
+                              {entry.storageQuotaBytes !== undefined && entry.storageQuotaBytes > 0
+                                ? `${formatBytes(entry.storageUsedBytes)} / ${formatBytes(entry.storageQuotaBytes)} (${usedPct}%)`
+                                : `${formatBytes(entry.storageUsedBytes)} • ${t("admin.quotaUnlimited")}`}
+                            </p>
+                            {usedPct !== null ? (
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-default/35">
+                                <div
+                                  className={
+                                    usedPct >= 95
+                                      ? "h-full rounded-full bg-danger"
+                                      : usedPct >= 80
+                                        ? "h-full rounded-full bg-warning"
+                                        : "h-full rounded-full bg-accent"
+                                  }
+                                  style={{ width: `${usedPct}%` }}
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </Card>
             </div>
           </Tabs.Panel>
 
-          <Tabs.Panel id="users" className="pt-5">
+          <Tabs.Panel id="users" className="space-y-5 pt-5">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+              <Card className="rounded-2xl border border-border/50 bg-surface p-4">
+                <p className="text-xs font-medium text-muted">{t("one.usersRegistered")}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{allUsers.length}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {t("one.usersActiveDisabled", {
+                    active: activeUsersCount,
+                    disabled: disabledUsersCount,
+                  })}
+                </p>
+              </Card>
+              <Card className="rounded-2xl border border-border/50 bg-surface p-4">
+                <p className="text-xs font-medium text-muted">{t("one.usersTotalStorage")}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">
+                  {formatBytes(totalUserUsedBytes)}
+                </p>
+                <p className="mt-1 text-xs text-muted">{t("one.usersAcrossAccounts")}</p>
+              </Card>
+              <Card className="rounded-2xl border border-border/50 bg-surface p-4">
+                <p className="text-xs font-medium text-muted">{t("one.usersQuotaLimited")}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{quotaLimitedCount}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {t("one.usersUnlimitedCount", {
+                    count: Math.max(0, allUsers.length - quotaLimitedCount),
+                  })}
+                </p>
+              </Card>
+              <Card className="rounded-2xl border border-border/50 bg-surface p-4">
+                <p className="text-xs font-medium text-muted">
+                  {t("admin.metricFilesCount", { count: overview?.totalActiveFiles ?? 0 })}
+                </p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">
+                  {formatBytes(overview?.totalActiveBytes ?? 0)}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  {t("admin.metricTrashBytes", {
+                    bytes: formatBytes(overview?.totalTrashBytes ?? 0),
+                  })}
+                </p>
+              </Card>
+            </div>
+
             <SettingsSection
               title={t("admin.usersTitle")}
               description={t("admin.usersDesc")}
@@ -854,14 +1092,59 @@ function OneWorkspaceDashboard({
                 </div>
               }
             >
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 px-5 py-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(
+                    [
+                      ["all", t("drive.filterAll")],
+                      ["admin", t("one.filterAdmins")],
+                      ["member", t("one.filterMembers")],
+                      ["disabled", t("users.disabled")],
+                      ["quota", t("one.filterQuota")],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <Button
+                      key={key}
+                      size="sm"
+                      variant={userFilter === key ? "primary" : "tertiary"}
+                      className="h-7 rounded-full px-3 text-xs"
+                      onPress={() => setUserFilter(key)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-muted">{t("one.sortLabel")}</span>
+                  {(
+                    [
+                      ["storage", t("one.sortStorage")],
+                      ["files", t("one.sortFiles")],
+                      ["newest", t("one.sortNewest")],
+                      ["name", t("manager.sortName")],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <Button
+                      key={key}
+                      size="sm"
+                      variant={userSort === key ? "secondary" : "ghost"}
+                      className="h-7 rounded-full px-2.5 text-xs"
+                      onPress={() => setUserSort(key)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
               {usersQuery.isPending ? (
                 <div className="flex justify-center p-8">
                   <Spinner />
                 </div>
-              ) : (usersQuery.data ?? []).length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <p className="p-6 text-sm text-muted">{t("users.empty")}</p>
               ) : (
-                (usersQuery.data ?? []).map((entry) => {
+                filteredUsers.map((entry) => {
                   const defaultGb =
                     entry.storageQuotaBytes !== undefined && entry.storageQuotaBytes > 0
                       ? String(
@@ -875,30 +1158,52 @@ function OneWorkspaceDashboard({
                           100,
                           Math.round((entry.storageUsedBytes / entry.storageQuotaBytes) * 100),
                         )
-                      : 0;
+                      : null;
                   const nameLabel =
                     entry.displayName || entry.email || entry.username || `User ${entry.userId}`;
                   const identityDesc = [
                     entry.email,
                     entry.username ? `@${entry.username}` : null,
-                    entry.storageQuotaBytes !== undefined
-                      ? `${formatBytes(entry.storageUsedBytes)} / ${formatBytes(entry.storageQuotaBytes)}`
-                      : `${formatBytes(entry.storageUsedBytes)} (${t("admin.quotaUnlimited")})`,
+                    `#${entry.userId}`,
+                    t("one.joinedOn", { date: formatDateTime.format(new Date(entry.createdAt)) }),
                   ]
                     .filter(Boolean)
                     .join(" • ");
 
                   return (
                     <SettingsRow key={entry.userId} label={nameLabel} description={identityDesc}>
-                      <div className="space-y-2">
-                        {entry.storageQuotaBytes && entry.storageQuotaBytes > 0 ? (
-                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-default/30">
-                            <div
-                              className="h-full rounded-full bg-accent"
-                              style={{ width: `${usedPct}%` }}
-                            />
+                      <div className="space-y-3">
+                        <div className="rounded-xl border border-border/50 bg-surface-secondary/50 px-3 py-2.5">
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <span className="font-semibold tabular-nums text-foreground">
+                              {entry.storageQuotaBytes !== undefined && entry.storageQuotaBytes > 0
+                                ? `${formatBytes(entry.storageUsedBytes)} / ${formatBytes(entry.storageQuotaBytes)}${usedPct !== null ? ` (${usedPct}%)` : ""}`
+                                : `${formatBytes(entry.storageUsedBytes)} • ${t("admin.quotaUnlimited")}`}
+                            </span>
+                            <span className="tabular-nums text-muted">
+                              {t("one.userStorageBreakdown", {
+                                files: entry.activeFiles,
+                                active: formatBytes(entry.activeBytes),
+                                trash: formatBytes(entry.trashBytes),
+                              })}
+                            </span>
                           </div>
-                        ) : null}
+                          {usedPct !== null ? (
+                            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-default/35">
+                              <div
+                                className={
+                                  usedPct >= 95
+                                    ? "h-full rounded-full bg-danger"
+                                    : usedPct >= 80
+                                      ? "h-full rounded-full bg-warning"
+                                      : "h-full rounded-full bg-accent"
+                                }
+                                style={{ width: `${usedPct}%` }}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+
                         <div className="flex flex-wrap items-center justify-end gap-2">
                           <Chip
                             size="sm"
@@ -912,6 +1217,13 @@ function OneWorkspaceDashboard({
                             }
                           >
                             {entry.role}
+                          </Chip>
+                          <Chip
+                            size="sm"
+                            variant="tertiary"
+                            color={entry.hasPassword ? "success" : "default"}
+                          >
+                            {entry.hasPassword ? t("one.authPassword") : t("one.authTelegram")}
                           </Chip>
                           {entry.disabled ? (
                             <Chip size="sm" variant="tertiary" color="danger">
@@ -952,7 +1264,7 @@ function OneWorkspaceDashboard({
                               setEditPassword("");
                             }}
                           >
-                            Edit / Password
+                            {t("one.editUserBtn")}
                           </Button>
 
                           {entry.role !== "owner" && entry.userId !== me.userId ? (

@@ -2,34 +2,28 @@ import { Button, Modal, Separator, Typography } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useState } from "react";
-import KeyIcon from "~icons/gravity-ui/key";
 import MenuIcon from "~icons/gravity-ui/bars";
 import PaletteIcon from "~icons/gravity-ui/palette";
 import BookIcon from "~icons/gravity-ui/book-open";
 import PlayIcon from "~icons/gravity-ui/play";
 import PersonIcon from "~icons/gravity-ui/person";
 import SessionsIcon from "~icons/gravity-ui/list-ul";
-import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
 import CloseIcon from "~icons/gravity-ui/xmark";
 import { currentUserQueryOptions } from "@/auth/queries";
+import { normalizeAppPath } from "@/components/google-workspace";
 import { useAppLocale } from "@/lib/locale";
 
 const SETTINGS_GROUPS = [
   {
     key: "account",
-    items: [{ key: "overview", path: "/settings", icon: PersonIcon }],
-  },
-  {
-    key: "security",
     items: [
+      { key: "overview", path: "/settings", icon: PersonIcon },
       { key: "sessions", path: "/settings/sessions", icon: SessionsIcon },
-      { key: "apiKeys", path: "/settings/api-keys", icon: KeyIcon },
     ],
   },
   {
     key: "preferences",
     items: [
-      { key: "uploads", path: "/settings/uploads", icon: UploadIcon },
       { key: "appearance", path: "/settings/appearance", icon: PaletteIcon },
       { key: "reader", path: "/settings/reader", icon: BookIcon },
       { key: "player", path: "/settings/player", icon: PlayIcon },
@@ -41,6 +35,7 @@ export const Route = createFileRoute("/_settings")({ component: SettingsLayout }
 
 function SettingsLayout() {
   const location = useLocation();
+  const currentPath = normalizeAppPath(location.pathname);
   const { t } = useAppLocale();
   const { data: user } = useQuery(currentUserQueryOptions());
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -49,7 +44,7 @@ function SettingsLayout() {
     (found, group) =>
       found ??
       (() => {
-        const item = group.items.find((entry) => entry.path === location.pathname);
+        const item = group.items.find((entry) => entry.path === currentPath);
         return item ? t(`settings.item.${item.key}`) : undefined;
       })(),
     undefined,
@@ -69,7 +64,7 @@ function SettingsLayout() {
               {t("settings.description")}
             </Typography.Paragraph>
           </div>
-          <SettingsNavigation currentPath={location.pathname} groups={visibleGroups} />
+          <SettingsNavigation currentPath={currentPath} groups={visibleGroups} />
         </div>
       </div>
       <main className="min-w-0 lg:col-start-2">
@@ -116,7 +111,7 @@ function SettingsLayout() {
             </Modal.Header>
             <Modal.Body className="py-5">
               <SettingsNavigation
-                currentPath={location.pathname}
+                currentPath={currentPath}
                 groups={visibleGroups}
                 onNavigate={() => setMobileOpen(false)}
               />

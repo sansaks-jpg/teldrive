@@ -136,11 +136,7 @@ func (h *Handler) ListAdminUsers(ctx context.Context, params gen.ListAdminUsersP
 	}
 	out := make(gen.ListAdminUsersOKApplicationJSON, 0, len(rows))
 	for _, row := range rows {
-		var usedBytes int64
-		if u, ok := usageMap[row.UserID]; ok {
-			usedBytes = u.LogicalBytes + u.TrashBytes
-		}
-		out = append(out, adminUserSummary(row, usedBytes))
+		out = append(out, adminUserSummary(row, usageMap[row.UserID]))
 	}
 	return &out, nil
 }
@@ -211,11 +207,7 @@ func (h *Handler) UpdateAdminUser(ctx context.Context, req *gen.UserAdminUpdateR
 	}
 	h.Auth.RecordAuditEvent(ctx, &actorID, "admin.user.updated", "user", &targetStr, nil)
 	usageMap, _ := h.Auth.ListAdminUserStorageUsage(ctx)
-	var usedBytes int64
-	if u, ok := usageMap[row.UserID]; ok {
-		usedBytes = u.LogicalBytes + u.TrashBytes
-	}
-	out := adminUserSummary(row, usedBytes)
+	out := adminUserSummary(row, usageMap[row.UserID])
 	return &out, nil
 }
 
@@ -251,7 +243,7 @@ func (h *Handler) CreateAdminUser(ctx context.Context, req *gen.AdminUserCreateR
 	actorID, _ := UserIDFromContext(ctx)
 	targetStr := req.Email
 	h.Auth.RecordAuditEvent(ctx, &actorID, "admin.user.created", "user", &targetStr, nil)
-	out := adminUserSummary(row, 0)
+	out := adminUserSummary(row, nil)
 	return &out, nil
 }
 
@@ -809,10 +801,17 @@ func (h *Handler) createUploadForOwner(ctx context.Context, ownerID int64, paren
 	return session, nil
 }
 
-func adminUserSummary(row *sqlcgen.User, storageUsedBytes int64) gen.AdminUserSummary {
+func adminUserSummary(row *sqlcgen.User, usage *sqlcgen.ListAdminUserStorageUsageRow) gen.AdminUserSummary {
+	var activeFiles, activeBytes, trashBytes int64
+	if usage != nil {
+		activeFiles = usage.ActiveFiles
+		activeBytes = usage.LogicalBytes
+		trashBytes = usage.TrashBytes
+	}
 	out := gen.AdminUserSummary{
 		UserId: row.UserID, HasPassword: row.PasswordHash.Valid && row.PasswordHash.String != "", Premium: row.Premium, Role: gen.UserRole(row.Role), Disabled: row.DisabledAt.Valid,
-		StorageUsedBytes: storageUsedBytes, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+		StorageUsedBytes: activeBytes + trashBytes, ActiveFiles: activeFiles, ActiveBytes: activeBytes, TrashBytes: trashBytes,
+		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 	if row.Email.Valid {
 		out.Email = gen.NewOptString(row.Email.String)

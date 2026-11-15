@@ -27,15 +27,21 @@ export function subscribeWorkspaceAction(handler: (action: WorkspaceAction) => v
   return () => window.removeEventListener(WORKSPACE_ACTION_EVENT, listener);
 }
 
+export function normalizeAppPath(pathname: string): string {
+  if (!pathname || pathname === "/") return "/";
+  const trimmed = pathname.replace(/\/+$/, "");
+  return trimmed || "/";
+}
+
 export function getWorkspaceApp(pathname: string): WorkspaceAppId {
-  if (pathname.startsWith("/photos")) return "photos";
-  if (pathname.startsWith("/docs")) return "docs";
+  const normalized = normalizeAppPath(pathname);
+  if (normalized === "/photos" || normalized.startsWith("/photos/")) return "photos";
+  if (normalized === "/docs" || normalized.startsWith("/docs/")) return "docs";
   if (
-    pathname.startsWith("/one") ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/storage") ||
-    pathname.startsWith("/tasks") ||
-    pathname.startsWith("/settings")
+    normalized === "/one" ||
+    normalized.startsWith("/one/") ||
+    normalized === "/admin" ||
+    normalized.startsWith("/admin/")
   ) {
     return "one";
   }
@@ -146,31 +152,27 @@ export function GoogleOneSegmentedBar({
   const safeTotal = Math.max(1, totalBytes);
 
   return (
-    <div className="space-y-3">
-      <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-default/35 p-0.5">
-        {nonZero.length === 0 ? (
-          <div className="h-full w-2 rounded-full bg-accent/40" />
-        ) : (
-          nonZero.map((segment) => {
-            const pct = Math.max(2, (segment.bytes / safeTotal) * 100);
-            return (
-              <div
-                key={segment.id}
-                title={`${segment.label}: ${formatBytes(segment.bytes)}`}
-                style={{ width: `${pct}%` }}
-                className={cn(
-                  "h-full first:rounded-l-full last:rounded-r-full transition-[width] duration-300",
-                  segment.colorClass,
-                )}
-              />
-            );
-          })
-        )}
+    <div className="space-y-2.5">
+      <div className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full bg-[#e1e5ea] dark:bg-[#333538]">
+        {nonZero.map((segment) => {
+          const pct = Math.min(100, (segment.bytes / safeTotal) * 100);
+          return (
+            <div
+              key={segment.id}
+              title={`${segment.label}: ${formatBytes(segment.bytes)}`}
+              style={{ width: `${pct}%`, minWidth: "5px" }}
+              className={cn(
+                "h-full first:rounded-l-full last:rounded-r-full transition-[width] duration-300",
+                segment.colorClass,
+              )}
+            />
+          );
+        })}
       </div>
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
         {segments.map((segment) => (
-          <div key={segment.id} className="flex items-center gap-2 text-muted">
-            <span className={cn("size-2.5 shrink-0 rounded-full", segment.dotClass)} />
+          <div key={segment.id} className="flex items-center gap-1.5 text-muted">
+            <span className={cn("size-2 shrink-0 rounded-full", segment.dotClass)} />
             <span className="font-medium text-foreground">{segment.label}</span>
             <span className="tabular-nums">{formatBytes(segment.bytes)}</span>
           </div>

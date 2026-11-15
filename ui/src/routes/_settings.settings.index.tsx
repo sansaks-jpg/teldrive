@@ -1,8 +1,10 @@
-import { Button, Chip, Spinner } from "@heroui/react";
+import { Button, Chip, Input, Label, Spinner, TextField } from "@heroui/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { toast } from "sonner";
 import { $api } from "@/api/client";
 import { userMessage } from "@/api/errors";
+import { currentUserQueryOptions } from "@/auth/queries";
 import { useCurrentUser } from "@/auth/use-current-user";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "@/components/settings-layout";
 import { clearDocumentCache } from "@/features/files/document-cache";
@@ -34,6 +36,10 @@ function AccountSettings() {
     { staleTime: 30_000 },
   );
   const logout = $api.useMutation("post", "/v1/auth/cookie/logout");
+  const changePassword = $api.useMutation("post", "/v1/me/password");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const logOut = async () => {
     try {
@@ -46,10 +52,38 @@ function AccountSettings() {
     }
   };
 
+  const handlePasswordChange = async () => {
+    if (!currentPassword || newPassword.length < 6) {
+      toast.error(t("account.passwordMin"));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error(t("account.passwordMismatch"));
+      return;
+    }
+    try {
+      await changePassword.mutateAsync({ body: { currentPassword, newPassword } });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      await getQueryClient().invalidateQueries({ queryKey: currentUserQueryOptions().queryKey });
+      toast.success(t("account.passwordChanged"));
+    } catch (error) {
+      toast.error(t("account.passwordFailed"), { description: userMessage(error) });
+    }
+  };
+
   const displayName =
     user.data.displayName ||
+    user.data.email ||
     user.data.username ||
     t("account.userFallback", { id: user.data.userId });
+
+  const secondaryText = user.data.email
+    ? user.data.email
+    : user.data.username
+      ? `@${user.data.username}`
+      : t("account.userFallback", { id: user.data.userId });
 
   return (
     <div className="space-y-6">
@@ -64,14 +98,7 @@ function AccountSettings() {
         }
       />
       <SettingsSection title={t("account.profile")} description={t("account.profileDesc")}>
-        <SettingsRow
-          label={displayName}
-          description={
-            user.data.username
-              ? `@${user.data.username}`
-              : t("account.telegramUser", { id: user.data.userId })
-          }
-        >
+        <SettingsRow label={displayName} description={secondaryText}>
           <div className="flex justify-end">
             <Chip
               variant="tertiary"
@@ -99,6 +126,54 @@ function AccountSettings() {
           </p>
         </SettingsRow>
       </SettingsSection>
+
+      {user.data.hasPassword ? (
+        <SettingsSection title={t("account.passwordTitle")} description={t("account.passwordDesc")}>
+          <SettingsRow label={t("account.currentPassword")}>
+            <TextField>
+              <Label className="sr-only">{t("account.currentPassword")}</Label>
+              <Input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.currentTarget.value)}
+                autoComplete="current-password"
+              />
+            </TextField>
+          </SettingsRow>
+          <SettingsRow label={t("account.newPassword")} description={t("account.passwordMin")}>
+            <TextField>
+              <Label className="sr-only">{t("account.newPassword")}</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.currentTarget.value)}
+                autoComplete="new-password"
+              />
+            </TextField>
+          </SettingsRow>
+          <SettingsRow label={t("account.confirmPassword")}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <TextField className="flex-1">
+                <Label className="sr-only">{t("account.confirmPassword")}</Label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.currentTarget.value)}
+                  autoComplete="new-password"
+                />
+              </TextField>
+              <Button
+                variant="primary"
+                isPending={changePassword.isPending}
+                onPress={handlePasswordChange}
+              >
+                {t("account.updatePassword")}
+              </Button>
+            </div>
+          </SettingsRow>
+        </SettingsSection>
+      ) : null}
+
       <SettingsSection title={t("account.stats")} description={t("account.statsDesc")}>
         <SettingsRow label={t("account.files")}>
           <p className="text-right font-mono text-sm">
@@ -106,7 +181,11 @@ function AccountSettings() {
           </p>
         </SettingsRow>
         <SettingsRow label={t("account.stored")}>
-          <p className="text-right font-mono text-sm">{formatBytes(stats.data.totalBytes)}</p>
+          <p className="text-right font-mono text-sm">
+            {user.data.storageQuotaBytes != null
+              ? `${formatBytes(stats.data.totalBytes)} / ${formatBytes(user.data.storageQuotaBytes)}`
+              : formatBytes(stats.data.totalBytes)}
+          </p>
         </SettingsRow>
         <SettingsRow label={t("account.openUploads")}>
           <p className="text-right font-mono text-sm">

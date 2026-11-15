@@ -22,6 +22,63 @@ import (
 	"github.com/tgdrive/teldrive/v2/internal/transfer"
 )
 
+func (h *Handler) GetBootstrapStatus(ctx context.Context) (*gen.BootstrapStatus, error) {
+	if h.Auth == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	status, err := h.Auth.GetBootstrapStatus(ctx)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	return &gen.BootstrapStatus{
+		TelegramLinked: status.TelegramLinked,
+		EmailAuthReady: status.EmailAuthReady,
+	}, nil
+}
+
+func (h *Handler) PasswordLogin(ctx context.Context, req *gen.PasswordLoginRequest) (gen.PasswordLoginRes, error) {
+	if h.Auth == nil || req == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	tokens, err := h.Auth.LoginWithPassword(ctx, req.Email, req.Password)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	response := tokenPairResponse(tokens)
+	return &response, nil
+}
+
+func (h *Handler) ChangePassword(ctx context.Context, req *gen.ChangePasswordRequest) (gen.ChangePasswordRes, error) {
+	userID, err := UserIDFromContext(ctx)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	if h.Auth == nil || req == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	if err := h.Auth.ChangePassword(ctx, userID, req.CurrentPassword, req.NewPassword); err != nil {
+		return nil, mapServiceError(err)
+	}
+	return &gen.ChangePasswordNoContent{}, nil
+}
+
+func (h *Handler) SetupOwnerCredentials(ctx context.Context, req *gen.SetupCredentialsRequest) (gen.SetupOwnerCredentialsRes, error) {
+	userID, err := UserIDFromContext(ctx)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	if h.Auth == nil || req == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	user, err := h.Auth.SetupOwnerCredentials(ctx, userID, req.Email, req.Password)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	usedBytes, _, _ := h.Auth.GetUserStorageUsage(ctx, userID)
+	response := userProfile(user, usedBytes)
+	return &response, nil
+}
+
 func (h *Handler) TelegramLoginStart(ctx context.Context, req *gen.TelegramLoginStartRequest, params gen.TelegramLoginStartParams) (gen.TelegramLoginStartRes, error) {
 	if h.Auth == nil || req == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -127,7 +184,8 @@ func (h *Handler) GetCurrentUser(ctx context.Context) (gen.GetCurrentUserRes, er
 	if err != nil {
 		return nil, mapServiceError(err)
 	}
-	response := userProfile(user)
+	usedBytes, _, _ := h.Auth.GetUserStorageUsage(ctx, userID)
+	response := userProfile(user, usedBytes)
 	return &response, nil
 }
 
@@ -138,6 +196,14 @@ func (h *Handler) GetProfilePhoto(ctx context.Context) (gen.GetProfilePhotoRes, 
 	}
 	if h.TelegramAccount == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	if userID >= 1000000000000 {
+		return &gen.GetProfilePhotoNoContent{}, nil
+	}
+	if h.Auth != nil {
+		if ownerID, ownerErr := h.Auth.StorageOwnerID(ctx); ownerErr == nil && ownerID != userID {
+			return &gen.GetProfilePhotoNoContent{}, nil
+		}
 	}
 	photo, found, err := h.TelegramAccount.ProfilePhoto(ctx, userID)
 	if err != nil {
@@ -281,10 +347,28 @@ func (h *Handler) RevokeSession(ctx context.Context, params gen.RevokeSessionPar
 	return &gen.RevokeSessionNoContent{}, nil
 }
 
-func (h *Handler) CreateBots(ctx context.Context, req *gen.BotCreateRequest, params gen.CreateBotsParams) (gen.CreateBotsRes, error) {
+func (h *Handler) resolveWorkspaceAdminUser(ctx context.Context) (int64, error) {
 	userID, err := UserIDFromContext(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return 0, mapServiceError(err)
+	}
+	if h.Auth == nil {
+		return userID, nil
+	}
+	if err := requireAdmin(ctx); err != nil {
+		return 0, err
+	}
+	ownerID, err := h.Auth.StorageOwnerID(ctx)
+	if err == nil && ownerID > 0 {
+		return ownerID, nil
+	}
+	return userID, nil
+}
+
+func (h *Handler) CreateBots(ctx context.Context, req *gen.BotCreateRequest, params gen.CreateBotsParams) (gen.CreateBotsRes, error) {
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if h.Bots == nil || h.Jobs == nil || req == nil || len(req.Tokens) == 0 {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -329,9 +413,9 @@ func (h *Handler) CreateBots(ctx context.Context, req *gen.BotCreateRequest, par
 }
 
 func (h *Handler) ListBots(ctx context.Context, params gen.ListBotsParams) (gen.ListBotsRes, error) {
-	userID, err := UserIDFromContext(ctx)
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return nil, err
 	}
 	if h.Bots == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -361,9 +445,9 @@ func (h *Handler) ListBots(ctx context.Context, params gen.ListBotsParams) (gen.
 }
 
 func (h *Handler) ProvisionBots(ctx context.Context, params gen.ProvisionBotsParams) (gen.ProvisionBotsRes, error) {
-	userID, err := UserIDFromContext(ctx)
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return nil, err
 	}
 	if h.Bots == nil || h.Jobs == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -380,9 +464,9 @@ func (h *Handler) ProvisionBots(ctx context.Context, params gen.ProvisionBotsPar
 }
 
 func (h *Handler) ProvisionBot(ctx context.Context, params gen.ProvisionBotParams) (gen.ProvisionBotRes, error) {
-	userID, err := UserIDFromContext(ctx)
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return nil, err
 	}
 	if h.Bots == nil || h.Jobs == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -398,9 +482,9 @@ func (h *Handler) ProvisionBot(ctx context.Context, params gen.ProvisionBotParam
 }
 
 func (h *Handler) DeleteBot(ctx context.Context, params gen.DeleteBotParams) (gen.DeleteBotRes, error) {
-	userID, err := UserIDFromContext(ctx)
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return nil, err
 	}
 	if h.Bots == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -412,9 +496,9 @@ func (h *Handler) DeleteBot(ctx context.Context, params gen.DeleteBotParams) (ge
 }
 
 func (h *Handler) DiscoverChannels(ctx context.Context) (gen.DiscoverChannelsRes, error) {
-	userID, err := UserIDFromContext(ctx)
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return nil, err
 	}
 	if h.TelegramAccount == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -432,9 +516,9 @@ func (h *Handler) DiscoverChannels(ctx context.Context) (gen.DiscoverChannelsRes
 }
 
 func (h *Handler) SyncChannels(ctx context.Context, req *gen.ChannelSyncRequest, params gen.SyncChannelsParams) (gen.SyncChannelsRes, error) {
-	userID, err := UserIDFromContext(ctx)
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return nil, err
 	}
 	if h.TelegramAccount == nil || h.Channels == nil || req == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -467,9 +551,9 @@ func (h *Handler) SyncChannels(ctx context.Context, req *gen.ChannelSyncRequest,
 	return &response, nil
 }
 func (h *Handler) CreateChannel(ctx context.Context, req *gen.ChannelCreateRequest, params gen.CreateChannelParams) (gen.CreateChannelRes, error) {
-	userID, err := UserIDFromContext(ctx)
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return nil, err
 	}
 	if h.Channels == nil || req == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -483,9 +567,9 @@ func (h *Handler) CreateChannel(ctx context.Context, req *gen.ChannelCreateReque
 }
 
 func (h *Handler) ListChannels(ctx context.Context, params gen.ListChannelsParams) (gen.ListChannelsRes, error) {
-	userID, err := UserIDFromContext(ctx)
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return nil, err
 	}
 	if h.Channels == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -515,9 +599,9 @@ func (h *Handler) ListChannels(ctx context.Context, params gen.ListChannelsParam
 }
 
 func (h *Handler) SelectChannel(ctx context.Context, params gen.SelectChannelParams) (gen.SelectChannelRes, error) {
-	userID, err := UserIDFromContext(ctx)
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return nil, err
 	}
 	if h.Channels == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -531,9 +615,9 @@ func (h *Handler) SelectChannel(ctx context.Context, params gen.SelectChannelPar
 }
 
 func (h *Handler) DeleteChannel(ctx context.Context, params gen.DeleteChannelParams) (gen.DeleteChannelRes, error) {
-	userID, err := UserIDFromContext(ctx)
+	userID, err := h.resolveWorkspaceAdminUser(ctx)
 	if err != nil {
-		return nil, mapServiceError(err)
+		return nil, err
 	}
 	if h.Channels == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)
@@ -836,16 +920,27 @@ func tokenPairResponse(tokens *authn.TokenPair) gen.TokenPair {
 	return gen.TokenPair{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken, TokenType: gen.TokenPairTokenTypeBearer, ExpiresIn: tokens.ExpiresIn}
 }
 
-func userProfile(row *sqlcgen.User) gen.UserProfile {
+func userProfile(row *sqlcgen.User, storageUsedBytes int64) gen.UserProfile {
 	out := gen.UserProfile{
-		UserId: row.UserID, Premium: row.Premium, Role: gen.UserRole(row.Role),
-		Capabilities: authn.Capabilities(row.Role), CreatedAt: row.CreatedAt.Time,
+		UserId:           row.UserID,
+		HasPassword:      row.PasswordHash.Valid && row.PasswordHash.String != "",
+		Premium:          row.Premium,
+		Role:             gen.UserRole(row.Role),
+		Capabilities:     authn.Capabilities(row.Role),
+		StorageUsedBytes: storageUsedBytes,
+		CreatedAt:        row.CreatedAt.Time,
+	}
+	if row.Email.Valid {
+		out.Email = gen.NewOptString(row.Email.String)
 	}
 	if row.DisplayName.Valid {
 		out.DisplayName = gen.NewOptString(row.DisplayName.String)
 	}
 	if row.Username.Valid {
 		out.Username = gen.NewOptString(row.Username.String)
+	}
+	if row.StorageQuotaBytes.Valid {
+		out.StorageQuotaBytes = gen.NewOptInt64(row.StorageQuotaBytes.Int64)
 	}
 	return out
 }

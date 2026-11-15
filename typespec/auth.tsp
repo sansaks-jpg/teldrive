@@ -92,7 +92,80 @@ enum UserRole {
   user: "user",
 }
 
+model BootstrapStatus {
+  telegramLinked: boolean;
+  emailAuthReady: boolean;
+}
+
+model PasswordLoginRequest {
+  @minLength(3)
+  @maxLength(254)
+  email: string;
+
+  @minLength(1)
+  @maxLength(256)
+  password: string;
+}
+
+model ChangePasswordRequest {
+  @minLength(1)
+  @maxLength(256)
+  currentPassword: string;
+
+  @minLength(6)
+  @maxLength(256)
+  newPassword: string;
+}
+
+model SetupCredentialsRequest {
+  @minLength(3)
+  @maxLength(254)
+  email: string;
+
+  @minLength(6)
+  @maxLength(256)
+  password: string;
+}
+
+model AdminUserCreateRequest {
+  @minLength(3)
+  @maxLength(254)
+  email: string;
+
+  @maxLength(120)
+  displayName?: string;
+
+  @minLength(6)
+  @maxLength(256)
+  password: string;
+
+  role?: UserRole;
+
+  @minValue(0)
+  storageQuotaBytes?: int64;
+}
+
+model WorkspaceTelegramStatus {
+  linked: boolean;
+  telegramUserId?: int64;
+  telegramUsername?: string;
+  updatedAt?: utcDateTime;
+}
+
+model AdminTelegramRelinkVerifyResponse {
+  linked: boolean;
+  passwordRequired: boolean;
+  flowId?: Uuid;
+  expiresAt?: utcDateTime;
+  status?: WorkspaceTelegramStatus;
+}
+
 model UserAdminUpdateRequest {
+  email?: string;
+  displayName?: string;
+  @minLength(6)
+  @maxLength(256)
+  password?: string;
   role?: UserRole;
   disabled?: boolean;
 
@@ -104,8 +177,10 @@ model UserAdminUpdateRequest {
 
 model AdminUserSummary {
   userId: int64;
+  email?: string;
   displayName?: string;
   username?: string;
+  hasPassword: boolean;
   premium: boolean;
   role: UserRole;
   disabled: boolean;
@@ -148,11 +223,15 @@ model UserSearchResult {
 
 model UserProfile {
   userId: int64;
+  email?: string;
   displayName?: string;
   username?: string;
+  hasPassword: boolean;
   premium: boolean;
   role: UserRole;
   capabilities: string[];
+  storageUsedBytes: int64;
+  storageQuotaBytes?: int64;
   createdAt: utcDateTime;
 }
 
@@ -357,6 +436,32 @@ model SessionSummary {
 @route("/v1/auth")
 @useAuth(NoAuth)
 namespace Authentication {
+  /** Check whether Workspace Telegram storage and admin email login are configured. */
+  @get
+  @route("/bootstrap-status")
+  @operationId("getBootstrapStatus")
+  op bootstrapStatus(): JsonResponse<200, BootstrapStatus>;
+
+  /** Authenticate with Workspace email and password and return bearer tokens. */
+  @post
+  @route("/password/login")
+  @operationId("passwordLogin")
+  op passwordLogin(@body body: PasswordLoginRequest):
+    | JsonResponse<200, TokenPair>
+    | ErrorResponse<401>
+    | ErrorResponse<422>
+    | ErrorResponse<429>;
+
+  /** Authenticate with Workspace email and password and establish an HttpOnly cookie session. */
+  @post
+  @route("/cookie/password/login")
+  @operationId("cookiePasswordLogin")
+  op cookiePasswordLogin(@body body: PasswordLoginRequest):
+    | CookieSessionResponse<200>
+    | ErrorResponse<401>
+    | ErrorResponse<422>
+    | ErrorResponse<429>;
+
   /** Begin Telegram authentication and send a login code. */
   @post
   @route("/telegram/start")
@@ -529,6 +634,26 @@ namespace Account {
     | JsonResponse<200, UserPreferences>
     | ErrorResponse<401>
     | ErrorResponse<422>;
+  /** Change the authenticated user's password. */
+  @post
+  @route("/me/password")
+  @operationId("changePassword")
+  op changePassword(@body body: ChangePasswordRequest):
+    | EmptyResponse<204>
+    | ErrorResponse<401>
+    | ErrorResponse<422>;
+
+  /** Bind initial email and password to an existing owner account migrated from Telegram login. */
+  @post
+  @route("/me/setup-credentials")
+  @operationId("setupOwnerCredentials")
+  op setupCredentials(@body body: SetupCredentialsRequest):
+    | JsonResponse<200, UserProfile>
+    | ErrorResponse<401>
+    | ErrorResponse<403>
+    | ErrorResponse<409>
+    | ErrorResponse<422>;
+
   /** Revoke the current session. */
   @post
   @route("/auth/logout")
@@ -586,6 +711,68 @@ namespace Administration {
     | JsonResponse<200, AdminUserSummary[]>
     | ErrorResponse<401>
     | ErrorResponse<403>;
+
+  @post
+  @route("/users")
+  @operationId("createAdminUser")
+  op createUser(@body body: AdminUserCreateRequest):
+    | JsonResponse<201, AdminUserSummary>
+    | ErrorResponse<401>
+    | ErrorResponse<403>
+    | ErrorResponse<409>
+    | ErrorResponse<422>;
+
+  @get
+  @route("/telegram")
+  @operationId("getAdminTelegramStatus")
+  op telegramStatus():
+    | JsonResponse<200, WorkspaceTelegramStatus>
+    | ErrorResponse<401>
+    | ErrorResponse<403>;
+
+  @post
+  @route("/telegram/start")
+  @operationId("adminTelegramRelinkStart")
+  op telegramStart(
+    ...IdempotencyHeader,
+    @body body: TelegramLoginStartRequest,
+  ):
+    | JsonResponse<201, TelegramLoginStartResponse>
+    | ErrorResponse<400>
+    | ErrorResponse<401>
+    | ErrorResponse<403>
+    | ErrorResponse<422>
+    | ErrorResponse<429>;
+
+  @post
+  @route("/telegram/verify-code")
+  @operationId("adminTelegramRelinkVerifyCode")
+  op telegramVerifyCode(
+    ...IdempotencyHeader,
+    @body body: TelegramCodeVerifyRequest,
+  ):
+    | JsonResponse<200, AdminTelegramRelinkVerifyResponse>
+    | ErrorResponse<400>
+    | ErrorResponse<401>
+    | ErrorResponse<403>
+    | ErrorResponse<410>
+    | ErrorResponse<422>
+    | ErrorResponse<429>;
+
+  @post
+  @route("/telegram/verify-password")
+  @operationId("adminTelegramRelinkVerifyPassword")
+  op telegramVerifyPassword(
+    ...IdempotencyHeader,
+    @body body: TelegramPasswordVerifyRequest,
+  ):
+    | JsonResponse<200, WorkspaceTelegramStatus>
+    | ErrorResponse<400>
+    | ErrorResponse<401>
+    | ErrorResponse<403>
+    | ErrorResponse<410>
+    | ErrorResponse<422>
+    | ErrorResponse<429>;
 
   @patch
   @route("/users/{userId}")

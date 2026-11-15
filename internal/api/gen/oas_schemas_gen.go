@@ -287,11 +287,201 @@ func (s *AdminOverview) SetActiveShares(val int64) {
 
 func (*AdminOverview) getAdminOverviewRes() {}
 
+type AdminTelegramRelinkStartBadRequest ErrorEnvelope
+
+func (*AdminTelegramRelinkStartBadRequest) adminTelegramRelinkStartRes() {}
+
+type AdminTelegramRelinkStartForbidden ErrorEnvelope
+
+func (*AdminTelegramRelinkStartForbidden) adminTelegramRelinkStartRes() {}
+
+type AdminTelegramRelinkStartTooManyRequests ErrorEnvelope
+
+func (*AdminTelegramRelinkStartTooManyRequests) adminTelegramRelinkStartRes() {}
+
+type AdminTelegramRelinkStartUnauthorized ErrorEnvelope
+
+func (*AdminTelegramRelinkStartUnauthorized) adminTelegramRelinkStartRes() {}
+
+type AdminTelegramRelinkStartUnprocessableEntity ErrorEnvelope
+
+func (*AdminTelegramRelinkStartUnprocessableEntity) adminTelegramRelinkStartRes() {}
+
+type AdminTelegramRelinkVerifyCodeBadRequest ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyCodeBadRequest) adminTelegramRelinkVerifyCodeRes() {}
+
+type AdminTelegramRelinkVerifyCodeForbidden ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyCodeForbidden) adminTelegramRelinkVerifyCodeRes() {}
+
+type AdminTelegramRelinkVerifyCodeGone ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyCodeGone) adminTelegramRelinkVerifyCodeRes() {}
+
+type AdminTelegramRelinkVerifyCodeTooManyRequests ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyCodeTooManyRequests) adminTelegramRelinkVerifyCodeRes() {}
+
+type AdminTelegramRelinkVerifyCodeUnauthorized ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyCodeUnauthorized) adminTelegramRelinkVerifyCodeRes() {}
+
+type AdminTelegramRelinkVerifyCodeUnprocessableEntity ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyCodeUnprocessableEntity) adminTelegramRelinkVerifyCodeRes() {}
+
+type AdminTelegramRelinkVerifyPasswordBadRequest ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyPasswordBadRequest) adminTelegramRelinkVerifyPasswordRes() {}
+
+type AdminTelegramRelinkVerifyPasswordForbidden ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyPasswordForbidden) adminTelegramRelinkVerifyPasswordRes() {}
+
+type AdminTelegramRelinkVerifyPasswordGone ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyPasswordGone) adminTelegramRelinkVerifyPasswordRes() {}
+
+type AdminTelegramRelinkVerifyPasswordTooManyRequests ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyPasswordTooManyRequests) adminTelegramRelinkVerifyPasswordRes() {}
+
+type AdminTelegramRelinkVerifyPasswordUnauthorized ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyPasswordUnauthorized) adminTelegramRelinkVerifyPasswordRes() {}
+
+type AdminTelegramRelinkVerifyPasswordUnprocessableEntity ErrorEnvelope
+
+func (*AdminTelegramRelinkVerifyPasswordUnprocessableEntity) adminTelegramRelinkVerifyPasswordRes() {}
+
+// Ref: #/components/schemas/AdminTelegramRelinkVerifyResponse
+type AdminTelegramRelinkVerifyResponse struct {
+	Linked           bool                       `json:"linked"`
+	PasswordRequired bool                       `json:"passwordRequired"`
+	FlowId           OptUUID                    `json:"flowId"`
+	ExpiresAt        OptDateTime                `json:"expiresAt"`
+	Status           OptWorkspaceTelegramStatus `json:"status"`
+}
+
+// GetLinked returns the value of Linked.
+func (s *AdminTelegramRelinkVerifyResponse) GetLinked() bool {
+	return s.Linked
+}
+
+// GetPasswordRequired returns the value of PasswordRequired.
+func (s *AdminTelegramRelinkVerifyResponse) GetPasswordRequired() bool {
+	return s.PasswordRequired
+}
+
+// GetFlowId returns the value of FlowId.
+func (s *AdminTelegramRelinkVerifyResponse) GetFlowId() OptUUID {
+	return s.FlowId
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *AdminTelegramRelinkVerifyResponse) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
+// GetStatus returns the value of Status.
+func (s *AdminTelegramRelinkVerifyResponse) GetStatus() OptWorkspaceTelegramStatus {
+	return s.Status
+}
+
+// SetLinked sets the value of Linked.
+func (s *AdminTelegramRelinkVerifyResponse) SetLinked(val bool) {
+	s.Linked = val
+}
+
+// SetPasswordRequired sets the value of PasswordRequired.
+func (s *AdminTelegramRelinkVerifyResponse) SetPasswordRequired(val bool) {
+	s.PasswordRequired = val
+}
+
+// SetFlowId sets the value of FlowId.
+func (s *AdminTelegramRelinkVerifyResponse) SetFlowId(val OptUUID) {
+	s.FlowId = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *AdminTelegramRelinkVerifyResponse) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
+}
+
+// SetStatus sets the value of Status.
+func (s *AdminTelegramRelinkVerifyResponse) SetStatus(val OptWorkspaceTelegramStatus) {
+	s.Status = val
+}
+
+func (*AdminTelegramRelinkVerifyResponse) adminTelegramRelinkVerifyCodeRes() {}
+
+// Ref: #/components/schemas/AdminUserCreateRequest
+type AdminUserCreateRequest struct {
+	Email             string      `json:"email"`
+	DisplayName       OptString   `json:"displayName"`
+	Password          string      `json:"password"`
+	Role              OptUserRole `json:"role"`
+	StorageQuotaBytes OptInt64    `json:"storageQuotaBytes"`
+}
+
+// GetEmail returns the value of Email.
+func (s *AdminUserCreateRequest) GetEmail() string {
+	return s.Email
+}
+
+// GetDisplayName returns the value of DisplayName.
+func (s *AdminUserCreateRequest) GetDisplayName() OptString {
+	return s.DisplayName
+}
+
+// GetPassword returns the value of Password.
+func (s *AdminUserCreateRequest) GetPassword() string {
+	return s.Password
+}
+
+// GetRole returns the value of Role.
+func (s *AdminUserCreateRequest) GetRole() OptUserRole {
+	return s.Role
+}
+
+// GetStorageQuotaBytes returns the value of StorageQuotaBytes.
+func (s *AdminUserCreateRequest) GetStorageQuotaBytes() OptInt64 {
+	return s.StorageQuotaBytes
+}
+
+// SetEmail sets the value of Email.
+func (s *AdminUserCreateRequest) SetEmail(val string) {
+	s.Email = val
+}
+
+// SetDisplayName sets the value of DisplayName.
+func (s *AdminUserCreateRequest) SetDisplayName(val OptString) {
+	s.DisplayName = val
+}
+
+// SetPassword sets the value of Password.
+func (s *AdminUserCreateRequest) SetPassword(val string) {
+	s.Password = val
+}
+
+// SetRole sets the value of Role.
+func (s *AdminUserCreateRequest) SetRole(val OptUserRole) {
+	s.Role = val
+}
+
+// SetStorageQuotaBytes sets the value of StorageQuotaBytes.
+func (s *AdminUserCreateRequest) SetStorageQuotaBytes(val OptInt64) {
+	s.StorageQuotaBytes = val
+}
+
 // Ref: #/components/schemas/AdminUserSummary
 type AdminUserSummary struct {
 	UserId            int64     `json:"userId"`
+	Email             OptString `json:"email"`
 	DisplayName       OptString `json:"displayName"`
 	Username          OptString `json:"username"`
+	HasPassword       bool      `json:"hasPassword"`
 	Premium           bool      `json:"premium"`
 	Role              UserRole  `json:"role"`
 	Disabled          bool      `json:"disabled"`
@@ -306,6 +496,11 @@ func (s *AdminUserSummary) GetUserId() int64 {
 	return s.UserId
 }
 
+// GetEmail returns the value of Email.
+func (s *AdminUserSummary) GetEmail() OptString {
+	return s.Email
+}
+
 // GetDisplayName returns the value of DisplayName.
 func (s *AdminUserSummary) GetDisplayName() OptString {
 	return s.DisplayName
@@ -314,6 +509,11 @@ func (s *AdminUserSummary) GetDisplayName() OptString {
 // GetUsername returns the value of Username.
 func (s *AdminUserSummary) GetUsername() OptString {
 	return s.Username
+}
+
+// GetHasPassword returns the value of HasPassword.
+func (s *AdminUserSummary) GetHasPassword() bool {
+	return s.HasPassword
 }
 
 // GetPremium returns the value of Premium.
@@ -356,6 +556,11 @@ func (s *AdminUserSummary) SetUserId(val int64) {
 	s.UserId = val
 }
 
+// SetEmail sets the value of Email.
+func (s *AdminUserSummary) SetEmail(val OptString) {
+	s.Email = val
+}
+
 // SetDisplayName sets the value of DisplayName.
 func (s *AdminUserSummary) SetDisplayName(val OptString) {
 	s.DisplayName = val
@@ -364,6 +569,11 @@ func (s *AdminUserSummary) SetDisplayName(val OptString) {
 // SetUsername sets the value of Username.
 func (s *AdminUserSummary) SetUsername(val OptString) {
 	s.Username = val
+}
+
+// SetHasPassword sets the value of HasPassword.
+func (s *AdminUserSummary) SetHasPassword(val bool) {
+	s.HasPassword = val
 }
 
 // SetPremium sets the value of Premium.
@@ -401,6 +611,7 @@ func (s *AdminUserSummary) SetUpdatedAt(val time.Time) {
 	s.UpdatedAt = val
 }
 
+func (*AdminUserSummary) createAdminUserRes() {}
 func (*AdminUserSummary) updateAdminUserRes() {}
 
 // Ref: #/components/schemas/ApiKeyCreateRequest
@@ -797,6 +1008,32 @@ func (*BookmarkFilesUnauthorized) bookmarkFilesRes() {}
 type BookmarkFilesUnprocessableEntity ErrorEnvelope
 
 func (*BookmarkFilesUnprocessableEntity) bookmarkFilesRes() {}
+
+// Ref: #/components/schemas/BootstrapStatus
+type BootstrapStatus struct {
+	TelegramLinked bool `json:"telegramLinked"`
+	EmailAuthReady bool `json:"emailAuthReady"`
+}
+
+// GetTelegramLinked returns the value of TelegramLinked.
+func (s *BootstrapStatus) GetTelegramLinked() bool {
+	return s.TelegramLinked
+}
+
+// GetEmailAuthReady returns the value of EmailAuthReady.
+func (s *BootstrapStatus) GetEmailAuthReady() bool {
+	return s.EmailAuthReady
+}
+
+// SetTelegramLinked sets the value of TelegramLinked.
+func (s *BootstrapStatus) SetTelegramLinked(val bool) {
+	s.TelegramLinked = val
+}
+
+// SetEmailAuthReady sets the value of EmailAuthReady.
+func (s *BootstrapStatus) SetEmailAuthReady(val bool) {
+	s.EmailAuthReady = val
+}
 
 // Ref: #/components/schemas/BotBulkProvisionResponse
 type BotBulkProvisionResponse struct {
@@ -1553,6 +1790,45 @@ func (s *CaptionPreferencesUpdateFontSize) UnmarshalText(data []byte) error {
 	}
 }
 
+// ChangePasswordNoContent is response for ChangePassword operation.
+type ChangePasswordNoContent struct{}
+
+func (*ChangePasswordNoContent) changePasswordRes() {}
+
+// Ref: #/components/schemas/ChangePasswordRequest
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
+// GetCurrentPassword returns the value of CurrentPassword.
+func (s *ChangePasswordRequest) GetCurrentPassword() string {
+	return s.CurrentPassword
+}
+
+// GetNewPassword returns the value of NewPassword.
+func (s *ChangePasswordRequest) GetNewPassword() string {
+	return s.NewPassword
+}
+
+// SetCurrentPassword sets the value of CurrentPassword.
+func (s *ChangePasswordRequest) SetCurrentPassword(val string) {
+	s.CurrentPassword = val
+}
+
+// SetNewPassword sets the value of NewPassword.
+func (s *ChangePasswordRequest) SetNewPassword(val string) {
+	s.NewPassword = val
+}
+
+type ChangePasswordUnauthorized ErrorEnvelope
+
+func (*ChangePasswordUnauthorized) changePasswordRes() {}
+
+type ChangePasswordUnprocessableEntity ErrorEnvelope
+
+func (*ChangePasswordUnprocessableEntity) changePasswordRes() {}
+
 // Ref: #/components/schemas/ChannelCreateRequest
 type ChannelCreateRequest struct {
 	// Optional display name. Telegram may choose the final title.
@@ -1806,6 +2082,18 @@ func (s *CookieAuth) SetRoles(val []string) {
 	s.Roles = val
 }
 
+type CookiePasswordLoginTooManyRequests ErrorEnvelope
+
+func (*CookiePasswordLoginTooManyRequests) cookiePasswordLoginRes() {}
+
+type CookiePasswordLoginUnauthorized ErrorEnvelope
+
+func (*CookiePasswordLoginUnauthorized) cookiePasswordLoginRes() {}
+
+type CookiePasswordLoginUnprocessableEntity ErrorEnvelope
+
+func (*CookiePasswordLoginUnprocessableEntity) cookiePasswordLoginRes() {}
+
 // Ref: #/components/schemas/CookieSession
 type CookieSession struct {
 	Authenticated CookieSessionAuthenticated `json:"authenticated"`
@@ -1871,6 +2159,7 @@ func (s *CookieSessionHeaders) SetResponse(val CookieSession) {
 	s.Response = val
 }
 
+func (*CookieSessionHeaders) cookiePasswordLoginRes()               {}
 func (*CookieSessionHeaders) cookieTelegramLoginVerifyCodeRes()     {}
 func (*CookieSessionHeaders) cookieTelegramLoginVerifyPasswordRes() {}
 func (*CookieSessionHeaders) cookieTelegramQRLoginPollRes()         {}
@@ -1991,6 +2280,22 @@ func (*CopyFileUnauthorized) copyFileRes() {}
 type CopyFileUnprocessableEntity ErrorEnvelope
 
 func (*CopyFileUnprocessableEntity) copyFileRes() {}
+
+type CreateAdminUserConflict ErrorEnvelope
+
+func (*CreateAdminUserConflict) createAdminUserRes() {}
+
+type CreateAdminUserForbidden ErrorEnvelope
+
+func (*CreateAdminUserForbidden) createAdminUserRes() {}
+
+type CreateAdminUserUnauthorized ErrorEnvelope
+
+func (*CreateAdminUserUnauthorized) createAdminUserRes() {}
+
+type CreateAdminUserUnprocessableEntity ErrorEnvelope
+
+func (*CreateAdminUserUnprocessableEntity) createAdminUserRes() {}
 
 type CreateApiKeyConflict ErrorEnvelope
 
@@ -6189,6 +6494,14 @@ func (*GetAdminOverviewForbidden) getAdminOverviewRes() {}
 type GetAdminOverviewUnauthorized ErrorEnvelope
 
 func (*GetAdminOverviewUnauthorized) getAdminOverviewRes() {}
+
+type GetAdminTelegramStatusForbidden ErrorEnvelope
+
+func (*GetAdminTelegramStatusForbidden) getAdminTelegramStatusRes() {}
+
+type GetAdminTelegramStatusUnauthorized ErrorEnvelope
+
+func (*GetAdminTelegramStatusUnauthorized) getAdminTelegramStatusRes() {}
 
 type GetFileCategoryStatisticsOKApplicationJSON []FileCategoryStatistics
 
@@ -10722,6 +11035,90 @@ func (o OptWorkspaceDocType) Or(d WorkspaceDocType) WorkspaceDocType {
 	return d
 }
 
+// NewOptWorkspaceTelegramStatus returns new OptWorkspaceTelegramStatus with value set to v.
+func NewOptWorkspaceTelegramStatus(v WorkspaceTelegramStatus) OptWorkspaceTelegramStatus {
+	return OptWorkspaceTelegramStatus{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptWorkspaceTelegramStatus is optional WorkspaceTelegramStatus.
+type OptWorkspaceTelegramStatus struct {
+	Value WorkspaceTelegramStatus
+	Set   bool
+}
+
+// IsSet returns true if OptWorkspaceTelegramStatus was set.
+func (o OptWorkspaceTelegramStatus) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptWorkspaceTelegramStatus) Reset() {
+	var v WorkspaceTelegramStatus
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptWorkspaceTelegramStatus) SetTo(v WorkspaceTelegramStatus) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptWorkspaceTelegramStatus) Get() (v WorkspaceTelegramStatus, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptWorkspaceTelegramStatus) Or(d WorkspaceTelegramStatus) WorkspaceTelegramStatus {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// Ref: #/components/schemas/PasswordLoginRequest
+type PasswordLoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// GetEmail returns the value of Email.
+func (s *PasswordLoginRequest) GetEmail() string {
+	return s.Email
+}
+
+// GetPassword returns the value of Password.
+func (s *PasswordLoginRequest) GetPassword() string {
+	return s.Password
+}
+
+// SetEmail sets the value of Email.
+func (s *PasswordLoginRequest) SetEmail(val string) {
+	s.Email = val
+}
+
+// SetPassword sets the value of Password.
+func (s *PasswordLoginRequest) SetPassword(val string) {
+	s.Password = val
+}
+
+type PasswordLoginTooManyRequests ErrorEnvelope
+
+func (*PasswordLoginTooManyRequests) passwordLoginRes() {}
+
+type PasswordLoginUnauthorized ErrorEnvelope
+
+func (*PasswordLoginUnauthorized) passwordLoginRes() {}
+
+type PasswordLoginUnprocessableEntity ErrorEnvelope
+
+func (*PasswordLoginUnprocessableEntity) passwordLoginRes() {}
+
 // PauseJobQueueNoContent is response for PauseJobQueue operation.
 type PauseJobQueueNoContent struct{}
 
@@ -12014,6 +12411,48 @@ func (s *SessionSummary) SetRevokedAt(val OptDateTime) {
 	s.RevokedAt = val
 }
 
+// Ref: #/components/schemas/SetupCredentialsRequest
+type SetupCredentialsRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// GetEmail returns the value of Email.
+func (s *SetupCredentialsRequest) GetEmail() string {
+	return s.Email
+}
+
+// GetPassword returns the value of Password.
+func (s *SetupCredentialsRequest) GetPassword() string {
+	return s.Password
+}
+
+// SetEmail sets the value of Email.
+func (s *SetupCredentialsRequest) SetEmail(val string) {
+	s.Email = val
+}
+
+// SetPassword sets the value of Password.
+func (s *SetupCredentialsRequest) SetPassword(val string) {
+	s.Password = val
+}
+
+type SetupOwnerCredentialsConflict ErrorEnvelope
+
+func (*SetupOwnerCredentialsConflict) setupOwnerCredentialsRes() {}
+
+type SetupOwnerCredentialsForbidden ErrorEnvelope
+
+func (*SetupOwnerCredentialsForbidden) setupOwnerCredentialsRes() {}
+
+type SetupOwnerCredentialsUnauthorized ErrorEnvelope
+
+func (*SetupOwnerCredentialsUnauthorized) setupOwnerCredentialsRes() {}
+
+type SetupOwnerCredentialsUnprocessableEntity ErrorEnvelope
+
+func (*SetupOwnerCredentialsUnprocessableEntity) setupOwnerCredentialsRes() {}
+
 // Ref: #/components/schemas/ShareCreateRequest
 type ShareCreateRequest struct {
 	// Optional password. The server stores only a password hash.
@@ -13116,6 +13555,7 @@ func (s *TelegramLoginStartResponse) SetPasswordRequired(val bool) {
 	s.PasswordRequired = val
 }
 
+func (*TelegramLoginStartResponse) adminTelegramRelinkStartRes()      {}
 func (*TelegramLoginStartResponse) cookieTelegramLoginVerifyCodeRes() {}
 func (*TelegramLoginStartResponse) telegramLoginStartRes()            {}
 func (*TelegramLoginStartResponse) telegramLoginVerifyCodeRes()       {}
@@ -13447,6 +13887,7 @@ func (s *TokenPair) SetExpiresIn(val int32) {
 	s.ExpiresIn = val
 }
 
+func (*TokenPair) passwordLoginRes()               {}
 func (*TokenPair) refreshSessionRes()              {}
 func (*TokenPair) telegramLoginVerifyCodeRes()     {}
 func (*TokenPair) telegramLoginVerifyPasswordRes() {}
@@ -14576,10 +15017,28 @@ func (s *UploadState) UnmarshalText(data []byte) error {
 
 // Ref: #/components/schemas/UserAdminUpdateRequest
 type UserAdminUpdateRequest struct {
+	Email             OptString   `json:"email"`
+	DisplayName       OptString   `json:"displayName"`
+	Password          OptString   `json:"password"`
 	Role              OptUserRole `json:"role"`
 	Disabled          OptBool     `json:"disabled"`
 	StorageQuotaBytes OptInt64    `json:"storageQuotaBytes"`
 	ClearStorageQuota OptBool     `json:"clearStorageQuota"`
+}
+
+// GetEmail returns the value of Email.
+func (s *UserAdminUpdateRequest) GetEmail() OptString {
+	return s.Email
+}
+
+// GetDisplayName returns the value of DisplayName.
+func (s *UserAdminUpdateRequest) GetDisplayName() OptString {
+	return s.DisplayName
+}
+
+// GetPassword returns the value of Password.
+func (s *UserAdminUpdateRequest) GetPassword() OptString {
+	return s.Password
 }
 
 // GetRole returns the value of Role.
@@ -14600,6 +15059,21 @@ func (s *UserAdminUpdateRequest) GetStorageQuotaBytes() OptInt64 {
 // GetClearStorageQuota returns the value of ClearStorageQuota.
 func (s *UserAdminUpdateRequest) GetClearStorageQuota() OptBool {
 	return s.ClearStorageQuota
+}
+
+// SetEmail sets the value of Email.
+func (s *UserAdminUpdateRequest) SetEmail(val OptString) {
+	s.Email = val
+}
+
+// SetDisplayName sets the value of DisplayName.
+func (s *UserAdminUpdateRequest) SetDisplayName(val OptString) {
+	s.DisplayName = val
+}
+
+// SetPassword sets the value of Password.
+func (s *UserAdminUpdateRequest) SetPassword(val OptString) {
+	s.Password = val
 }
 
 // SetRole sets the value of Role.
@@ -14737,18 +15211,27 @@ func (s *UserPreferencesUpdate) SetCaptions(val OptCaptionPreferencesUpdate) {
 
 // Ref: #/components/schemas/UserProfile
 type UserProfile struct {
-	UserId       int64     `json:"userId"`
-	DisplayName  OptString `json:"displayName"`
-	Username     OptString `json:"username"`
-	Premium      bool      `json:"premium"`
-	Role         UserRole  `json:"role"`
-	Capabilities []string  `json:"capabilities"`
-	CreatedAt    time.Time `json:"createdAt"`
+	UserId            int64     `json:"userId"`
+	Email             OptString `json:"email"`
+	DisplayName       OptString `json:"displayName"`
+	Username          OptString `json:"username"`
+	HasPassword       bool      `json:"hasPassword"`
+	Premium           bool      `json:"premium"`
+	Role              UserRole  `json:"role"`
+	Capabilities      []string  `json:"capabilities"`
+	StorageUsedBytes  int64     `json:"storageUsedBytes"`
+	StorageQuotaBytes OptInt64  `json:"storageQuotaBytes"`
+	CreatedAt         time.Time `json:"createdAt"`
 }
 
 // GetUserId returns the value of UserId.
 func (s *UserProfile) GetUserId() int64 {
 	return s.UserId
+}
+
+// GetEmail returns the value of Email.
+func (s *UserProfile) GetEmail() OptString {
+	return s.Email
 }
 
 // GetDisplayName returns the value of DisplayName.
@@ -14759,6 +15242,11 @@ func (s *UserProfile) GetDisplayName() OptString {
 // GetUsername returns the value of Username.
 func (s *UserProfile) GetUsername() OptString {
 	return s.Username
+}
+
+// GetHasPassword returns the value of HasPassword.
+func (s *UserProfile) GetHasPassword() bool {
+	return s.HasPassword
 }
 
 // GetPremium returns the value of Premium.
@@ -14776,6 +15264,16 @@ func (s *UserProfile) GetCapabilities() []string {
 	return s.Capabilities
 }
 
+// GetStorageUsedBytes returns the value of StorageUsedBytes.
+func (s *UserProfile) GetStorageUsedBytes() int64 {
+	return s.StorageUsedBytes
+}
+
+// GetStorageQuotaBytes returns the value of StorageQuotaBytes.
+func (s *UserProfile) GetStorageQuotaBytes() OptInt64 {
+	return s.StorageQuotaBytes
+}
+
 // GetCreatedAt returns the value of CreatedAt.
 func (s *UserProfile) GetCreatedAt() time.Time {
 	return s.CreatedAt
@@ -14786,6 +15284,11 @@ func (s *UserProfile) SetUserId(val int64) {
 	s.UserId = val
 }
 
+// SetEmail sets the value of Email.
+func (s *UserProfile) SetEmail(val OptString) {
+	s.Email = val
+}
+
 // SetDisplayName sets the value of DisplayName.
 func (s *UserProfile) SetDisplayName(val OptString) {
 	s.DisplayName = val
@@ -14794,6 +15297,11 @@ func (s *UserProfile) SetDisplayName(val OptString) {
 // SetUsername sets the value of Username.
 func (s *UserProfile) SetUsername(val OptString) {
 	s.Username = val
+}
+
+// SetHasPassword sets the value of HasPassword.
+func (s *UserProfile) SetHasPassword(val bool) {
+	s.HasPassword = val
 }
 
 // SetPremium sets the value of Premium.
@@ -14811,12 +15319,23 @@ func (s *UserProfile) SetCapabilities(val []string) {
 	s.Capabilities = val
 }
 
+// SetStorageUsedBytes sets the value of StorageUsedBytes.
+func (s *UserProfile) SetStorageUsedBytes(val int64) {
+	s.StorageUsedBytes = val
+}
+
+// SetStorageQuotaBytes sets the value of StorageQuotaBytes.
+func (s *UserProfile) SetStorageQuotaBytes(val OptInt64) {
+	s.StorageQuotaBytes = val
+}
+
 // SetCreatedAt sets the value of CreatedAt.
 func (s *UserProfile) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
 }
 
-func (*UserProfile) getCurrentUserRes() {}
+func (*UserProfile) getCurrentUserRes()        {}
+func (*UserProfile) setupOwnerCredentialsRes() {}
 
 // Ref: #/components/schemas/UserRole
 type UserRole string
@@ -15277,3 +15796,54 @@ func (s *WorkspaceDocumentUpdateRequest) SetName(val OptString) {
 func (s *WorkspaceDocumentUpdateRequest) SetContent(val string) {
 	s.Content = val
 }
+
+// Ref: #/components/schemas/WorkspaceTelegramStatus
+type WorkspaceTelegramStatus struct {
+	Linked           bool        `json:"linked"`
+	TelegramUserId   OptInt64    `json:"telegramUserId"`
+	TelegramUsername OptString   `json:"telegramUsername"`
+	UpdatedAt        OptDateTime `json:"updatedAt"`
+}
+
+// GetLinked returns the value of Linked.
+func (s *WorkspaceTelegramStatus) GetLinked() bool {
+	return s.Linked
+}
+
+// GetTelegramUserId returns the value of TelegramUserId.
+func (s *WorkspaceTelegramStatus) GetTelegramUserId() OptInt64 {
+	return s.TelegramUserId
+}
+
+// GetTelegramUsername returns the value of TelegramUsername.
+func (s *WorkspaceTelegramStatus) GetTelegramUsername() OptString {
+	return s.TelegramUsername
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *WorkspaceTelegramStatus) GetUpdatedAt() OptDateTime {
+	return s.UpdatedAt
+}
+
+// SetLinked sets the value of Linked.
+func (s *WorkspaceTelegramStatus) SetLinked(val bool) {
+	s.Linked = val
+}
+
+// SetTelegramUserId sets the value of TelegramUserId.
+func (s *WorkspaceTelegramStatus) SetTelegramUserId(val OptInt64) {
+	s.TelegramUserId = val
+}
+
+// SetTelegramUsername sets the value of TelegramUsername.
+func (s *WorkspaceTelegramStatus) SetTelegramUsername(val OptString) {
+	s.TelegramUsername = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *WorkspaceTelegramStatus) SetUpdatedAt(val OptDateTime) {
+	s.UpdatedAt = val
+}
+
+func (*WorkspaceTelegramStatus) adminTelegramRelinkVerifyPasswordRes() {}
+func (*WorkspaceTelegramStatus) getAdminTelegramStatusRes()            {}

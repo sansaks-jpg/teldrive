@@ -66,10 +66,21 @@ func NewService(pool *pgxpool.Pool, creator Creator, cfg Config) *Service {
 
 // Resolve returns an owned channel suitable for one more uploaded part.
 // Explicit channel requests never roll over silently.
+func (s *Service) resolveStorageUserID(ctx context.Context, userID int64) int64 {
+	if s == nil || s.queries == nil {
+		return userID
+	}
+	if wt, err := s.queries.GetWorkspaceTelegram(ctx); err == nil && wt.OwnerUserID > 0 {
+		return wt.OwnerUserID
+	}
+	return userID
+}
+
 func (s *Service) Resolve(ctx context.Context, userID, requestedChannelID int64) (int64, error) {
 	if userID <= 0 {
 		return 0, ErrInvalidOwner
 	}
+	userID = s.resolveStorageUserID(ctx, userID)
 	if requestedChannelID != 0 {
 		channel, err := s.queries.GetChannelForUser(ctx, sqlcgen.GetChannelForUserParams{
 			UserID:    userID,
@@ -124,6 +135,7 @@ func (s *Service) ResolveMany(ctx context.Context, userID int64, count int) (cha
 	if userID <= 0 {
 		return nil, ErrInvalidOwner
 	}
+	userID = s.resolveStorageUserID(ctx, userID)
 	if count <= 0 {
 		return []int64{}, nil
 	}

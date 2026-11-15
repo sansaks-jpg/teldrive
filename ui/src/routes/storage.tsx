@@ -1,10 +1,9 @@
-import { Button, Card, Chip, Dropdown, Label, Spinner, Typography } from "@heroui/react";
+import { Button, Card, Dropdown, Label, Spinner, Typography } from "@heroui/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import ArrowDownIcon from "~icons/gravity-ui/arrow-down";
 import ArrowUpIcon from "~icons/gravity-ui/arrow-up";
 import ChevronDownIcon from "~icons/gravity-ui/chevron-down";
-import ChannelIcon from "~icons/gravity-ui/database";
 import CleanupIcon from "~icons/gravity-ui/trash-bin";
 import CloseIcon from "~icons/gravity-ui/xmark";
 import { $api } from "@/api/client";
@@ -12,17 +11,14 @@ import { queryClient } from "@/api/query-client";
 import type { components } from "@/api/schema";
 import type { FileCategory, FileEntry } from "@/api/types";
 import { FilePreviewDialog, isPreviewable } from "@/components/file-preview-dialog";
-import {
-  GoogleOneBrandIcon,
-  GoogleOneSegmentedBar,
-  type StorageSegment,
-} from "@/components/google-workspace";
+import { GoogleOneSegmentedBar, type StorageSegment } from "@/components/google-workspace";
 import { LinkButton } from "@/components/link-button";
 import { Page } from "@/components/page";
 import { startFileDownload } from "@/features/files/download";
 import { FileTypeIcon } from "@/features/files/file-type-icon";
 import { useInfiniteFilePages } from "@/features/files/queries";
 import { useCountFormatter, useDateOnlyFormatter, useFormatBytes } from "@/lib/format";
+import { useCurrentUser } from "@/auth/use-current-user";
 import { useAppLocale } from "@/lib/locale";
 
 type StorageActivity = components["schemas"]["StorageActivity"];
@@ -91,6 +87,7 @@ export const Route = createFileRoute("/storage")({
 
 function StoragePage() {
   const { data } = $api.useSuspenseQuery("get", "/v1/storage/stats");
+  const currentUser = useCurrentUser();
   const { t } = useAppLocale();
   const formatBytes = useFormatBytes();
   const formatCount = useCountFormatter();
@@ -140,7 +137,7 @@ function StoragePage() {
   const files = filesQuery.data?.pages.flatMap((page) => page.items) ?? [];
 
   const summary = data.summary;
-  const totalChannelParts = data.channels.reduce((total, channel) => total + channel.partCount, 0);
+  const quotaBytes = currentUser.data.storageQuotaBytes ?? null;
   const categoryMap = new Map(data.categories.map((entry) => [entry.category, entry.totalSize]));
   const otherSize =
     (categoryMap.get("archive") ?? 0) +
@@ -229,14 +226,6 @@ function StoragePage() {
           >
             {showAnalytics ? "Hide analytics" : "Analytics"}
           </Button>
-          <LinkButton
-            to="/settings/channels"
-            size="sm"
-            variant="ghost"
-            className="h-8 rounded-full px-3 text-xs font-medium text-[#0b57d0] dark:text-[#a8c7fa]"
-          >
-            {t("storage.manage")}
-          </LinkButton>
         </div>
       </div>
 
@@ -350,32 +339,30 @@ function StoragePage() {
       <div className="grid gap-3.5 py-1">
         <div className="flex flex-wrap items-baseline gap-2">
           <span className="text-3xl font-normal tabular-nums tracking-tight text-foreground sm:text-[32px]">
-            {formatBytes(summary.logicalBytes)}
+            {formatBytes(summary.logicalBytes + summary.trashBytes)}
           </span>
           <span className="text-sm text-muted">
-            {t("one.heroUsed", {
-              bytes: "",
-              files: formatCount.format(summary.activeFiles),
-            }).trim()}
+            {quotaBytes != null
+              ? t("storage.usedOfQuota", {
+                  quota: formatBytes(quotaBytes),
+                  files: formatCount.format(summary.activeFiles),
+                })
+              : t("one.heroUsed", {
+                  bytes: "",
+                  files: formatCount.format(summary.activeFiles),
+                }).trim()}
           </span>
         </div>
 
         <GoogleOneSegmentedBar
           segments={segments}
-          totalBytes={combinedPoolBytes}
+          totalBytes={
+            quotaBytes != null && quotaBytes > combinedPoolBytes ? quotaBytes : combinedPoolBytes
+          }
           formatBytes={formatBytes}
         />
 
         <div className="flex flex-wrap items-center gap-3 pt-1">
-          <LinkButton
-            to="/settings/channels"
-            size="sm"
-            variant="secondary"
-            className="h-9 gap-2 rounded-full border border-[#747775]/45 bg-transparent px-4 text-xs font-medium dark:border-[#8e918f]/45"
-          >
-            <GoogleOneBrandIcon className="size-4" />
-            {t("storage.manage")}
-          </LinkButton>
           {data.cleanup.totalReclaimableBytes > 0 ? (
             <LinkButton
               to="/trash"
@@ -396,49 +383,7 @@ function StoragePage() {
       {showAnalytics ? (
         <div className="grid gap-4 pb-2">
           <StorageGrowthChart points={data.growth} />
-          <div className="grid gap-4 xl:grid-cols-2">
-            <Card className="gap-4 p-5">
-              <div>
-                <Typography type="h2" className="text-base font-semibold">
-                  {t("storage.distribution")}
-                </Typography>
-                <Typography.Paragraph className="text-sm text-muted">
-                  {t("storage.distributionDesc")}
-                </Typography.Paragraph>
-              </div>
-              <div className="divide-y divide-border rounded-xl border border-border">
-                {data.channels.map((channel) => {
-                  const percent =
-                    totalChannelParts > 0 ? (channel.partCount / totalChannelParts) * 100 : 0;
-                  return (
-                    <div key={channel.channelId} className="grid gap-2 p-3.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <ChannelIcon className="size-4 shrink-0 text-muted" />
-                          <span className="truncate text-sm font-semibold">{channel.name}</span>
-                          {channel.selected && (
-                            <Chip size="sm" variant="tertiary">
-                              {t("storage.selected")}
-                            </Chip>
-                          )}
-                        </div>
-                        <span className="text-xs text-muted">
-                          {t("storage.parts", {
-                            count: formatCount.format(channel.partCount),
-                            pct: percent.toFixed(1),
-                          })}
-                        </span>
-                      </div>
-                      <ProgressTrack
-                        value={percent}
-                        label={`${channel.name} storage distribution`}
-                      />
-                    </div>
-                  );
-                })}
-                {data.channels.length === 0 && <EmptyCopy>{t("storage.emptyChannels")}</EmptyCopy>}
-              </div>
-            </Card>
+          <div className="grid gap-4">
             <Card className="gap-4 p-5">
               <div>
                 <Typography type="h2" className="text-base font-semibold">
@@ -627,7 +572,7 @@ function ActivityRow({ activity }: { activity: StorageActivity }) {
   );
 }
 
-function ProgressTrack({ value, label }: { value: number; label: string }) {
+function _ProgressTrack({ value, label }: { value: number; label: string }) {
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
   return (
     <div

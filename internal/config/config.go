@@ -52,6 +52,7 @@ type Telegram struct {
 	RateBurst            int             `koanf:"rate-burst" default:"10" validate:"gt=0" description:"Telegram API request burst allowance per Telegram account"`
 	Proxy                string          `koanf:"proxy" default:"" description:"HTTP, HTTPS, or SOCKS5 proxy URL"`
 	MTProxy              TelegramMTProxy `koanf:"mtproxy"`
+	Websocket            bool            `koanf:"websocket" default:"false" description:"Use Telegram MTProto over WebSocket (wss://) instead of raw TCP"`
 	ClientLogging        bool            `koanf:"client-logging" default:"false" description:"Enable verbose gotd Telegram client logs through the application logger"`
 	NTP                  bool            `koanf:"ntp" default:"false" description:"Use an NTP-adjusted clock for Telegram without changing the system clock"`
 	NTPServer            string          `koanf:"ntp-server" default:"pool.ntp.org" validate:"required_if=NTP true" description:"NTP server queried once when the Telegram client factory starts; requires outbound UDP"`

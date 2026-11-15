@@ -13,6 +13,18 @@ type AddPhotoAlbumItemRes interface {
 	addPhotoAlbumItemRes()
 }
 
+type AdminTelegramRelinkStartRes interface {
+	adminTelegramRelinkStartRes()
+}
+
+type AdminTelegramRelinkVerifyCodeRes interface {
+	adminTelegramRelinkVerifyCodeRes()
+}
+
+type AdminTelegramRelinkVerifyPasswordRes interface {
+	adminTelegramRelinkVerifyPasswordRes()
+}
+
 type AuthorizePublicShareDownloadRes interface {
 	authorizePublicShareDownloadRes()
 }
@@ -33,6 +45,10 @@ type CancelJobRes interface {
 	cancelJobRes()
 }
 
+type ChangePasswordRes interface {
+	changePasswordRes()
+}
+
 type CleanTrashRes interface {
 	cleanTrashRes()
 }
@@ -43,6 +59,10 @@ type CompletePublicShareUploadRes interface {
 
 type CompleteUploadRes interface {
 	completeUploadRes()
+}
+
+type CookiePasswordLoginRes interface {
+	cookiePasswordLoginRes()
 }
 
 type CookieTelegramLoginVerifyCodeRes interface {
@@ -59,6 +79,10 @@ type CookieTelegramQRLoginPollRes interface {
 
 type CopyFileRes interface {
 	copyFileRes()
+}
+
+type CreateAdminUserRes interface {
+	createAdminUserRes()
 }
 
 type CreateApiKeyRes interface {
@@ -179,6 +203,10 @@ type DownloadPublicShareRes interface {
 
 type GetAdminOverviewRes interface {
 	getAdminOverviewRes()
+}
+
+type GetAdminTelegramStatusRes interface {
+	getAdminTelegramStatusRes()
 }
 
 type GetCurrentUserRes interface {
@@ -365,6 +393,10 @@ type MoveFileRes interface {
 	moveFileRes()
 }
 
+type PasswordLoginRes interface {
+	passwordLoginRes()
+}
+
 type PauseJobQueueRes interface {
 	pauseJobQueueRes()
 }
@@ -467,6 +499,10 @@ type SearchUsersRes interface {
 
 type SelectChannelRes interface {
 	selectChannelRes()
+}
+
+type SetupOwnerCredentialsRes interface {
+	setupOwnerCredentialsRes()
 }
 
 type StreamEventsRes interface {

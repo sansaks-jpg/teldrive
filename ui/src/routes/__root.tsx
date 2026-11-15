@@ -94,6 +94,7 @@ type AppRoutePath =
   | "/trash"
   | "/photos"
   | "/storage"
+  | "/one"
   | "/admin"
   | "/tasks"
   | "/settings"
@@ -265,11 +266,11 @@ const ONE_NAV: AppNavItem[] = [
   },
   {
     key: "admin",
-    labelKey: "admin.title",
+    labelKey: "apps.one",
     icon: ShieldIcon,
-    to: "/admin",
+    to: "/one",
     capability: "system.manageUsers",
-    isActive: (pathname) => pathname.startsWith("/admin"),
+    isActive: (pathname) => pathname.startsWith("/one") || pathname.startsWith("/admin"),
   },
   {
     key: "tasks",
@@ -378,23 +379,30 @@ function Sidebar({
     { staleTime: 60_000, retry: false },
   );
   const storageStats = storageQuery.data;
+  const quotaBytes = user?.storageQuotaBytes ?? null;
   const storageFillPct =
-    storageStats && storageStats.totalBytes > 0
-      ? Math.min(100, Math.max(8, Math.round((Math.log10(storageStats.totalBytes + 1) / 12) * 100)))
-      : 0;
+    storageStats && quotaBytes != null && quotaBytes > 0
+      ? Math.min(100, Math.max(2, Math.round((storageStats.totalBytes / quotaBytes) * 100)))
+      : storageStats && storageStats.totalBytes > 0
+        ? Math.min(
+            100,
+            Math.max(8, Math.round((Math.log10(storageStats.totalBytes + 1) / 12) * 100)),
+          )
+        : 0;
   const versionLabel = import.meta.env.VITE_APP_VERSION;
   const logout = $api.useMutation("post", "/v1/auth/cookie/logout");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const displayName =
     user?.displayName?.trim() ||
+    user?.email?.trim() ||
     user?.username?.trim() ||
     (user ? t("account.userFallback", { id: user.userId }) : t("account.title"));
-  const secondaryLabel = user?.username
-    ? `@${user.username}`
-    : user?.premium
-      ? "Telegram Premium"
-      : "Telegram";
+  const secondaryLabel = user?.email
+    ? user.email
+    : user?.username
+      ? `@${user.username}`
+      : t("workspace.memberLabel");
   const initials =
     displayName
       .split(/\s+/)
@@ -626,7 +634,11 @@ function Sidebar({
         >
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="font-medium text-foreground">{t("nav.storage")}</span>
-            <span className="tabular-nums text-muted">{formatBytes(storageStats.totalBytes)}</span>
+            <span className="tabular-nums text-muted">
+              {quotaBytes != null
+                ? `${formatBytes(storageStats.totalBytes)} / ${formatBytes(quotaBytes)}`
+                : formatBytes(storageStats.totalBytes)}
+            </span>
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-default/40">
             <div
@@ -1258,7 +1270,7 @@ function AppSwitcher() {
   const [open, setOpen] = useState(false);
 
   const go = (
-    path: "/files" | "/photos" | "/admin" | "/storage" | "/docs" | "/tasks" | "/settings",
+    path: "/files" | "/photos" | "/one" | "/storage" | "/docs" | "/tasks" | "/settings",
   ) => {
     setOpen(false);
     if (path === "/files") {
@@ -1315,19 +1327,21 @@ function AppSwitcher() {
             </div>
             <span className="text-xs font-semibold">{t("apps.photos")}</span>
           </Button>
-          <Button
-            variant="ghost"
-            onPress={() => go(isAdmin ? "/admin" : "/storage")}
-            className={cn(
-              "h-auto flex-col items-center gap-2 rounded-2xl p-3 text-center",
-              activeApp === "one" ? "bg-accent/10 text-foreground" : "hover:bg-surface-secondary",
-            )}
-          >
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-surface-secondary">
-              <GoogleOneBrandIcon className="size-6.5" />
-            </div>
-            <span className="text-xs font-semibold">{t("apps.one")}</span>
-          </Button>
+          {isAdmin ? (
+            <Button
+              variant="ghost"
+              onPress={() => go("/one")}
+              className={cn(
+                "h-auto flex-col items-center gap-2 rounded-2xl p-3 text-center",
+                activeApp === "one" ? "bg-accent/10 text-foreground" : "hover:bg-surface-secondary",
+              )}
+            >
+              <div className="flex size-11 items-center justify-center rounded-2xl bg-surface-secondary">
+                <GoogleOneBrandIcon className="size-6.5" />
+              </div>
+              <span className="text-xs font-semibold">{t("apps.one")}</span>
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             onPress={() => go("/docs")}
@@ -1711,7 +1725,8 @@ function Layout() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  if (pathname === "/login" || pathname.startsWith("/share/")) return <Outlet />;
+  if (pathname === "/login" || pathname.startsWith("/one") || pathname.startsWith("/share/"))
+    return <Outlet />;
   return (
     <AriaRouterProvider
       navigate={(path) => navigate({ to: String(path) })}
@@ -1786,7 +1801,12 @@ export type RouterContext = {
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ context, location }) => {
-    if (location.pathname === "/login" || location.pathname.startsWith("/share/")) return;
+    if (
+      location.pathname === "/login" ||
+      location.pathname.startsWith("/one") ||
+      location.pathname.startsWith("/share/")
+    )
+      return;
     try {
       await context.queryClient.ensureQueryData(currentUserQueryOptions());
       await context.queryClient.ensureQueryData(preferencesQueryOptions());

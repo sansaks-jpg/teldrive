@@ -40,6 +40,17 @@ func (h *Handler) CookieTelegramLoginVerifyCode(ctx context.Context, req *gen.Te
 	return h.cookieSessionResponse(ctx, result.Tokens)
 }
 
+func (h *Handler) CookiePasswordLogin(ctx context.Context, req *gen.PasswordLoginRequest) (gen.CookiePasswordLoginRes, error) {
+	if h.Auth == nil || req == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	tokens, err := h.Auth.LoginWithPassword(ctx, req.Email, req.Password)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	return h.cookieSessionResponse(ctx, tokens)
+}
+
 func (h *Handler) CookieTelegramLoginVerifyPassword(ctx context.Context, req *gen.TelegramPasswordVerifyRequest, _ gen.CookieTelegramLoginVerifyPasswordParams) (gen.CookieTelegramLoginVerifyPasswordRes, error) {
 	if h.Auth == nil || req == nil {
 		return nil, mapServiceError(ErrOperationUnavailable)

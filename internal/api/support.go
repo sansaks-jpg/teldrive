@@ -67,7 +67,7 @@ func mapServiceError(err error) error {
 		return problem(http.StatusUnauthorized, "unauthorized", "authentication is required", err)
 	case errors.Is(err, shares.ErrPasswordNeeded), errors.Is(err, shares.ErrInvalidPassword):
 		return problem(http.StatusUnauthorized, "share_password_required", "a valid share password is required", err)
-	case errors.Is(err, shares.ErrForbidden):
+	case errors.Is(err, shares.ErrForbidden), errors.Is(err, authn.ErrForbidden), errors.Is(err, authn.ErrWorkspaceInitialized):
 		return problem(http.StatusForbidden, "forbidden", "operation is not permitted", err)
 	case errors.Is(err, events.ErrInvalidCursor):
 		return problem(http.StatusUnprocessableEntity, "invalid_event_cursor", "event cursor is invalid", err)
@@ -87,7 +87,7 @@ func mapServiceError(err error) error {
 		return problem(http.StatusConflict, "upload_invalid_state", "upload session is no longer open", err)
 	case errors.Is(err, uploads.ErrNameConflict):
 		return problem(http.StatusConflict, "upload_name_conflict", "destination name already exists", err)
-	case errors.Is(err, catalog.ErrConflict), errors.Is(err, catalog.ErrCycle), errors.Is(err, channels.ErrSelectedChannel), errors.Is(err, channels.ErrChannelInUse), errors.Is(err, channels.ErrChannelFull), errors.Is(err, channels.ErrChannelUnhealthy), errors.Is(err, fileops.ErrNotTrashed):
+	case errors.Is(err, authn.ErrEmailConflict), errors.Is(err, authn.ErrCredentialConflict), errors.Is(err, catalog.ErrConflict), errors.Is(err, catalog.ErrCycle), errors.Is(err, channels.ErrSelectedChannel), errors.Is(err, channels.ErrChannelInUse), errors.Is(err, channels.ErrChannelFull), errors.Is(err, channels.ErrChannelUnhealthy), errors.Is(err, fileops.ErrNotTrashed):
 		return problem(http.StatusConflict, "conflict", "operation conflicts with current state", err)
 	case errors.Is(err, catalog.ErrPrecondition):
 		return problem(http.StatusPreconditionFailed, "precondition_failed", "resource generation does not match", err)

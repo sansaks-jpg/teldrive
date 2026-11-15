@@ -694,6 +694,8 @@ type User struct {
 	Role              UserRole           `json:"role"`
 	DisabledAt        pgtype.Timestamptz `json:"disabled_at"`
 	StorageQuotaBytes pgtype.Int8        `json:"storage_quota_bytes"`
+	Email             pgtype.Text        `json:"email"`
+	PasswordHash      pgtype.Text        `json:"password_hash"`
 }
 
 type UserEvent struct {
@@ -728,4 +730,14 @@ type WorkspaceDocument struct {
 	UpdatedBy pgtype.Int8        `json:"updated_by"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type WorkspaceTelegram struct {
+	ID                    int16              `json:"id"`
+	OwnerUserID           int64              `json:"owner_user_id"`
+	TelegramUserID        int64              `json:"telegram_user_id"`
+	PhoneNumberCiphertext []byte             `json:"phone_number_ciphertext"`
+	TelegramUsername      pgtype.Text        `json:"telegram_username"`
+	TelegramSession       []byte             `json:"telegram_session"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
 }

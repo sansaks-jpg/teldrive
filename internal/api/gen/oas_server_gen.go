@@ -23,6 +23,18 @@ type Handler interface {
 	//
 	// POST /v1/photos/albums/{albumId}/items
 	AddPhotoAlbumItem(ctx context.Context, req *PhotoAlbumItemRequest, params AddPhotoAlbumItemParams) (AddPhotoAlbumItemRes, error)
+	// AdminTelegramRelinkStart implements adminTelegramRelinkStart operation.
+	//
+	// POST /v1/admin/telegram/start
+	AdminTelegramRelinkStart(ctx context.Context, req *TelegramLoginStartRequest, params AdminTelegramRelinkStartParams) (AdminTelegramRelinkStartRes, error)
+	// AdminTelegramRelinkVerifyCode implements adminTelegramRelinkVerifyCode operation.
+	//
+	// POST /v1/admin/telegram/verify-code
+	AdminTelegramRelinkVerifyCode(ctx context.Context, req *TelegramCodeVerifyRequest, params AdminTelegramRelinkVerifyCodeParams) (AdminTelegramRelinkVerifyCodeRes, error)
+	// AdminTelegramRelinkVerifyPassword implements adminTelegramRelinkVerifyPassword operation.
+	//
+	// POST /v1/admin/telegram/verify-password
+	AdminTelegramRelinkVerifyPassword(ctx context.Context, req *TelegramPasswordVerifyRequest, params AdminTelegramRelinkVerifyPasswordParams) (AdminTelegramRelinkVerifyPasswordRes, error)
 	// AuthorizePublicShareDownload implements authorizePublicShareDownload operation.
 	//
 	// Exchange the share password for a 15-minute, share-scoped download cookie.
@@ -51,6 +63,12 @@ type Handler interface {
 	//
 	// POST /v1/jobs/{jobId}/cancel
 	CancelJob(ctx context.Context, params CancelJobParams) (CancelJobRes, error)
+	// ChangePassword implements changePassword operation.
+	//
+	// Change the authenticated user's password.
+	//
+	// POST /v1/me/password
+	ChangePassword(ctx context.Context, req *ChangePasswordRequest) (ChangePasswordRes, error)
 	// CleanTrash implements cleanTrash operation.
 	//
 	// Move every trashed file and folder owned by the authenticated user to deletion pending.
@@ -68,6 +86,12 @@ type Handler interface {
 	//
 	// POST /v1/uploads/{uploadId}/complete
 	CompleteUpload(ctx context.Context, params CompleteUploadParams) (CompleteUploadRes, error)
+	// CookiePasswordLogin implements cookiePasswordLogin operation.
+	//
+	// Authenticate with Workspace email and password and establish an HttpOnly cookie session.
+	//
+	// POST /v1/auth/cookie/password/login
+	CookiePasswordLogin(ctx context.Context, req *PasswordLoginRequest) (CookiePasswordLoginRes, error)
 	// CookieTelegramLoginVerifyCode implements cookieTelegramLoginVerifyCode operation.
 	//
 	// Complete Telegram code verification and establish an HttpOnly cookie session.
@@ -92,6 +116,10 @@ type Handler interface {
 	//
 	// POST /v1/files/{fileId}/copy
 	CopyFile(ctx context.Context, req *FileCopyRequest, params CopyFileParams) (CopyFileRes, error)
+	// CreateAdminUser implements createAdminUser operation.
+	//
+	// POST /v1/admin/users
+	CreateAdminUser(ctx context.Context, req *AdminUserCreateRequest) (CreateAdminUserRes, error)
 	// CreateApiKey implements createApiKey operation.
 	//
 	// POST /v1/api-keys
@@ -200,6 +228,16 @@ type Handler interface {
 	//
 	// GET /v1/admin/overview
 	GetAdminOverview(ctx context.Context) (GetAdminOverviewRes, error)
+	// GetAdminTelegramStatus implements getAdminTelegramStatus operation.
+	//
+	// GET /v1/admin/telegram
+	GetAdminTelegramStatus(ctx context.Context) (GetAdminTelegramStatusRes, error)
+	// GetBootstrapStatus implements getBootstrapStatus operation.
+	//
+	// Check whether Workspace Telegram storage and admin email login are configured.
+	//
+	// GET /v1/auth/bootstrap-status
+	GetBootstrapStatus(ctx context.Context) (*BootstrapStatus, error)
 	// GetCurrentUser implements getCurrentUser operation.
 	//
 	// Return the authenticated user profile.
@@ -434,6 +472,12 @@ type Handler interface {
 	//
 	// POST /v1/files/{fileId}/move
 	MoveFile(ctx context.Context, req *FileMoveRequest, params MoveFileParams) (MoveFileRes, error)
+	// PasswordLogin implements passwordLogin operation.
+	//
+	// Authenticate with Workspace email and password and return bearer tokens.
+	//
+	// POST /v1/auth/password/login
+	PasswordLogin(ctx context.Context, req *PasswordLoginRequest) (PasswordLoginRes, error)
 	// PauseJobQueue implements pauseJobQueue operation.
 	//
 	// POST /v1/jobs/queues/{queue}/pause
@@ -561,6 +605,12 @@ type Handler interface {
 	//
 	// POST /v1/channels/{channelId}/select
 	SelectChannel(ctx context.Context, params SelectChannelParams) (SelectChannelRes, error)
+	// SetupOwnerCredentials implements setupOwnerCredentials operation.
+	//
+	// Bind initial email and password to an existing owner account migrated from Telegram login.
+	//
+	// POST /v1/me/setup-credentials
+	SetupOwnerCredentials(ctx context.Context, req *SetupCredentialsRequest) (SetupOwnerCredentialsRes, error)
 	// SyncChannels implements syncChannels operation.
 	//
 	// Register only chosen manageable broadcast channels, without deleting existing channels.

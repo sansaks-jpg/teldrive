@@ -66,6 +66,111 @@ paths:
         - System
       security:
         - {}
+  /v1/auth/bootstrap-status:
+    get:
+      operationId: getBootstrapStatus
+      description: Check whether Workspace Telegram storage and admin email login are
+        configured.
+      parameters: []
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BootstrapStatus"
+      tags:
+        - Authentication
+      security:
+        - {}
+  /v1/auth/password/login:
+    post:
+      operationId: passwordLogin
+      description: Authenticate with Workspace email and password and return bearer tokens.
+      parameters: []
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordLoginRequest"
+      security:
+        - {}
+  /v1/auth/cookie/password/login:
+    post:
+      operationId: cookiePasswordLogin
+      description: Authenticate with Workspace email and password and establish an
+        HttpOnly cookie session.
+      parameters: []
+      responses:
+        "200":
+          description: The request has succeeded.
+          headers:
+            Set-Cookie:
+              required: true
+              schema:
+                type: array
+                items:
+                  type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CookieSession"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordLoginRequest"
+      security:
+        - {}
   /v1/auth/telegram/start:
     post:
       operationId: telegramLoginStart
@@ -759,6 +864,88 @@ paths:
         - BearerAuth: []
         - CookieAuth: []
         - ExternalApiKeyAuth: []
+  /v1/me/password:
+    post:
+      operationId: changePassword
+      description: Change the authenticated user's password.
+      parameters: []
+      responses:
+        "204":
+          description: "There is no content to send for this request, but the headers may
+            be useful. "
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/me/setup-credentials:
+    post:
+      operationId: setupOwnerCredentials
+      description: Bind initial email and password to an existing owner account
+        migrated from Telegram login.
+      parameters: []
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetupCredentialsRequest"
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
   /v1/auth/logout:
     post:
       operationId: logoutSession
@@ -942,6 +1129,257 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
       tags:
         - Administration
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+    post:
+      operationId: createAdminUser
+      parameters: []
+      responses:
+        "201":
+          description: The request has succeeded and a new resource has been created as a
+            result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserSummary"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Administration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserCreateRequest"
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/admin/telegram:
+    get:
+      operationId: getAdminTelegramStatus
+      parameters: []
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceTelegramStatus"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Administration
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/admin/telegram/start:
+    post:
+      operationId: adminTelegramRelinkStart
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyHeader"
+      responses:
+        "201":
+          description: The request has succeeded and a new resource has been created as a
+            result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramLoginStartResponse"
+        "400":
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Administration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramLoginStartRequest"
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/admin/telegram/verify-code:
+    post:
+      operationId: adminTelegramRelinkVerifyCode
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyHeader"
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTelegramRelinkVerifyResponse"
+        "400":
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "410":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Administration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramCodeVerifyRequest"
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+        - ExternalApiKeyAuth: []
+  /v1/admin/telegram/verify-password:
+    post:
+      operationId: adminTelegramRelinkVerifyPassword
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyHeader"
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceTelegramStatus"
+        "400":
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "410":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+      tags:
+        - Administration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramPasswordVerifyRequest"
       security:
         - BearerAuth: []
         - CookieAuth: []
@@ -6846,6 +7284,62 @@ components:
       properties:
         error:
           $ref: "#/components/schemas/ErrorDetail"
+    BootstrapStatus:
+      type: object
+      required:
+        - telegramLinked
+        - emailAuthReady
+      properties:
+        telegramLinked:
+          type: boolean
+        emailAuthReady:
+          type: boolean
+    TokenPair:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+        - tokenType
+        - expiresIn
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          enum:
+            - Bearer
+        expiresIn:
+          type: integer
+          format: int32
+    PasswordLoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 256
+    CookieSession:
+      type: object
+      required:
+        - authenticated
+        - expiresAt
+      properties:
+        authenticated:
+          type: boolean
+          enum:
+            - true
+        expiresAt:
+          type: string
+          format: date-time
     Uuid:
       type: string
       format: uuid
@@ -6896,25 +7390,6 @@ components:
         qrExpiresAt:
           type: string
           format: date-time
-    TokenPair:
-      type: object
-      required:
-        - accessToken
-        - refreshToken
-        - tokenType
-        - expiresIn
-      properties:
-        accessToken:
-          type: string
-        refreshToken:
-          type: string
-        tokenType:
-          type: string
-          enum:
-            - Bearer
-        expiresIn:
-          type: integer
-          format: int32
     TelegramQRLoginPollRequest:
       type: object
       required:
@@ -6952,19 +7427,6 @@ components:
       properties:
         refreshToken:
           type: string
-    CookieSession:
-      type: object
-      required:
-        - authenticated
-        - expiresAt
-      properties:
-        authenticated:
-          type: boolean
-          enum:
-            - true
-        expiresAt:
-          type: string
-          format: date-time
     UserRole:
       type: string
       enum:
@@ -6975,18 +7437,24 @@ components:
       type: object
       required:
         - userId
+        - hasPassword
         - premium
         - role
         - capabilities
+        - storageUsedBytes
         - createdAt
       properties:
         userId:
           type: integer
           format: int64
+        email:
+          type: string
         displayName:
           type: string
         username:
           type: string
+        hasPassword:
+          type: boolean
         premium:
           type: boolean
         role:
@@ -6995,6 +7463,12 @@ components:
           type: array
           items:
             type: string
+        storageUsedBytes:
+          type: integer
+          format: int64
+        storageQuotaBytes:
+          type: integer
+          format: int64
         createdAt:
           type: string
           format: date-time
@@ -7307,6 +7781,34 @@ components:
         captions:
           $ref: "#/components/schemas/CaptionPreferencesUpdate"
       description: Partial update; omitted groups and fields keep their stored values.
+    ChangePasswordRequest:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 256
+        newPassword:
+          type: string
+          minLength: 6
+          maxLength: 256
+    SetupCredentialsRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 254
+        password:
+          type: string
+          minLength: 6
+          maxLength: 256
     UserSearchResult:
       type: object
       required:
@@ -7397,6 +7899,7 @@ components:
       type: object
       required:
         - userId
+        - hasPassword
         - premium
         - role
         - disabled
@@ -7407,10 +7910,14 @@ components:
         userId:
           type: integer
           format: int64
+        email:
+          type: string
         displayName:
           type: string
         username:
           type: string
+        hasPassword:
+          type: boolean
         premium:
           type: boolean
         role:
@@ -7429,9 +7936,72 @@ components:
         updatedAt:
           type: string
           format: date-time
+    AdminUserCreateRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 254
+        displayName:
+          type: string
+          maxLength: 120
+        password:
+          type: string
+          minLength: 6
+          maxLength: 256
+        role:
+          $ref: "#/components/schemas/UserRole"
+        storageQuotaBytes:
+          type: integer
+          format: int64
+          minimum: 0
+    WorkspaceTelegramStatus:
+      type: object
+      required:
+        - linked
+      properties:
+        linked:
+          type: boolean
+        telegramUserId:
+          type: integer
+          format: int64
+        telegramUsername:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    AdminTelegramRelinkVerifyResponse:
+      type: object
+      required:
+        - linked
+        - passwordRequired
+      properties:
+        linked:
+          type: boolean
+        passwordRequired:
+          type: boolean
+        flowId:
+          $ref: "#/components/schemas/Uuid"
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/WorkspaceTelegramStatus"
     UserAdminUpdateRequest:
       type: object
       properties:
+        email:
+          type: string
+        displayName:
+          type: string
+        password:
+          type: string
+          minLength: 6
+          maxLength: 256
         role:
           $ref: "#/components/schemas/UserRole"
         disabled:

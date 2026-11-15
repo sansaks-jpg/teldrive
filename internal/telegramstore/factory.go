@@ -51,6 +51,7 @@ type FactoryConfig struct {
 	Proxy            string
 	MTProxyAddress   string
 	MTProxySecret    string
+	Websocket        bool
 	Logger           log.Logger
 	NTP              bool
 	NTPServer        string
@@ -138,6 +139,12 @@ func resolverFromConfig(config FactoryConfig) (dcs.Resolver, error) {
 	}
 	if proxyURL != "" && mtAddress != "" {
 		return nil, fmt.Errorf("%w: proxy and MTProxy cannot be used together", ErrTelegramConfiguration)
+	}
+	if config.Websocket && (proxyURL != "" || mtAddress != "") {
+		return nil, fmt.Errorf("%w: websocket cannot be combined with proxy or MTProxy", ErrTelegramConfiguration)
+	}
+	if config.Websocket {
+		return dcs.Websocket(dcs.WebsocketOptions{}), nil
 	}
 	if mtAddress != "" {
 		secret, err := hex.DecodeString(mtSecret)
@@ -375,6 +382,14 @@ func (p *DatabaseClientProvider) Client(ctx context.Context, userID int64, _ Ope
 	if p == nil || p.queries == nil || p.cipher == nil || p.factory == nil || userID <= 0 {
 		return nil, ErrTelegramConfiguration
 	}
+	if wt, wtErr := p.queries.GetWorkspaceTelegram(ctx); wtErr == nil && len(wt.TelegramSession) > 0 {
+		storage := &workspaceTelegramSessionStorage{queries: p.queries, cipher: p.cipher}
+		accountID := wt.TelegramUserID
+		if accountID <= 0 {
+			accountID = wt.OwnerUserID
+		}
+		return p.factory.NewForAccount(storage, accountID, nil)
+	}
 	var stored *sqlcgen.Session
 	var err error
 	identity, hasIdentity := principal.FromContext(ctx)
@@ -382,7 +397,8 @@ func (p *DatabaseClientProvider) Client(ctx context.Context, userID int64, _ Ope
 		stored, err = p.queries.GetActiveSession(ctx, sqlcgen.GetActiveSessionParams{
 			SessionID: dbtypes.UUID(identity.SessionID), UserID: userID,
 		})
-	} else {
+	}
+	if stored == nil || len(stored.TelegramSession) == 0 {
 		stored, err = p.queries.GetLatestActiveSessionForUser(ctx, userID)
 	}
 	if err != nil {
@@ -392,6 +408,52 @@ func (p *DatabaseClientProvider) Client(ctx context.Context, userID int64, _ Ope
 		queries: p.queries, cipher: p.cipher, sessionID: stored.ID, userID: userID,
 	}
 	return p.factory.NewForAccount(storage, userID, nil)
+}
+
+type workspaceTelegramSessionStorage struct {
+	queries *sqlcgen.Queries
+	cipher  *secureblob.Cipher
+}
+
+func (s *workspaceTelegramSessionStorage) LoadSession(ctx context.Context) ([]byte, error) {
+	if s == nil || s.queries == nil || s.cipher == nil {
+		return nil, ErrTelegramConfiguration
+	}
+	row, err := s.queries.GetWorkspaceTelegram(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("load workspace Telegram session: %w", err)
+	}
+	plain, err := s.cipher.Open("telegram-session", row.TelegramSession)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt workspace Telegram session: %w", err)
+	}
+	raw, err := telethonsession.DecodeToGotd(ctx, string(plain))
+	if err != nil {
+		return nil, fmt.Errorf("load Telethon workspace Telegram session: %w", err)
+	}
+	return raw, nil
+}
+
+func (s *workspaceTelegramSessionStorage) StoreSession(ctx context.Context, data []byte) error {
+	if s == nil || s.queries == nil || s.cipher == nil || len(data) == 0 {
+		return ErrTelegramConfiguration
+	}
+	encoded, err := telethonsession.EncodeGotd(ctx, data)
+	if err != nil {
+		return fmt.Errorf("encode workspace Telegram session as Telethon: %w", err)
+	}
+	ciphertext, err := s.cipher.Seal("telegram-session", []byte(encoded))
+	if err != nil {
+		return fmt.Errorf("encrypt workspace Telegram session: %w", err)
+	}
+	count, err := s.queries.UpdateWorkspaceTelegramSession(ctx, ciphertext)
+	if err != nil {
+		return fmt.Errorf("store workspace Telegram session update: %w", err)
+	}
+	if count == 0 {
+		return ErrClientUnavailable
+	}
+	return nil
 }
 
 type databaseSessionStorage struct {

@@ -16,7 +16,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/tgdrive/teldrive/v2/internal/db/sqlcgen"
 	"github.com/tgdrive/teldrive/v2/internal/dbtypes"
@@ -29,9 +31,33 @@ var (
 	ErrFlowNotFound      = errors.New("Telegram login flow not found or expired")
 	ErrInvalidCredential = errors.New("invalid authentication credential")
 	ErrUserNotAllowed    = errors.New("Telegram user is not allowed")
-	ErrSessionNotFound   = errors.New("session not found")
-	ErrAPIKeyNotFound    = errors.New("API key not found")
+	ErrSessionNotFound      = errors.New("session not found")
+	ErrAPIKeyNotFound       = errors.New("API key not found")
+	ErrWorkspaceInitialized = errors.New("workspace uses email and password sign-in")
+	ErrEmailConflict        = errors.New("an account with this email already exists")
+	ErrForbidden            = errors.New("operation is not permitted")
+	ErrCredentialConflict   = errors.New("credentials are already configured")
 )
+
+type BootstrapStatus struct {
+	TelegramLinked bool
+	EmailAuthReady bool
+}
+
+type WorkspaceTelegramStatus struct {
+	Linked           bool
+	TelegramUserID   *int64
+	TelegramUsername *string
+	UpdatedAt        *time.Time
+}
+
+type CreateWorkspaceUserInput struct {
+	Email             string
+	DisplayName       *string
+	Password          string
+	Role              sqlcgen.UserRole
+	StorageQuotaBytes *int64
+}
 
 type Config struct {
 	SigningKey      string
@@ -126,7 +152,50 @@ func NewService(pool *pgxpool.Pool, cipher *secureblob.Cipher, login TelegramLog
 	}, nil
 }
 
+func (s *Service) GetBootstrapStatus(ctx context.Context) (BootstrapStatus, error) {
+	var out BootstrapStatus
+	if s == nil || s.queries == nil {
+		return out, nil
+	}
+	if wt, err := s.queries.GetWorkspaceTelegram(ctx); err == nil && len(wt.TelegramSession) > 0 {
+		out.TelegramLinked = true
+	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return out, fmt.Errorf("check workspace telegram: %w", err)
+	}
+	if owner, err := s.queries.GetWorkspaceOwner(ctx); err == nil {
+		out.EmailAuthReady = owner.Email.Valid && strings.TrimSpace(owner.Email.String) != "" && owner.PasswordHash.Valid && owner.PasswordHash.String != ""
+	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return out, fmt.Errorf("check workspace owner: %w", err)
+	}
+	return out, nil
+}
+
+func (s *Service) StorageOwnerID(ctx context.Context) (int64, error) {
+	if s == nil || s.queries == nil {
+		return 0, ErrSessionNotFound
+	}
+	if wt, err := s.queries.GetWorkspaceTelegram(ctx); err == nil && wt.OwnerUserID > 0 {
+		return wt.OwnerUserID, nil
+	}
+	if owner, err := s.queries.GetWorkspaceOwner(ctx); err == nil && owner.UserID > 0 {
+		return owner.UserID, nil
+	}
+	return 0, ErrSessionNotFound
+}
+
 func (s *Service) StartLogin(ctx context.Context, phone string) (*FlowResult, error) {
+	status, err := s.GetBootstrapStatus(ctx)
+	if err == nil && status.TelegramLinked && status.EmailAuthReady {
+		return nil, ErrWorkspaceInitialized
+	}
+	return s.startTelegramPhoneFlow(ctx, phone)
+}
+
+func (s *Service) AdminRelinkStart(ctx context.Context, phone string) (*FlowResult, error) {
+	return s.startTelegramPhoneFlow(ctx, phone)
+}
+
+func (s *Service) startTelegramPhoneFlow(ctx context.Context, phone string) (*FlowResult, error) {
 	phone = strings.TrimSpace(phone)
 	if phone == "" {
 		return nil, ErrInvalidInput
@@ -157,6 +226,10 @@ func (s *Service) StartLogin(ctx context.Context, phone string) (*FlowResult, er
 }
 
 func (s *Service) StartQR(ctx context.Context) (*QRFlowResult, error) {
+	status, err := s.GetBootstrapStatus(ctx)
+	if err == nil && status.TelegramLinked && status.EmailAuthReady {
+		return nil, ErrWorkspaceInitialized
+	}
 	step, err := s.login.StartQR(ctx)
 	if err != nil {
 		return nil, err
@@ -371,11 +444,31 @@ func (s *Service) completeLogin(ctx context.Context, conn *pgxpool.Conn, flowID 
 	if err := q.AcquireUserBootstrapLock(ctx); err != nil {
 		return nil, fmt.Errorf("lock user bootstrap: %w", err)
 	}
-	if _, err := q.UpsertUser(ctx, sqlcgen.UpsertUserParams{
+	if existingOwner, ownerErr := q.GetWorkspaceOwner(ctx); ownerErr == nil {
+		emailReady := existingOwner.Email.Valid && strings.TrimSpace(existingOwner.Email.String) != "" && existingOwner.PasswordHash.Valid && existingOwner.PasswordHash.String != ""
+		if emailReady || existingOwner.UserID != step.User.ID {
+			return nil, ErrWorkspaceInitialized
+		}
+	} else if !errors.Is(ownerErr, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("check workspace owner: %w", ownerErr)
+	}
+	userRow, err := q.UpsertUser(ctx, sqlcgen.UpsertUserParams{
 		UserID: step.User.ID, DisplayName: dbtypes.OptionalText(nonEmpty(step.User.DisplayName)),
 		Username: dbtypes.OptionalText(nonEmpty(step.User.Username)), Premium: step.User.Premium,
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, fmt.Errorf("upsert authenticated user: %w", err)
+	}
+	if userRow.Role == sqlcgen.UserRoleOwner {
+		if _, err := q.UpsertWorkspaceTelegram(ctx, sqlcgen.UpsertWorkspaceTelegramParams{
+			OwnerUserID:           userRow.UserID,
+			TelegramUserID:        step.User.ID,
+			PhoneNumberCiphertext: nil,
+			TelegramUsername:      dbtypes.OptionalText(nonEmpty(step.User.Username)),
+			TelegramSession:       telegramSession,
+		}); err != nil {
+			return nil, fmt.Errorf("persist workspace telegram: %w", err)
+		}
 	}
 	if _, err := q.CreateSession(ctx, sqlcgen.CreateSessionParams{
 		ID: dbtypes.UUID(sessionID), UserID: step.User.ID,
@@ -777,6 +870,360 @@ func (s *Service) RecordAuditEvent(ctx context.Context, userID *int64, action, r
 		ResourceID:   dbtypes.OptionalText(resourceID),
 		Metadata:     metadata,
 	})
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
+func (s *Service) LoginWithPassword(ctx context.Context, email, password string) (*TokenPair, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	if email == "" || password == "" {
+		return nil, ErrInvalidCredential
+	}
+	user, err := s.queries.GetUserByEmail(ctx, email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrInvalidCredential
+	}
+	if err != nil {
+		return nil, fmt.Errorf("lookup user by email: %w", err)
+	}
+	if user.DisabledAt.Valid || !user.PasswordHash.Valid || user.PasswordHash.String == "" {
+		return nil, ErrInvalidCredential
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash.String), []byte(password)); err != nil {
+		return nil, ErrInvalidCredential
+	}
+	refreshToken, refreshHash, err := s.newOpaqueToken("tdr_")
+	if err != nil {
+		return nil, err
+	}
+	sessionID := uuid.New()
+	expires := s.now().UTC().Add(s.config.RefreshTokenTTL)
+	if _, err := s.queries.CreateSession(ctx, sqlcgen.CreateSessionParams{
+		ID: dbtypes.UUID(sessionID), UserID: user.UserID,
+		TelegramSession: nil, RefreshTokenHash: refreshHash,
+		ExpiresAt: dbtypes.Time(expires),
+	}); err != nil {
+		return nil, fmt.Errorf("create password session: %w", err)
+	}
+	access, err := s.issueAccessToken(ctx, user.UserID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return &TokenPair{AccessToken: access, RefreshToken: refreshToken, ExpiresIn: ttlSeconds(s.config.AccessTokenTTL)}, nil
+}
+
+func (s *Service) CreateWorkspaceUser(ctx context.Context, in CreateWorkspaceUserInput) (*sqlcgen.User, error) {
+	email := strings.TrimSpace(strings.ToLower(in.Email))
+	if email == "" || !strings.Contains(email, "@") || len(in.Password) < 6 {
+		return nil, ErrInvalidInput
+	}
+	role := in.Role
+	if role == "" {
+		role = sqlcgen.UserRoleUser
+	}
+	if role != sqlcgen.UserRoleAdmin && role != sqlcgen.UserRoleUser {
+		return nil, ErrInvalidInput
+	}
+	if in.StorageQuotaBytes != nil && *in.StorageQuotaBytes < 0 {
+		return nil, ErrInvalidInput
+	}
+	digest, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("hash user password: %w", err)
+	}
+	userID, err := s.queries.NextWorkspaceUserID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("allocate workspace user id: %w", err)
+	}
+	var display *string
+	if in.DisplayName != nil {
+		display = nonEmpty(strings.TrimSpace(*in.DisplayName))
+	}
+	row, err := s.queries.CreatePasswordUser(ctx, sqlcgen.CreatePasswordUserParams{
+		UserID:            userID,
+		Email:             dbtypes.Text(email),
+		PasswordHash:      dbtypes.Text(string(digest)),
+		DisplayName:       dbtypes.OptionalText(display),
+		Role:              role,
+		StorageQuotaBytes: dbtypes.OptionalInt8(in.StorageQuotaBytes),
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrEmailConflict
+		}
+		return nil, fmt.Errorf("create workspace user: %w", err)
+	}
+	return row, nil
+}
+
+func (s *Service) UpdateAdminUserDetails(ctx context.Context, userID int64, email *string, displayName *string, newPassword *string) (*sqlcgen.User, error) {
+	if userID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	var emailArg *string
+	if email != nil {
+		trimmed := strings.TrimSpace(strings.ToLower(*email))
+		if trimmed == "" || !strings.Contains(trimmed, "@") {
+			return nil, ErrInvalidInput
+		}
+		emailArg = &trimmed
+	}
+	var nameArg *string
+	if displayName != nil {
+		trimmed := strings.TrimSpace(*displayName)
+		nameArg = &trimmed
+	}
+	var hashArg *string
+	if newPassword != nil {
+		if len(*newPassword) < 6 {
+			return nil, ErrInvalidInput
+		}
+		digest, err := bcrypt.GenerateFromPassword([]byte(*newPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, fmt.Errorf("hash updated user password: %w", err)
+		}
+		h := string(digest)
+		hashArg = &h
+	}
+	row, err := s.queries.UpdateUserAdminDetails(ctx, sqlcgen.UpdateUserAdminDetailsParams{
+		UserID:       userID,
+		Email:        dbtypes.OptionalText(emailArg),
+		DisplayName:  dbtypes.OptionalText(nameArg),
+		PasswordHash: dbtypes.OptionalText(hashArg),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrSessionNotFound
+	}
+	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrEmailConflict
+		}
+		return nil, fmt.Errorf("update admin user details: %w", err)
+	}
+	return row, nil
+}
+
+func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string) error {
+	if userID <= 0 || currentPassword == "" || len(newPassword) < 6 {
+		return ErrInvalidInput
+	}
+	user, err := s.queries.GetUser(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrSessionNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("get user for password change: %w", err)
+	}
+	if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
+		return ErrInvalidCredential
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash.String), []byte(currentPassword)); err != nil {
+		return ErrInvalidCredential
+	}
+	digest, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash new password: %w", err)
+	}
+	if _, err := s.queries.UpdateUserPassword(ctx, sqlcgen.UpdateUserPasswordParams{
+		UserID:       userID,
+		PasswordHash: dbtypes.Text(string(digest)),
+	}); err != nil {
+		return fmt.Errorf("update user password: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) SetupOwnerCredentials(ctx context.Context, userID int64, email, password string) (*sqlcgen.User, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	if userID <= 0 || email == "" || !strings.Contains(email, "@") || len(password) < 6 {
+		return nil, ErrInvalidInput
+	}
+	user, err := s.queries.GetUser(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrSessionNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get owner for setup: %w", err)
+	}
+	if user.Role != sqlcgen.UserRoleOwner {
+		return nil, ErrForbidden
+	}
+	if user.PasswordHash.Valid && user.PasswordHash.String != "" && user.Email.Valid && user.Email.String != "" {
+		return nil, ErrCredentialConflict
+	}
+	digest, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("hash owner password: %w", err)
+	}
+	h := string(digest)
+	row, err := s.queries.UpdateUserAdminDetails(ctx, sqlcgen.UpdateUserAdminDetailsParams{
+		UserID:       userID,
+		Email:        dbtypes.OptionalText(&email),
+		PasswordHash: dbtypes.OptionalText(&h),
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrEmailConflict
+		}
+		return nil, fmt.Errorf("bind owner credentials: %w", err)
+	}
+	return row, nil
+}
+
+func (s *Service) GetUserStorageUsage(ctx context.Context, userID int64) (int64, *int64, error) {
+	if userID <= 0 {
+		return 0, nil, ErrInvalidInput
+	}
+	row, err := s.queries.GetUserStorageUsage(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil, nil
+	}
+	if err != nil {
+		return 0, nil, fmt.Errorf("get user storage usage: %w", err)
+	}
+	var quota *int64
+	if row.StorageQuotaBytes.Valid {
+		v := row.StorageQuotaBytes.Int64
+		quota = &v
+	}
+	return row.UsedBytes, quota, nil
+}
+
+func (s *Service) GetWorkspaceTelegramStatus(ctx context.Context) (WorkspaceTelegramStatus, error) {
+	wt, err := s.queries.GetWorkspaceTelegram(ctx)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return WorkspaceTelegramStatus{Linked: false}, nil
+	}
+	if err != nil {
+		return WorkspaceTelegramStatus{}, fmt.Errorf("get workspace telegram status: %w", err)
+	}
+	out := WorkspaceTelegramStatus{
+		Linked: len(wt.TelegramSession) > 0,
+	}
+	if wt.TelegramUserID > 0 {
+		id := wt.TelegramUserID
+		out.TelegramUserID = &id
+	}
+	if wt.TelegramUsername.Valid {
+		u := wt.TelegramUsername.String
+		out.TelegramUsername = &u
+	}
+	t := wt.UpdatedAt.Time
+	out.UpdatedAt = &t
+	return out, nil
+}
+
+func (s *Service) AdminRelinkVerifyCode(ctx context.Context, flowID uuid.UUID, code string) (*FlowResult, *WorkspaceTelegramStatus, error) {
+	if flowID == uuid.Nil || strings.TrimSpace(code) == "" {
+		return nil, nil, ErrInvalidInput
+	}
+	var pending *FlowResult
+	var status *WorkspaceTelegramStatus
+	_, err := s.withFlowLock(ctx, flowID, func(conn *pgxpool.Conn, flow *sqlcgen.TelegramLoginFlow) (*VerifyResult, error) {
+		if flow.Method != sqlcgen.TelegramLoginMethodPhone {
+			return nil, ErrInvalidInput
+		}
+		phone, state, err := s.decryptFlow(flow)
+		if err != nil || phone == "" {
+			return nil, ErrLoginStateInvalid
+		}
+		step, err := s.login.VerifyCode(ctx, phone, state, code)
+		if err != nil {
+			return nil, err
+		}
+		if step.PasswordRequired {
+			res, err := s.persistPendingFlow(ctx, conn, flow, step)
+			if err != nil {
+				return nil, err
+			}
+			pending = res.Flow
+			return res, nil
+		}
+		st, err := s.finishAdminRelink(ctx, conn, flow, step)
+		if err != nil {
+			return nil, err
+		}
+		status = &st
+		return &VerifyResult{}, nil
+	})
+	return pending, status, err
+}
+
+func (s *Service) AdminRelinkVerifyPassword(ctx context.Context, flowID uuid.UUID, password string) (WorkspaceTelegramStatus, error) {
+	if flowID == uuid.Nil || password == "" {
+		return WorkspaceTelegramStatus{}, ErrInvalidInput
+	}
+	var status WorkspaceTelegramStatus
+	_, err := s.withFlowLock(ctx, flowID, func(conn *pgxpool.Conn, flow *sqlcgen.TelegramLoginFlow) (*VerifyResult, error) {
+		if !flow.PasswordRequired {
+			return nil, ErrInvalidInput
+		}
+		_, state, err := s.decryptFlow(flow)
+		if err != nil {
+			return nil, err
+		}
+		step, err := s.login.VerifyPassword(ctx, state, password)
+		if err != nil {
+			return nil, err
+		}
+		st, err := s.finishAdminRelink(ctx, conn, flow, step)
+		if err != nil {
+			return nil, err
+		}
+		status = st
+		return &VerifyResult{}, nil
+	})
+	return status, err
+}
+
+func (s *Service) finishAdminRelink(ctx context.Context, conn *pgxpool.Conn, flow *sqlcgen.TelegramLoginFlow, step LoginStep) (WorkspaceTelegramStatus, error) {
+	if step.User == nil || step.User.ID <= 0 || len(step.Session) == 0 {
+		return WorkspaceTelegramStatus{}, ErrLoginStateInvalid
+	}
+	telegramSession, err := s.cipher.Seal("telegram-session", step.Session)
+	if err != nil {
+		return WorkspaceTelegramStatus{}, err
+	}
+	flowID, _ := dbtypes.GoogleUUID(flow.ID)
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return WorkspaceTelegramStatus{}, fmt.Errorf("begin relink transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	q := s.queries.WithTx(tx)
+	owner, err := q.GetWorkspaceOwner(ctx)
+	if err != nil {
+		return WorkspaceTelegramStatus{}, fmt.Errorf("load workspace owner: %w", err)
+	}
+	wt, err := q.UpsertWorkspaceTelegram(ctx, sqlcgen.UpsertWorkspaceTelegramParams{
+		OwnerUserID:           owner.UserID,
+		TelegramUserID:        step.User.ID,
+		PhoneNumberCiphertext: flow.PhoneNumberCiphertext,
+		TelegramUsername:      dbtypes.OptionalText(nonEmpty(step.User.Username)),
+		TelegramSession:       telegramSession,
+	})
+	if err != nil {
+		return WorkspaceTelegramStatus{}, fmt.Errorf("update workspace telegram: %w", err)
+	}
+	if _, err := q.CompleteTelegramLoginFlow(ctx, dbtypes.UUID(flowID)); err != nil {
+		return WorkspaceTelegramStatus{}, fmt.Errorf("complete relink flow: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return WorkspaceTelegramStatus{}, fmt.Errorf("commit workspace telegram relink: %w", err)
+	}
+	out := WorkspaceTelegramStatus{Linked: true}
+	tgID := wt.TelegramUserID
+	out.TelegramUserID = &tgID
+	if wt.TelegramUsername.Valid {
+		u := wt.TelegramUsername.String
+		out.TelegramUsername = &u
+	}
+	t := wt.UpdatedAt.Time
+	out.UpdatedAt = &t
+	return out, nil
 }
 
 func Capabilities(role sqlcgen.UserRole) []string {

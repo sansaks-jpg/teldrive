@@ -36,6 +36,7 @@ FROM /* TEMPLATE: schema */users
 WHERE (
     sqlc.narg(search)::text IS NULL
     OR display_name ILIKE '%' || sqlc.narg(search)::text || '%'
+    OR email ILIKE '%' || sqlc.narg(search)::text || '%'
     OR username ILIKE '%' || sqlc.narg(search)::text || '%'
     OR user_id::text = sqlc.narg(search)::text
 )
@@ -261,6 +262,8 @@ WHERE id = sqlc.arg(session_id)
 SELECT *
 FROM /* TEMPLATE: schema */sessions
 WHERE user_id = sqlc.arg(user_id)
+  AND telegram_session IS NOT NULL
+  AND length(telegram_session) > 0
   AND revoked_at IS NULL
   AND expires_at > now()
 ORDER BY last_used_at DESC NULLS LAST, created_at DESC
@@ -288,8 +291,97 @@ WHERE user_id <> sqlc.arg(exclude_user_id)
   AND disabled_at IS NULL
   AND (
     display_name ILIKE '%' || sqlc.arg(search)::text || '%'
+    OR email ILIKE '%' || sqlc.arg(search)::text || '%'
     OR username ILIKE '%' || sqlc.arg(search)::text || '%'
     OR user_id::text = sqlc.arg(search)::text
   )
-ORDER BY username ASC NULLS LAST, display_name ASC NULLS LAST, user_id ASC
+ORDER BY email ASC NULLS LAST, username ASC NULLS LAST, display_name ASC NULLS LAST, user_id ASC
 LIMIT sqlc.arg(page_size);
+
+-- name: NextWorkspaceUserID :one
+SELECT nextval('/* TEMPLATE: schema */workspace_user_id_seq')::bigint AS user_id;
+
+-- name: CreatePasswordUser :one
+INSERT INTO /* TEMPLATE: schema */users (
+    user_id,
+    email,
+    password_hash,
+    display_name,
+    role,
+    storage_quota_bytes
+) VALUES (
+    sqlc.arg(user_id),
+    sqlc.arg(email),
+    sqlc.arg(password_hash),
+    sqlc.narg(display_name),
+    sqlc.arg(role),
+    sqlc.narg(storage_quota_bytes)
+)
+RETURNING *;
+
+-- name: GetUserByEmail :one
+SELECT *
+FROM /* TEMPLATE: schema */users
+WHERE lower(email) = lower(sqlc.arg(email))
+LIMIT 1;
+
+-- name: UpdateUserPassword :one
+UPDATE /* TEMPLATE: schema */users
+SET password_hash = sqlc.arg(password_hash),
+    updated_at = now()
+WHERE user_id = sqlc.arg(user_id)
+RETURNING *;
+
+-- name: UpdateUserAdminDetails :one
+UPDATE /* TEMPLATE: schema */users
+SET email = COALESCE(sqlc.narg(email)::text, email),
+    display_name = COALESCE(sqlc.narg(display_name)::text, display_name),
+    password_hash = COALESCE(sqlc.narg(password_hash)::text, password_hash),
+    updated_at = now()
+WHERE user_id = sqlc.arg(user_id)
+RETURNING *;
+
+-- name: GetWorkspaceOwner :one
+SELECT *
+FROM /* TEMPLATE: schema */users
+WHERE role = 'owner'
+ORDER BY created_at ASC, user_id ASC
+LIMIT 1;
+
+-- name: GetWorkspaceTelegram :one
+SELECT *
+FROM /* TEMPLATE: schema */workspace_telegram
+WHERE id = 1;
+
+-- name: UpsertWorkspaceTelegram :one
+INSERT INTO /* TEMPLATE: schema */workspace_telegram (
+    id,
+    owner_user_id,
+    telegram_user_id,
+    phone_number_ciphertext,
+    telegram_username,
+    telegram_session,
+    updated_at
+) VALUES (
+    1,
+    sqlc.arg(owner_user_id),
+    sqlc.arg(telegram_user_id),
+    sqlc.narg(phone_number_ciphertext),
+    sqlc.narg(telegram_username),
+    sqlc.arg(telegram_session),
+    now()
+)
+ON CONFLICT (id) DO UPDATE
+SET owner_user_id = EXCLUDED.owner_user_id,
+    telegram_user_id = EXCLUDED.telegram_user_id,
+    phone_number_ciphertext = COALESCE(EXCLUDED.phone_number_ciphertext, /* TEMPLATE: schema */workspace_telegram.phone_number_ciphertext),
+    telegram_username = EXCLUDED.telegram_username,
+    telegram_session = EXCLUDED.telegram_session,
+    updated_at = now()
+RETURNING *;
+
+-- name: UpdateWorkspaceTelegramSession :execrows
+UPDATE /* TEMPLATE: schema */workspace_telegram
+SET telegram_session = sqlc.arg(telegram_session),
+    updated_at = now()
+WHERE id = 1;

@@ -67,6 +67,9 @@ func (p *ChannelBotProvider) ChannelBots(ctx context.Context, userID int64, api 
 	if p == nil || p.queries == nil || userID <= 0 || api == nil {
 		return nil, bots.ErrInvalidInput
 	}
+	if wt, err := p.queries.GetWorkspaceTelegram(ctx); err == nil && wt.OwnerUserID > 0 {
+		userID = wt.OwnerUserID
+	}
 	rows, err := p.queries.ListEnabledBots(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list enabled bots: %w", err)

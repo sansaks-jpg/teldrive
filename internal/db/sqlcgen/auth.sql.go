@@ -96,6 +96,60 @@ func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (*Ap
 	return &i, err
 }
 
+const createPasswordUser = `-- name: CreatePasswordUser :one
+INSERT INTO /* TEMPLATE: schema */users (
+    user_id,
+    email,
+    password_hash,
+    display_name,
+    role,
+    storage_quota_bytes
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+)
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
+`
+
+type CreatePasswordUserParams struct {
+	UserID            int64       `json:"user_id"`
+	Email             pgtype.Text `json:"email"`
+	PasswordHash      pgtype.Text `json:"password_hash"`
+	DisplayName       pgtype.Text `json:"display_name"`
+	Role              UserRole    `json:"role"`
+	StorageQuotaBytes pgtype.Int8 `json:"storage_quota_bytes"`
+}
+
+func (q *Queries) CreatePasswordUser(ctx context.Context, arg CreatePasswordUserParams) (*User, error) {
+	row := q.db.QueryRow(ctx, createPasswordUser,
+		arg.UserID,
+		arg.Email,
+		arg.PasswordHash,
+		arg.DisplayName,
+		arg.Role,
+		arg.StorageQuotaBytes,
+	)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.DisplayName,
+		&i.Username,
+		&i.Premium,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Role,
+		&i.DisabledAt,
+		&i.StorageQuotaBytes,
+		&i.Email,
+		&i.PasswordHash,
+	)
+	return &i, err
+}
+
 const createSession = `-- name: CreateSession :one
 INSERT INTO /* TEMPLATE: schema */sessions (
     id,
@@ -266,6 +320,8 @@ const getLatestActiveSessionForUser = `-- name: GetLatestActiveSessionForUser :o
 SELECT id, user_id, telegram_session, refresh_token_hash, expires_at, last_used_at, revoked_at, created_at
 FROM /* TEMPLATE: schema */sessions
 WHERE user_id = $1
+  AND telegram_session IS NOT NULL
+  AND length(telegram_session) > 0
   AND revoked_at IS NULL
   AND expires_at > now()
 ORDER BY last_used_at DESC NULLS LAST, created_at DESC
@@ -362,7 +418,7 @@ func (q *Queries) GetTelegramLoginFlowForUpdate(ctx context.Context, id pgtype.U
 }
 
 const getUser = `-- name: GetUser :one
-SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
+SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
 FROM /* TEMPLATE: schema */users
 WHERE user_id = $1
 `
@@ -380,6 +436,34 @@ func (q *Queries) GetUser(ctx context.Context, userID int64) (*User, error) {
 		&i.Role,
 		&i.DisabledAt,
 		&i.StorageQuotaBytes,
+		&i.Email,
+		&i.PasswordHash,
+	)
+	return &i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
+FROM /* TEMPLATE: schema */users
+WHERE lower(email) = lower($1)
+LIMIT 1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.DisplayName,
+		&i.Username,
+		&i.Premium,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Role,
+		&i.DisabledAt,
+		&i.StorageQuotaBytes,
+		&i.Email,
+		&i.PasswordHash,
 	)
 	return &i, err
 }
@@ -407,6 +491,54 @@ func (q *Queries) GetUserStorageUsage(ctx context.Context, userID int64) (*GetUs
 	row := q.db.QueryRow(ctx, getUserStorageUsage, userID)
 	var i GetUserStorageUsageRow
 	err := row.Scan(&i.StorageQuotaBytes, &i.UsedBytes)
+	return &i, err
+}
+
+const getWorkspaceOwner = `-- name: GetWorkspaceOwner :one
+SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
+FROM /* TEMPLATE: schema */users
+WHERE role = 'owner'
+ORDER BY created_at ASC, user_id ASC
+LIMIT 1
+`
+
+func (q *Queries) GetWorkspaceOwner(ctx context.Context) (*User, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceOwner)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.DisplayName,
+		&i.Username,
+		&i.Premium,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Role,
+		&i.DisabledAt,
+		&i.StorageQuotaBytes,
+		&i.Email,
+		&i.PasswordHash,
+	)
+	return &i, err
+}
+
+const getWorkspaceTelegram = `-- name: GetWorkspaceTelegram :one
+SELECT id, owner_user_id, telegram_user_id, phone_number_ciphertext, telegram_username, telegram_session, updated_at
+FROM /* TEMPLATE: schema */workspace_telegram
+WHERE id = 1
+`
+
+func (q *Queries) GetWorkspaceTelegram(ctx context.Context) (*WorkspaceTelegram, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceTelegram)
+	var i WorkspaceTelegram
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerUserID,
+		&i.TelegramUserID,
+		&i.PhoneNumberCiphertext,
+		&i.TelegramUsername,
+		&i.TelegramSession,
+		&i.UpdatedAt,
+	)
 	return &i, err
 }
 
@@ -527,11 +659,12 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]*
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
+SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
 FROM /* TEMPLATE: schema */users
 WHERE (
     $1::text IS NULL
     OR display_name ILIKE '%' || $1::text || '%'
+    OR email ILIKE '%' || $1::text || '%'
     OR username ILIKE '%' || $1::text || '%'
     OR user_id::text = $1::text
 )
@@ -563,6 +696,8 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]*User, 
 			&i.Role,
 			&i.DisabledAt,
 			&i.StorageQuotaBytes,
+			&i.Email,
+			&i.PasswordHash,
 		); err != nil {
 			return nil, err
 		}
@@ -572,6 +707,17 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]*User, 
 		return nil, err
 	}
 	return items, nil
+}
+
+const nextWorkspaceUserID = `-- name: NextWorkspaceUserID :one
+SELECT nextval('/* TEMPLATE: schema */workspace_user_id_seq')::bigint AS user_id
+`
+
+func (q *Queries) NextWorkspaceUserID(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, nextWorkspaceUserID)
+	var user_id int64
+	err := row.Scan(&user_id)
+	return user_id, err
 }
 
 const revokeAPIKey = `-- name: RevokeAPIKey :execrows
@@ -679,16 +825,17 @@ func (q *Queries) RotateSessionRefreshToken(ctx context.Context, arg RotateSessi
 }
 
 const searchUsersForShare = `-- name: SearchUsersForShare :many
-SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
+SELECT user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
 FROM /* TEMPLATE: schema */users
 WHERE user_id <> $1
   AND disabled_at IS NULL
   AND (
     display_name ILIKE '%' || $2::text || '%'
+    OR email ILIKE '%' || $2::text || '%'
     OR username ILIKE '%' || $2::text || '%'
     OR user_id::text = $2::text
   )
-ORDER BY username ASC NULLS LAST, display_name ASC NULLS LAST, user_id ASC
+ORDER BY email ASC NULLS LAST, username ASC NULLS LAST, display_name ASC NULLS LAST, user_id ASC
 LIMIT $3
 `
 
@@ -717,6 +864,8 @@ func (q *Queries) SearchUsersForShare(ctx context.Context, arg SearchUsersForSha
 			&i.Role,
 			&i.DisabledAt,
 			&i.StorageQuotaBytes,
+			&i.Email,
+			&i.PasswordHash,
 		); err != nil {
 			return nil, err
 		}
@@ -734,7 +883,7 @@ SET disabled_at = CASE WHEN $1::boolean THEN COALESCE(disabled_at, now()) ELSE N
     updated_at = now()
 WHERE user_id = $2
   AND role <> 'owner'
-RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
 `
 
 type SetUserDisabledParams struct {
@@ -755,6 +904,8 @@ func (q *Queries) SetUserDisabled(ctx context.Context, arg SetUserDisabledParams
 		&i.Role,
 		&i.DisabledAt,
 		&i.StorageQuotaBytes,
+		&i.Email,
+		&i.PasswordHash,
 	)
 	return &i, err
 }
@@ -836,13 +987,86 @@ func (q *Queries) UpdateTelegramLoginFlowState(ctx context.Context, arg UpdateTe
 	return &i, err
 }
 
+const updateUserAdminDetails = `-- name: UpdateUserAdminDetails :one
+UPDATE /* TEMPLATE: schema */users
+SET email = COALESCE($1::text, email),
+    display_name = COALESCE($2::text, display_name),
+    password_hash = COALESCE($3::text, password_hash),
+    updated_at = now()
+WHERE user_id = $4
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
+`
+
+type UpdateUserAdminDetailsParams struct {
+	Email        pgtype.Text `json:"email"`
+	DisplayName  pgtype.Text `json:"display_name"`
+	PasswordHash pgtype.Text `json:"password_hash"`
+	UserID       int64       `json:"user_id"`
+}
+
+func (q *Queries) UpdateUserAdminDetails(ctx context.Context, arg UpdateUserAdminDetailsParams) (*User, error) {
+	row := q.db.QueryRow(ctx, updateUserAdminDetails,
+		arg.Email,
+		arg.DisplayName,
+		arg.PasswordHash,
+		arg.UserID,
+	)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.DisplayName,
+		&i.Username,
+		&i.Premium,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Role,
+		&i.DisabledAt,
+		&i.StorageQuotaBytes,
+		&i.Email,
+		&i.PasswordHash,
+	)
+	return &i, err
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :one
+UPDATE /* TEMPLATE: schema */users
+SET password_hash = $1,
+    updated_at = now()
+WHERE user_id = $2
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
+`
+
+type UpdateUserPasswordParams struct {
+	PasswordHash pgtype.Text `json:"password_hash"`
+	UserID       int64       `json:"user_id"`
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (*User, error) {
+	row := q.db.QueryRow(ctx, updateUserPassword, arg.PasswordHash, arg.UserID)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.DisplayName,
+		&i.Username,
+		&i.Premium,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Role,
+		&i.DisabledAt,
+		&i.StorageQuotaBytes,
+		&i.Email,
+		&i.PasswordHash,
+	)
+	return &i, err
+}
+
 const updateUserRole = `-- name: UpdateUserRole :one
 UPDATE /* TEMPLATE: schema */users
 SET role = $1, updated_at = now()
 WHERE user_id = $2
   AND role <> 'owner'
   AND $1::/* TEMPLATE: schema */user_role IN ('admin', 'user')
-RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
 `
 
 type UpdateUserRoleParams struct {
@@ -863,6 +1087,8 @@ func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) 
 		&i.Role,
 		&i.DisabledAt,
 		&i.StorageQuotaBytes,
+		&i.Email,
+		&i.PasswordHash,
 	)
 	return &i, err
 }
@@ -872,7 +1098,7 @@ UPDATE /* TEMPLATE: schema */users
 SET storage_quota_bytes = $1::bigint,
     updated_at = now()
 WHERE user_id = $2
-RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
 `
 
 type UpdateUserStorageQuotaParams struct {
@@ -893,8 +1119,25 @@ func (q *Queries) UpdateUserStorageQuota(ctx context.Context, arg UpdateUserStor
 		&i.Role,
 		&i.DisabledAt,
 		&i.StorageQuotaBytes,
+		&i.Email,
+		&i.PasswordHash,
 	)
 	return &i, err
+}
+
+const updateWorkspaceTelegramSession = `-- name: UpdateWorkspaceTelegramSession :execrows
+UPDATE /* TEMPLATE: schema */workspace_telegram
+SET telegram_session = $1,
+    updated_at = now()
+WHERE id = 1
+`
+
+func (q *Queries) UpdateWorkspaceTelegramSession(ctx context.Context, telegramSession []byte) (int64, error) {
+	result, err := q.db.Exec(ctx, updateWorkspaceTelegramSession, telegramSession)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const upsertUser = `-- name: UpsertUser :one
@@ -919,7 +1162,7 @@ SET display_name = EXCLUDED.display_name,
     username = EXCLUDED.username,
     premium = EXCLUDED.premium,
     updated_at = now()
-RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes
+RETURNING user_id, display_name, username, premium, created_at, updated_at, role, disabled_at, storage_quota_bytes, email, password_hash
 `
 
 type UpsertUserParams struct {
@@ -947,6 +1190,65 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (*User, 
 		&i.Role,
 		&i.DisabledAt,
 		&i.StorageQuotaBytes,
+		&i.Email,
+		&i.PasswordHash,
+	)
+	return &i, err
+}
+
+const upsertWorkspaceTelegram = `-- name: UpsertWorkspaceTelegram :one
+INSERT INTO /* TEMPLATE: schema */workspace_telegram (
+    id,
+    owner_user_id,
+    telegram_user_id,
+    phone_number_ciphertext,
+    telegram_username,
+    telegram_session,
+    updated_at
+) VALUES (
+    1,
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    now()
+)
+ON CONFLICT (id) DO UPDATE
+SET owner_user_id = EXCLUDED.owner_user_id,
+    telegram_user_id = EXCLUDED.telegram_user_id,
+    phone_number_ciphertext = COALESCE(EXCLUDED.phone_number_ciphertext, /* TEMPLATE: schema */workspace_telegram.phone_number_ciphertext),
+    telegram_username = EXCLUDED.telegram_username,
+    telegram_session = EXCLUDED.telegram_session,
+    updated_at = now()
+RETURNING id, owner_user_id, telegram_user_id, phone_number_ciphertext, telegram_username, telegram_session, updated_at
+`
+
+type UpsertWorkspaceTelegramParams struct {
+	OwnerUserID           int64       `json:"owner_user_id"`
+	TelegramUserID        int64       `json:"telegram_user_id"`
+	PhoneNumberCiphertext []byte      `json:"phone_number_ciphertext"`
+	TelegramUsername      pgtype.Text `json:"telegram_username"`
+	TelegramSession       []byte      `json:"telegram_session"`
+}
+
+func (q *Queries) UpsertWorkspaceTelegram(ctx context.Context, arg UpsertWorkspaceTelegramParams) (*WorkspaceTelegram, error) {
+	row := q.db.QueryRow(ctx, upsertWorkspaceTelegram,
+		arg.OwnerUserID,
+		arg.TelegramUserID,
+		arg.PhoneNumberCiphertext,
+		arg.TelegramUsername,
+		arg.TelegramSession,
+	)
+	var i WorkspaceTelegram
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerUserID,
+		&i.TelegramUserID,
+		&i.PhoneNumberCiphertext,
+		&i.TelegramUsername,
+		&i.TelegramSession,
+		&i.UpdatedAt,
 	)
 	return &i, err
 }

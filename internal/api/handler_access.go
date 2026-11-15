@@ -157,6 +157,23 @@ func (h *Handler) UpdateAdminUser(ctx context.Context, req *gen.UserAdminUpdateR
 		return nil, mapServiceError(err)
 	}
 	changed := false
+	var emailPtr, displayPtr, passPtr *string
+	if v, ok := req.Email.Get(); ok {
+		emailPtr = &v
+	}
+	if v, ok := req.DisplayName.Get(); ok {
+		displayPtr = &v
+	}
+	if v, ok := req.Password.Get(); ok {
+		passPtr = &v
+	}
+	if emailPtr != nil || displayPtr != nil || passPtr != nil {
+		row, err = h.Auth.UpdateAdminUserDetails(ctx, params.UserId, emailPtr, displayPtr, passPtr)
+		if err != nil {
+			return nil, mapServiceError(err)
+		}
+		changed = true
+	}
 	if role, ok := req.Role.Get(); ok {
 		row, err = h.Auth.UpdateUserRole(ctx, params.UserId, sqlcgen.UserRole(role))
 		if err != nil {
@@ -200,6 +217,132 @@ func (h *Handler) UpdateAdminUser(ctx context.Context, req *gen.UserAdminUpdateR
 	}
 	out := adminUserSummary(row, usedBytes)
 	return &out, nil
+}
+
+func (h *Handler) CreateAdminUser(ctx context.Context, req *gen.AdminUserCreateRequest) (gen.CreateAdminUserRes, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if h.Auth == nil || req == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	var quotaPtr *int64
+	if q, ok := req.StorageQuotaBytes.Get(); ok {
+		quotaPtr = &q
+	}
+	role := sqlcgen.UserRoleUser
+	if r, ok := req.Role.Get(); ok {
+		role = sqlcgen.UserRole(r)
+	}
+	var displayPtr *string
+	if d, ok := req.DisplayName.Get(); ok {
+		displayPtr = &d
+	}
+	row, err := h.Auth.CreateWorkspaceUser(ctx, authn.CreateWorkspaceUserInput{
+		Email:             req.Email,
+		DisplayName:       displayPtr,
+		Password:          req.Password,
+		Role:              role,
+		StorageQuotaBytes: quotaPtr,
+	})
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	actorID, _ := UserIDFromContext(ctx)
+	targetStr := req.Email
+	h.Auth.RecordAuditEvent(ctx, &actorID, "admin.user.created", "user", &targetStr, nil)
+	out := adminUserSummary(row, 0)
+	return &out, nil
+}
+
+func (h *Handler) GetAdminTelegramStatus(ctx context.Context) (gen.GetAdminTelegramStatusRes, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if h.Auth == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	status, err := h.Auth.GetWorkspaceTelegramStatus(ctx)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	out := workspaceTelegramStatusResponse(status)
+	return &out, nil
+}
+
+func (h *Handler) AdminTelegramRelinkStart(ctx context.Context, req *gen.TelegramLoginStartRequest, _ gen.AdminTelegramRelinkStartParams) (gen.AdminTelegramRelinkStartRes, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if h.Auth == nil || req == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	flow, err := h.Auth.AdminRelinkStart(ctx, req.PhoneNumber)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	response := loginFlowResponse(flow)
+	return &response, nil
+}
+
+func (h *Handler) AdminTelegramRelinkVerifyCode(ctx context.Context, req *gen.TelegramCodeVerifyRequest, _ gen.AdminTelegramRelinkVerifyCodeParams) (gen.AdminTelegramRelinkVerifyCodeRes, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if h.Auth == nil || req == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	flow, status, err := h.Auth.AdminRelinkVerifyCode(ctx, googleUUID(req.FlowId), req.Code)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	resp := gen.AdminTelegramRelinkVerifyResponse{}
+	if flow != nil {
+		resp.Linked = false
+		resp.PasswordRequired = true
+		resp.FlowId = gen.NewOptUUID(apiUUID(flow.ID))
+		resp.ExpiresAt = gen.NewOptDateTime(flow.ExpiresAt)
+		return &resp, nil
+	}
+	resp.Linked = true
+	resp.PasswordRequired = false
+	if status != nil {
+		resp.Status = gen.NewOptWorkspaceTelegramStatus(workspaceTelegramStatusResponse(*status))
+	}
+	actorID, _ := UserIDFromContext(ctx)
+	h.Auth.RecordAuditEvent(ctx, &actorID, "admin.telegram.relinked", "workspace_telegram", nil, nil)
+	return &resp, nil
+}
+
+func (h *Handler) AdminTelegramRelinkVerifyPassword(ctx context.Context, req *gen.TelegramPasswordVerifyRequest, _ gen.AdminTelegramRelinkVerifyPasswordParams) (gen.AdminTelegramRelinkVerifyPasswordRes, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if h.Auth == nil || req == nil {
+		return nil, mapServiceError(ErrOperationUnavailable)
+	}
+	status, err := h.Auth.AdminRelinkVerifyPassword(ctx, googleUUID(req.FlowId), req.Password)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	actorID, _ := UserIDFromContext(ctx)
+	h.Auth.RecordAuditEvent(ctx, &actorID, "admin.telegram.relinked", "workspace_telegram", nil, nil)
+	out := workspaceTelegramStatusResponse(status)
+	return &out, nil
+}
+
+func workspaceTelegramStatusResponse(s authn.WorkspaceTelegramStatus) gen.WorkspaceTelegramStatus {
+	out := gen.WorkspaceTelegramStatus{Linked: s.Linked}
+	if s.TelegramUserID != nil {
+		out.TelegramUserId = gen.NewOptInt64(*s.TelegramUserID)
+	}
+	if s.TelegramUsername != nil {
+		out.TelegramUsername = gen.NewOptString(*s.TelegramUsername)
+	}
+	if s.UpdatedAt != nil {
+		out.UpdatedAt = gen.NewOptDateTime(*s.UpdatedAt)
+	}
+	return out
 }
 
 func (h *Handler) RevokeAdminUserAccess(ctx context.Context, params gen.RevokeAdminUserAccessParams) (gen.RevokeAdminUserAccessRes, error) {
@@ -668,8 +811,11 @@ func (h *Handler) createUploadForOwner(ctx context.Context, ownerID int64, paren
 
 func adminUserSummary(row *sqlcgen.User, storageUsedBytes int64) gen.AdminUserSummary {
 	out := gen.AdminUserSummary{
-		UserId: row.UserID, Premium: row.Premium, Role: gen.UserRole(row.Role), Disabled: row.DisabledAt.Valid,
+		UserId: row.UserID, HasPassword: row.PasswordHash.Valid && row.PasswordHash.String != "", Premium: row.Premium, Role: gen.UserRole(row.Role), Disabled: row.DisabledAt.Valid,
 		StorageUsedBytes: storageUsedBytes, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+	}
+	if row.Email.Valid {
+		out.Email = gen.NewOptString(row.Email.String)
 	}
 	if row.StorageQuotaBytes.Valid {
 		out.StorageQuotaBytes = gen.NewOptInt64(row.StorageQuotaBytes.Int64)

@@ -79,10 +79,21 @@ func (r *UploadAwareRunner) RunPooled(ctx context.Context, userID int64, operati
 	return r.run(ctx, userID, operation, connections, fn)
 }
 
+func (r *UploadAwareRunner) resolveStorageUserID(ctx context.Context, userID int64) int64 {
+	if r == nil || r.queries == nil {
+		return userID
+	}
+	if wt, err := r.queries.GetWorkspaceTelegram(ctx); err == nil && wt.OwnerUserID > 0 {
+		return wt.OwnerUserID
+	}
+	return userID
+}
+
 func (r *UploadAwareRunner) run(ctx context.Context, userID int64, operation telegramstore.Operation, connections int, fn func(context.Context, *tg.Client) error) error {
 	if fn == nil {
 		return ErrUploadRunnerConfiguration
 	}
+	userID = r.resolveStorageUserID(ctx, userID)
 	for {
 		bot, err := r.acquireBot(ctx, userID, operation, connections)
 		if err != nil {
@@ -156,6 +167,7 @@ func (r *UploadAwareRunner) recordBotFailure(ctx context.Context, userID int64, 
 // the next unit of work, chosen like Run. Without an eligible bot the lease
 // targets the fallback runner (the user's own account) and reserves nothing.
 func (r *UploadAwareRunner) LeaseAccount(ctx context.Context, userID int64, operation telegramstore.Operation, connections int) (telegramstore.AccountLease, error) {
+	userID = r.resolveStorageUserID(ctx, userID)
 	bot, err := r.acquireBot(ctx, userID, operation, connections)
 	if err != nil {
 		return nil, err

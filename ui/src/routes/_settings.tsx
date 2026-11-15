@@ -8,34 +8,16 @@ import PaletteIcon from "~icons/gravity-ui/palette";
 import BookIcon from "~icons/gravity-ui/book-open";
 import PlayIcon from "~icons/gravity-ui/play";
 import PersonIcon from "~icons/gravity-ui/person";
-import RobotIcon from "~icons/gravity-ui/layers";
 import SessionsIcon from "~icons/gravity-ui/list-ul";
-import StorageIcon from "~icons/gravity-ui/database";
 import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
 import CloseIcon from "~icons/gravity-ui/xmark";
-import ClockIcon from "~icons/gravity-ui/clock";
 import { currentUserQueryOptions } from "@/auth/queries";
 import { useAppLocale } from "@/lib/locale";
 
 const SETTINGS_GROUPS = [
   {
     key: "account",
-    items: [
-      { key: "overview", path: "/settings", icon: PersonIcon },
-      {
-        key: "users",
-        path: "/settings/users",
-        icon: PersonIcon,
-        capability: "system.manageUsers",
-      },
-    ],
-  },
-  {
-    key: "storage",
-    items: [
-      { key: "channels", path: "/settings/channels", icon: StorageIcon },
-      { key: "bots", path: "/settings/bots", icon: RobotIcon },
-    ],
+    items: [{ key: "overview", path: "/settings", icon: PersonIcon }],
   },
   {
     key: "security",
@@ -51,17 +33,6 @@ const SETTINGS_GROUPS = [
       { key: "appearance", path: "/settings/appearance", icon: PaletteIcon },
       { key: "reader", path: "/settings/reader", icon: BookIcon },
       { key: "player", path: "/settings/player", icon: PlayIcon },
-    ],
-  },
-  {
-    key: "system",
-    items: [
-      {
-        key: "jobs",
-        path: "/settings/periodic-jobs",
-        icon: ClockIcon,
-        capability: "system.maintenance",
-      },
     ],
   },
 ] as const;
@@ -198,10 +169,9 @@ function SettingsNavigation({
 type SettingsItem = (typeof SETTINGS_GROUPS)[number]["items"][number];
 type SettingsGroup = { key: string; items: SettingsItem[] };
 
-function settingsGroupsFor(capabilities: string[]): SettingsGroup[] {
-  const allowed = new Set(capabilities);
+function settingsGroupsFor(_capabilities: string[]): SettingsGroup[] {
   return SETTINGS_GROUPS.map((group) => ({
     key: group.key,
-    items: group.items.filter((item) => !("capability" in item) || allowed.has(item.capability)),
-  })).filter((group) => group.items.length > 0) as SettingsGroup[];
+    items: [...group.items],
+  }));
 }

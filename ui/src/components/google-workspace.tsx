@@ -31,6 +31,7 @@ export function getWorkspaceApp(pathname: string): WorkspaceAppId {
   if (pathname.startsWith("/photos")) return "photos";
   if (pathname.startsWith("/docs")) return "docs";
   if (
+    pathname.startsWith("/one") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/storage") ||
     pathname.startsWith("/tasks") ||

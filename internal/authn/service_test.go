@@ -87,3 +87,34 @@ func TestServiceValidationAndHelpers(t *testing.T) {
 		t.Fatalf("ttlSeconds() = %d", ttlSeconds(time.Minute))
 	}
 }
+
+func TestWorkspaceAuthValidation(t *testing.T) {
+	t.Parallel()
+	s := &Service{
+		config: Config{SigningKey: strings.Repeat("k", 32), Issuer: "test", AccessTokenTTL: time.Minute},
+		now:    time.Now,
+	}
+	ctx := context.Background()
+	if _, err := s.LoginWithPassword(ctx, "", "secret"); !errors.Is(err, ErrInvalidCredential) {
+		t.Fatalf("LoginWithPassword(empty) error = %v", err)
+	}
+	if _, err := s.CreateWorkspaceUser(ctx, CreateWorkspaceUserInput{Email: "invalid", Password: "password123"}); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("CreateWorkspaceUser(invalid email) error = %v", err)
+	}
+	if _, err := s.CreateWorkspaceUser(ctx, CreateWorkspaceUserInput{Email: "user@example.com", Password: "123"}); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("CreateWorkspaceUser(short password) error = %v", err)
+	}
+	if err := s.ChangePassword(ctx, 1, "old", "123"); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("ChangePassword(short) error = %v", err)
+	}
+	if _, err := s.SetupOwnerCredentials(ctx, 0, "owner@example.com", "password123"); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("SetupOwnerCredentials(userID=0) error = %v", err)
+	}
+	if _, _, err := s.GetUserStorageUsage(ctx, 0); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("GetUserStorageUsage(userID=0) error = %v", err)
+	}
+	status, err := s.GetBootstrapStatus(ctx)
+	if err != nil || status.TelegramLinked || status.EmailAuthReady {
+		t.Fatalf("GetBootstrapStatus(nil queries) = %+v, err=%v", status, err)
+	}
+}

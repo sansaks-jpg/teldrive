@@ -74,7 +74,7 @@ function TrashPage() {
   const query = useInfiniteFilePages(
     {
       path: "/",
-      scope: "drive",
+      scope: "folder",
       kind: filterKind,
       category: filterCategories,
       updatedAfter: filterUpdatedAfter,

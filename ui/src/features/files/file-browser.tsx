@@ -138,7 +138,7 @@ export function FileBrowser({
       }
     >
       <Card.Header
-        className={`shrink-0 border-b border-border/45 px-3 sm:px-4 ${compactToolbar ? "py-2" : "py-2.5"}`}
+        className={`shrink-0 border-b-0 px-3 sm:border-b sm:border-border/45 sm:px-4 ${compactToolbar ? "py-2" : "pb-1.5 pt-3 sm:py-2.5"}`}
         data-testid="file-browser-toolbar"
       >
         <div className="flex min-w-0 flex-wrap items-center gap-2 [&>button]:shrink-0">
@@ -147,7 +147,7 @@ export function FileBrowser({
               isIconOnly
               size="sm"
               variant="ghost"
-              className="size-8 rounded-full"
+              className={path === "/" ? "hidden size-8 rounded-full sm:inline-flex" : "size-8 rounded-full"}
               aria-label={t("browser.back")}
               onPress={onBack}
             >
@@ -171,7 +171,13 @@ export function FileBrowser({
             </Button>
           ) : null}
           {!hideFolderControls && (
-            <div className="min-w-24 flex-1 overflow-hidden">
+            <div
+              className={
+                toolbar && path === "/"
+                  ? "hidden min-w-24 flex-1 overflow-hidden sm:block"
+                  : "min-w-24 flex-1 overflow-hidden"
+              }
+            >
               <FileBrowserBreadcrumb
                 path={path}
                 rootLabel={rootLabel}
@@ -179,9 +185,15 @@ export function FileBrowser({
               />
             </div>
           )}
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto sm:flex-none sm:justify-end [&>button]:shrink-0">
-            {toolbar}
-            <div className="inline-flex h-8 shrink-0 items-center rounded-full border border-border/70 bg-surface p-0.5">
+          <div
+            className={
+              toolbar && path === "/"
+                ? "flex w-full min-w-0 flex-wrap items-center justify-between gap-1.5 sm:ml-auto sm:w-auto sm:flex-none sm:justify-end [&>button]:shrink-0"
+                : "ml-auto flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1.5 [&>button]:shrink-0"
+            }
+          >
+            {toolbar ? <div className="flex min-w-0 items-center gap-1.5">{toolbar}</div> : null}
+            <div className="inline-flex shrink-0 items-center gap-0.5">
               <Button
                 isIconOnly
                 size="sm"
@@ -190,8 +202,8 @@ export function FileBrowser({
                 aria-pressed={view === "list"}
                 className={
                   view === "list"
-                    ? "h-7 w-9 rounded-full bg-[#c2e7ff] text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
-                    : "h-7 w-9 rounded-full text-muted hover:text-foreground"
+                    ? "h-8 w-11 rounded-full bg-[#c2e7ff] text-[#001d35] dark:bg-[#b8dce6] dark:text-[#002026]"
+                    : "h-8 w-11 rounded-l-full rounded-r-md bg-[#eef2f6] text-[#444746] hover:text-foreground dark:bg-[#223236] dark:text-[#cbe2e8]"
                 }
                 onPress={() => onViewChange("list")}
               >
@@ -205,8 +217,8 @@ export function FileBrowser({
                 aria-pressed={view === "grid"}
                 className={
                   view === "grid"
-                    ? "h-7 w-9 rounded-full bg-[#c2e7ff] text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff]"
-                    : "h-7 w-9 rounded-full text-muted hover:text-foreground"
+                    ? "h-8 w-11 rounded-full bg-[#c2e7ff] text-[#001d35] dark:bg-[#b8dce6] dark:text-[#002026]"
+                    : "h-8 w-11 rounded-r-full rounded-l-md bg-[#eef2f6] text-[#444746] hover:text-foreground dark:bg-[#223236] dark:text-[#cbe2e8]"
                 }
                 onPress={() => onViewChange("grid")}
               >
@@ -215,7 +227,7 @@ export function FileBrowser({
             </div>
           </div>
         </div>
-        {headerFilters ? <div className="mt-2.5">{headerFilters}</div> : null}
+        {headerFilters ? <div className="mt-2.5 hidden sm:block">{headerFilters}</div> : null}
       </Card.Header>
       <Card.Content className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
         {loading ? (
@@ -227,7 +239,7 @@ export function FileBrowser({
         ) : (
           <>
             {view === "list" && files.length > 0 ? (
-              <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2 border-b border-border/60 px-3 py-2 text-xs font-medium text-[#444746] dark:text-[#c4c7c5] sm:grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] sm:px-4 lg:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] lg:gap-4">
+              <div className="hidden shrink-0 grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] items-center gap-2 border-b border-border/60 px-4 py-2 text-xs font-medium text-[#444746] dark:text-[#c4c7c5] sm:grid lg:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] lg:gap-4">
                 <span className="truncate pl-1">{t("drive.columnName")}</span>
                 <span className="hidden lg:block">{t("drive.columnModified")}</span>
                 <span className="hidden sm:block">{t("drive.columnSize")}</span>
@@ -300,9 +312,11 @@ function FileCollection({
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridWidth, setGridWidth] = useState(0);
 
+  const compactList = gridWidth > 0 && gridWidth < 640;
+
   useLayoutEffect(() => {
     const element = gridRef.current;
-    if (!grid || !element) return;
+    if (!element) return;
     setGridWidth(element.clientWidth);
     const observer = new ResizeObserver(() => setGridWidth(element.clientWidth));
     observer.observe(element);
@@ -362,10 +376,10 @@ function FileCollection({
                     .filter(Boolean)
                     .join(" ")
                 : [
-                    "group grid min-h-14 cursor-default grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2 border-b border-border/50 px-3 outline-none transition-colors last:border-b-0 sm:grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] sm:px-4 lg:min-h-12 lg:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] lg:gap-4",
+                    "group grid min-h-[64px] cursor-default grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2 rounded-2xl bg-[#f4f7fb] px-3.5 py-2.5 outline-none transition-colors dark:bg-[#1c2425] sm:min-h-12 sm:grid-cols-[minmax(0,1fr)_5.5rem_2.5rem] sm:rounded-none sm:border-b sm:border-border/50 sm:bg-transparent sm:px-4 sm:py-0 sm:last:border-b-0 sm:dark:bg-transparent lg:grid-cols-[minmax(0,1fr)_9.5rem_5.5rem_8.5rem] lg:gap-4",
                     state.isSelected
                       ? "bg-[#c2e7ff]/45 dark:bg-[#004a77]/45"
-                      : "hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]/70",
+                      : "hover:bg-[#eaf0f7] dark:hover:bg-[#253031] sm:hover:bg-[#f0f4f9] sm:dark:hover:bg-[#282a2c]/70",
 
                     dimmedIds?.has(file.id) && "opacity-45",
                     state.isFocusVisible && "ring-2 ring-inset ring-accent/30",
@@ -429,7 +443,11 @@ function FileCollection({
       {collection}
     </Virtualizer>
   ) : (
-    <Virtualizer key="list" layout={ListLayout}>
+    <Virtualizer
+      key="list"
+      layout={ListLayout}
+      layoutOptions={compactList ? { gap: 6, padding: 12, estimatedRowSize: 64 } : undefined}
+    >
       {collection}
     </Virtualizer>
   );
@@ -571,18 +589,28 @@ function ListFile({
   const modifiedDate = new Date(file.modTime);
   return (
     <>
-      <div className="flex min-w-0 items-center gap-3">
-        {selectable ? <SelectionCheckbox file={file} isVisible={showCheckbox} /> : null}
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#f0f4f9] dark:bg-[#282a2c]">
+      <div className="flex min-w-0 items-center gap-3.5 sm:gap-3">
+        {selectable ? (
+          <div className={showCheckbox ? "shrink-0" : "hidden shrink-0 sm:block"}>
+            <SelectionCheckbox file={file} isVisible={showCheckbox} />
+          </div>
+        ) : null}
+        <div
+          className={
+            file.kind === "folder"
+              ? "flex size-10 shrink-0 items-center justify-center rounded-xl bg-transparent sm:size-8 sm:rounded-lg sm:bg-[#f0f4f9] sm:dark:bg-[#282a2c]"
+              : "flex size-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-2xs dark:bg-[#121819] sm:size-8 sm:rounded-lg sm:bg-[#f0f4f9] sm:shadow-none sm:dark:bg-[#282a2c]"
+          }
+        >
           {file.kind === "folder" ? (
-            <FolderIcon className="size-4.5 text-[#5f6368] dark:text-[#c4c7c5]" />
+            <FolderIcon className="size-7 text-[#5f6368] dark:text-[#b4c5c8] sm:size-4.5 sm:dark:text-[#c4c7c5]" />
           ) : (
-            <FileTypeIcon file={file} className="size-4.5" />
+            <FileTypeIcon file={file} className="size-5.5 sm:size-4.5" />
           )}
         </div>
         <div className="min-w-0 flex-1">
           <span
-            className="block truncate text-sm font-medium text-foreground group-hover:text-[#0b57d0] dark:group-hover:text-[#a8c7fa]"
+            className="block truncate text-[15px] font-normal text-foreground group-hover:text-[#0b57d0] dark:group-hover:text-[#a8c7fa] sm:text-sm sm:font-medium"
             title={file.name}
           >
             {file.name}
@@ -590,8 +618,10 @@ function ListFile({
           {location ? (
             <LocationButton location={location} onPress={onOpenContainingFolder} />
           ) : null}
-          <span className="mt-0.5 block truncate text-[11px] text-muted sm:hidden">
-            {sizeText} · {formatDate.format(modifiedDate)}
+          <span className="mt-0.5 block truncate text-xs text-muted sm:hidden">
+            {file.kind === "folder"
+              ? formatDate.format(modifiedDate)
+              : `${formatDate.format(modifiedDate)} • ${sizeText}`}
           </span>
         </div>
       </div>

@@ -16,13 +16,17 @@ export function FileSortControls({
   return (
     <>
       <Dropdown>
-        <Button size="sm" variant="secondary" aria-label={t("manager.sortFiles")}>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 gap-1 rounded-full px-1.5 text-[14px] font-medium text-foreground hover:bg-default/40 sm:bg-secondary/60 sm:px-3 sm:text-xs"
+          aria-label={t("manager.sortFiles")}
+        >
           {sorting.sort === "updatedAt"
             ? t("manager.sortModified")
             : sorting.sort === "size"
               ? t("search.sortSize")
               : t("search.sortName")}
-          {sorting.order === "asc" ? " ↑" : " ↓"}
         </Button>
         <Dropdown.Popover>
           <Dropdown.Menu
@@ -47,6 +51,7 @@ export function FileSortControls({
         isIconOnly
         size="sm"
         variant="secondary"
+        className="size-7 rounded-full bg-[#e3edf5] text-[#1f1f1f] dark:bg-[#233236] dark:text-[#cbe2e8] sm:size-8"
         aria-label={t(sorting.order === "asc" ? "manager.orderToDesc" : "manager.orderToAsc")}
         onPress={() => onChange({ ...sorting, order: sorting.order === "asc" ? "desc" : "asc" })}
       >

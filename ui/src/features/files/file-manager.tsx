@@ -683,6 +683,7 @@ export function FileManagerPage({
           isIconOnly
           size="sm"
           variant="secondary"
+          className="hidden sm:inline-flex"
           aria-label={t("files.newFolder")}
           onPress={() => {
             setActivePane(pane);
@@ -692,7 +693,13 @@ export function FileManagerPage({
           <PlusIcon className="size-4" />
         </Button>
         <Dropdown>
-          <Button isIconOnly size="sm" variant="primary" aria-label={t("manager.upload")}>
+          <Button
+            isIconOnly
+            size="sm"
+            variant="primary"
+            className="hidden sm:inline-flex"
+            aria-label={t("manager.upload")}
+          >
             <UploadIcon className="size-4" />
           </Button>
           <Dropdown.Popover className="min-w-52">

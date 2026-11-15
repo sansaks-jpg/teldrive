@@ -46,14 +46,20 @@ import ChevronRightIcon from "~icons/gravity-ui/chevron-right";
 import StorageIcon from "~icons/gravity-ui/database";
 import FileIcon from "~icons/gravity-ui/file";
 import FolderIcon from "~icons/gravity-ui/folder";
+import FolderFillIcon from "~icons/gravity-ui/folder-fill";
 import FolderPlusIcon from "~icons/gravity-ui/folder-plus";
 import SettingsIcon from "~icons/gravity-ui/gear";
 import HeartIcon from "~icons/gravity-ui/heart";
+import HouseIcon from "~icons/gravity-ui/house";
+import HouseFillIcon from "~icons/gravity-ui/house-fill";
 import TasksIcon from "~icons/gravity-ui/list-ul";
 import SearchIcon from "~icons/gravity-ui/magnifier";
 import MoonIcon from "~icons/gravity-ui/moon";
+import PersonsIcon from "~icons/gravity-ui/persons";
 import PlusIcon from "~icons/gravity-ui/plus";
 import ShieldIcon from "~icons/gravity-ui/shield-check";
+import StarIcon from "~icons/gravity-ui/star";
+import StarFillIcon from "~icons/gravity-ui/star-fill";
 import SunIcon from "~icons/gravity-ui/sun";
 import TrashIcon from "~icons/gravity-ui/trash-bin";
 import CloseIcon from "~icons/gravity-ui/xmark";
@@ -85,11 +91,52 @@ type AppNavItem = {
   key: string;
   labelKey: string;
   icon: typeof FolderIcon;
+  activeIcon?: typeof FolderIcon;
   to: AppRoutePath;
   search?: Record<string, unknown>;
   capability?: string;
   isActive: (pathname: string, search: Record<string, unknown>) => boolean;
 };
+
+const MOBILE_DRIVE_NAV: AppNavItem[] = [
+  {
+    key: "mobile-home",
+    labelKey: "drive.home",
+    icon: HouseIcon,
+    activeIcon: HouseFillIcon,
+    to: "/files",
+    search: { recent: true },
+    isActive: (pathname, search) => pathname.startsWith("/files") && search.recent === true,
+  },
+  {
+    key: "mobile-bookmarks",
+    labelKey: "nav.bookmarks",
+    icon: StarIcon,
+    activeIcon: StarFillIcon,
+    to: "/files",
+    search: { bookmarked: true },
+    isActive: (pathname, search) =>
+      pathname.startsWith("/files") && search.bookmarked === true && search.recent !== true,
+  },
+  {
+    key: "mobile-shared",
+    labelKey: "nav.shared",
+    icon: PersonsIcon,
+    activeIcon: PersonsIcon,
+    to: "/shared-with-me",
+    isActive: (pathname) => pathname.startsWith("/shared-with-me"),
+  },
+  {
+    key: "mobile-files",
+    labelKey: "nav.files",
+    icon: FolderIcon,
+    activeIcon: FolderFillIcon,
+    to: "/files",
+    search: {},
+    isActive: (pathname, search) =>
+      pathname.startsWith("/files") && search.recent !== true && search.bookmarked !== true,
+  },
+];
 
 const DRIVE_NAV: AppNavItem[] = [
   {
@@ -799,7 +846,7 @@ function TopBar({
             "flex w-full items-center gap-2 rounded-full transition-all",
             desktop
               ? "h-11 bg-[#e9eef6] px-4 focus-within:bg-surface focus-within:shadow-md focus-within:ring-1 focus-within:ring-border/40 dark:bg-[#282a2c]"
-              : "h-10 bg-transparent px-1",
+              : "h-12 bg-[#e9eef6] px-4 focus-within:bg-surface focus-within:ring-1 focus-within:ring-border/40 dark:bg-[#1e2627]",
           )}
         >
           {desktop && (
@@ -834,7 +881,10 @@ function TopBar({
               scheduleSearch(value);
             }}
             placeholder={appMeta.searchPlaceholder}
-            className="h-8 w-0 min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-sm leading-normal text-foreground shadow-none outline-none ring-0 focus:ring-0 focus-visible:ring-0"
+            className={cn(
+              "h-auto! min-h-0! w-0 min-w-0 flex-1 border-0! bg-transparent! px-0! py-0! text-[15px] leading-normal! text-foreground shadow-none! outline-none! ring-0! focus:ring-0! focus-visible:ring-0! sm:text-sm",
+              !desktop && !searchText && "text-center! focus:text-left!",
+            )}
           />
           {searchText ? (
             <Button
@@ -873,20 +923,20 @@ function TopBar({
 
   if (!desktop) {
     return (
-      <header className="shrink-0 bg-sidebar px-3 pb-2 pt-2.5">
-        <div className="flex h-12 items-center gap-1 rounded-full bg-[#e9eef6] px-1.5 shadow-xs dark:bg-[#282a2c]">
+      <header className="shrink-0 bg-sidebar px-3 pb-1 pt-2.5">
+        <div className="flex h-12 items-center gap-2">
           <Button
             isIconOnly
             variant="ghost"
             size="sm"
-            className="size-9 shrink-0 rounded-full text-[#444746] dark:text-[#c4c7c5]"
+            className="size-10 shrink-0 rounded-full text-foreground"
             onPress={onOpenMobile}
             aria-label={t("sidebar.open")}
           >
-            <MenuIcon className="size-4.5" />
+            <MenuIcon className="size-5.5" />
           </Button>
           {searchForm}
-          <div className="flex shrink-0 items-center gap-1 pr-0.5">
+          <div className="flex shrink-0 items-center gap-1">
             <AppSwitcher />
             <HeaderAccountAvatar />
           </div>
@@ -976,7 +1026,7 @@ function HeaderAccountAvatar() {
         aria-label={displayName}
         className="inline-flex size-9 shrink-0 items-center justify-center rounded-full p-0.5 outline-none"
       >
-        <Avatar className="size-8 h-8 w-8 shrink-0 overflow-hidden rounded-full ring-1 ring-border/40">
+        <Avatar className="size-8 h-8 w-8 shrink-0 overflow-hidden rounded-full ring-2 ring-[#4285f4]/80 dark:ring-[#7cd0e3]/80">
           <Avatar.Image alt={displayName} src="/api/v1/me/photo" />
           <Avatar.Fallback>{initials}</Avatar.Fallback>
         </Avatar>
@@ -1160,6 +1210,91 @@ function AppSwitcher() {
   );
 }
 
+function MobileDriveSubTabs() {
+  const { t } = useAppLocale();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const routeSearch = useLocation({
+    select: (location) => location.search as Record<string, unknown>,
+  });
+  const activeApp = getWorkspaceApp(pathname);
+
+  if (activeApp !== "drive" || pathname.startsWith("/trash") || pathname.startsWith("/search")) {
+    return null;
+  }
+
+  const inHomeMode = routeSearch.recent === true || pathname.startsWith("/tasks");
+  const tabs: Array<{
+    key: string;
+    label: string;
+    to: AppRoutePath;
+    search?: Record<string, unknown>;
+    active: boolean;
+  }> = inHomeMode
+    ? [
+        {
+          key: "suggested",
+          label: t("drive.suggested"),
+          to: "/files",
+          search: { recent: true },
+          active: pathname.startsWith("/files") && routeSearch.recent === true,
+        },
+        {
+          key: "activity",
+          label: t("drive.activity"),
+          to: "/tasks",
+          active: pathname.startsWith("/tasks"),
+        },
+      ]
+    : [
+        {
+          key: "my-drive",
+          label: t("drive.myDrive"),
+          to: "/files",
+          search: {},
+          active:
+            pathname.startsWith("/files") &&
+            routeSearch.recent !== true &&
+            routeSearch.bookmarked !== true,
+        },
+        {
+          key: "shared-with-me",
+          label: t("nav.sharedWithMe"),
+          to: "/shared-with-me",
+          active: pathname.startsWith("/shared-with-me"),
+        },
+      ];
+
+  return (
+    <div className="flex h-11 shrink-0 items-stretch bg-sidebar px-2 lg:hidden">
+      {tabs.map((tab) => (
+        <Link
+          key={tab.key}
+          to={tab.to}
+          search={(tab.search ?? {}) as never}
+          className="relative flex flex-1 flex-col items-center justify-center text-sm transition-colors"
+        >
+          <span
+            className={cn(
+              "truncate px-2",
+              tab.active
+                ? "font-semibold text-[#0b57d0] dark:text-[#7cd0e3]"
+                : "font-medium text-muted hover:text-foreground",
+            )}
+          >
+            {tab.label}
+          </span>
+          {tab.active ? (
+            <span
+              aria-hidden="true"
+              className="absolute bottom-0 h-[3px] w-20 rounded-t-full bg-[#0b57d0] dark:bg-[#00d8f0]"
+            />
+          ) : null}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function MobileBottomBar() {
   const { t } = useAppLocale();
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -1169,30 +1304,33 @@ function MobileBottomBar() {
   const activeApp = getWorkspaceApp(pathname);
   const { data: user } = useQuery(currentUserQueryOptions());
   const capabilities = user?.capabilities ?? [];
-  const items = getNavForApp(activeApp, capabilities).slice(0, 4);
+  const items =
+    activeApp === "drive"
+      ? MOBILE_DRIVE_NAV
+      : getNavForApp(activeApp, capabilities).slice(0, 4);
 
   if (items.length === 0) return null;
 
   return (
     <nav
       aria-label={t("apps.companionRail")}
-      className="flex h-16 shrink-0 items-center justify-around border-t border-border/50 bg-sidebar/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+      className="flex h-[68px] shrink-0 items-center justify-around bg-sidebar px-2 pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       {items.map((item) => {
         const active = item.isActive(pathname, routeSearch);
-        const Icon = item.icon;
+        const Icon = active && item.activeIcon ? item.activeIcon : item.icon;
         return (
           <Link
             key={item.key}
             to={item.to}
             search={(item.search ?? {}) as never}
-            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-1 text-center"
+            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 text-center"
           >
             <div
               className={cn(
-                "flex h-7 w-14 items-center justify-center rounded-full transition-colors",
+                "flex h-8 w-16 items-center justify-center rounded-full transition-colors",
                 active
-                  ? "bg-accent/10 bg-[#c2e7ff]! text-[#001d35]! dark:bg-[#004a77]! dark:text-[#c2e7ff]!"
+                  ? "bg-accent/10 bg-[#c2e7ff]! text-[#001d35]! dark:bg-[#22424a]! dark:text-[#cdeaf2]!"
                   : "text-[#444746] dark:text-[#c4c7c5]",
               )}
             >
@@ -1215,45 +1353,113 @@ function MobileBottomBar() {
 
 function MobileFloatingActionButton() {
   const { t } = useAppLocale();
+  const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
+  const [speedDialOpen, setSpeedDialOpen] = useState(false);
+
+  useEffect(() => {
+    setSpeedDialOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!speedDialOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSpeedDialOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [speedDialOpen]);
 
   if (pathname === "/files") {
     return (
-      <div className="fixed bottom-20 right-4 z-30 lg:hidden">
-        <Dropdown>
+      <>
+        {speedDialOpen ? (
+          <Button
+            variant="ghost"
+            aria-label={t("sidebar.close")}
+            className="fixed inset-0 z-40 h-full w-full rounded-none bg-black/65 backdrop-blur-[1px] lg:hidden"
+            onPress={() => setSpeedDialOpen(false)}
+          />
+        ) : null}
+        <div className="fixed bottom-20 right-4 z-50 flex flex-col items-end gap-3 lg:hidden">
+          {speedDialOpen ? (
+            <div className="flex flex-col items-end gap-2.5 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <Button
+                size="md"
+                variant="secondary"
+                className="h-12 gap-2.5 rounded-full bg-[#c2e7ff] px-5 text-sm font-medium text-[#001d35] shadow-md dark:bg-[#004f58] dark:text-[#cdeff5]"
+                onPress={() => {
+                  setSpeedDialOpen(false);
+                  void navigate({ to: "/docs" });
+                }}
+              >
+                <FileTextIcon className="size-4.5" />
+                {t("drive.newDocument")}
+              </Button>
+              <Button
+                size="md"
+                variant="secondary"
+                className="h-12 gap-2.5 rounded-full bg-[#c2e7ff] px-5 text-sm font-medium text-[#001d35] shadow-md dark:bg-[#004f58] dark:text-[#cdeff5]"
+                onPress={() => {
+                  setSpeedDialOpen(false);
+                  dispatchWorkspaceAction("drive:upload-files");
+                }}
+              >
+                <UploadIcon className="size-4.5" />
+                {t("files.uploadFiles")}
+              </Button>
+              <Button
+                size="md"
+                variant="secondary"
+                className="h-12 gap-2.5 rounded-full bg-[#c2e7ff] px-5 text-sm font-medium text-[#001d35] shadow-md dark:bg-[#004f58] dark:text-[#cdeff5]"
+                onPress={() => {
+                  setSpeedDialOpen(false);
+                  dispatchWorkspaceAction("drive:upload-folder");
+                }}
+              >
+                <FolderPlusIcon className="size-4.5" />
+                {t("files.uploadFolder")}
+              </Button>
+              <Button
+                size="md"
+                variant="secondary"
+                className="h-12 gap-2.5 rounded-full bg-[#c2e7ff] px-5 text-sm font-medium text-[#001d35] shadow-md dark:bg-[#004f58] dark:text-[#cdeff5]"
+                onPress={() => {
+                  setSpeedDialOpen(false);
+                  dispatchWorkspaceAction("drive:new-folder");
+                }}
+              >
+                <FolderIcon className="size-4.5" />
+                {t("files.newFolder")}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              isIconOnly
+              variant="secondary"
+              aria-label={t("drive.quickUpload")}
+              className="size-11 rounded-xl bg-[#d3e3fd] text-[#041e49] shadow-md dark:bg-[#234357] dark:text-[#d3e3fd]"
+              onPress={() => dispatchWorkspaceAction("drive:upload-files")}
+            >
+              <UploadIcon className="size-5" />
+            </Button>
+          )}
           <Button
             isIconOnly
             variant="secondary"
             aria-label={t("drive.openNewMenu")}
-            className="size-14 rounded-2xl border border-border/40 bg-[#c2e7ff] text-[#001d35] shadow-lg hover:shadow-xl dark:bg-[#004a77] dark:text-[#c2e7ff]"
+            aria-expanded={speedDialOpen}
+            className={
+              speedDialOpen
+                ? "size-14 rounded-full bg-[#0b57d0] text-white shadow-xl dark:bg-[#00d8f0] dark:text-[#002024]"
+                : "size-14 rounded-2xl bg-[#c2e7ff] text-[#001d35] shadow-lg dark:bg-[#004f58] dark:text-[#cdeff5]"
+            }
+            onPress={() => setSpeedDialOpen((prev) => !prev)}
           >
-            <PlusIcon className="size-6" />
+            {speedDialOpen ? <CloseIcon className="size-6" /> : <PlusIcon className="size-6" />}
           </Button>
-          <Dropdown.Popover placement="top end" className="min-w-52 rounded-2xl p-1.5">
-            <Dropdown.Menu
-              aria-label={t("drive.openNewMenu")}
-              onAction={(key) => {
-                if (key === "folder") dispatchWorkspaceAction("drive:new-folder");
-                if (key === "files") dispatchWorkspaceAction("drive:upload-files");
-                if (key === "uploadFolder") dispatchWorkspaceAction("drive:upload-folder");
-              }}
-            >
-              <Dropdown.Item id="folder" textValue={t("files.newFolder")}>
-                <FolderPlusIcon className="size-4 text-accent" />
-                <Label>{t("files.newFolder")}</Label>
-              </Dropdown.Item>
-              <Dropdown.Item id="files" textValue={t("files.uploadFiles")}>
-                <FileIcon className="size-4 text-muted" />
-                <Label>{t("files.uploadFiles")}</Label>
-              </Dropdown.Item>
-              <Dropdown.Item id="uploadFolder" textValue={t("files.uploadFolder")}>
-                <UploadIcon className="size-4 text-muted" />
-                <Label>{t("files.uploadFolder")}</Label>
-              </Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -1368,11 +1574,19 @@ function Layout() {
             onToggleSidebar={() => setCollapsed((value) => !value)}
             onOpenMobile={() => setMobileOpen(true)}
           />
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col select-none overflow-hidden px-2 pb-2 pt-1 sm:px-4 sm:pb-4 lg:px-4 lg:pb-4 lg:pt-0">
+          <MobileDriveSubTabs />
+          <main
+            className={cn(
+              "flex min-h-0 min-w-0 flex-1 flex-col select-none overflow-hidden lg:px-4 lg:pb-4 lg:pt-0",
+              getWorkspaceApp(pathname) === "drive" ? "p-0" : "px-2 pb-2 pt-1 sm:px-4 sm:pb-4",
+            )}
+          >
             <div
               className={cn(
-                "flex min-h-0 flex-1 flex-col overflow-y-auto rounded-2xl bg-surface lg:rounded-3xl lg:shadow-xs lg:ring-1 lg:ring-border/35",
-                getWorkspaceApp(pathname) === "drive" ? "p-0 lg:p-2" : "p-2.5 sm:p-4 lg:p-5",
+                "flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface lg:rounded-3xl lg:shadow-xs lg:ring-1 lg:ring-border/35",
+                getWorkspaceApp(pathname) === "drive"
+                  ? "rounded-t-[28px] dark:bg-[#141b1c] p-0 pt-1 lg:p-2"
+                  : "rounded-2xl p-2.5 sm:p-4 lg:p-5",
               )}
             >
               <Outlet />
